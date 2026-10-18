@@ -1800,8 +1800,8 @@ export class PropertyModalComponent {
         const img = new Image();
         img.onload = () => {
           const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 1280;
-          const MAX_HEIGHT = 960;
+          const MAX_WIDTH = 1000;
+          const MAX_HEIGHT = 750;
           let width = img.width;
           let height = img.height;
 
@@ -1829,8 +1829,8 @@ export class PropertyModalComponent {
           ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Return high-quality compressed JPEG (typically ~100-150KB)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          // Return high-quality lightweight compressed JPEG (~50-80KB)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.72);
           resolve(dataUrl);
         };
         img.onerror = () => reject(new Error('Image decode error'));

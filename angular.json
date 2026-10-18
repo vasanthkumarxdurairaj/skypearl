@@ -56,6 +56,10 @@
             ],
             "styles": [
               "src/styles.css"
+            ],
+            "allowedCommonJsDependencies": [
+              "tesseract.js",
+              "regenerator-runtime"
             ]
           },
           "configurations": {

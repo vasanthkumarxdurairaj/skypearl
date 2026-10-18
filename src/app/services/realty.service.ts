@@ -259,17 +259,19 @@ export class RealtyService {
           const remoteProps: PropertyListing[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as PropertyListing;
-            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
-              deleteDoc(doc(db, 'properties', docSnap.id)).catch(() => {});
-            } else {
+            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
               remoteProps.push(data);
             }
           });
           this.properties.set(remoteProps);
-          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(remoteProps));
+          try {
+            localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(remoteProps));
+          } catch {}
         } else {
           this.properties.set([]);
-          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
+          try {
+            localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
+          } catch {}
         }
       }, err => {
         console.warn('Firestore properties sync notice:', err);
@@ -286,17 +288,19 @@ export class RealtyService {
           const remoteLeads: LeadCRM[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as LeadCRM;
-            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
-              deleteDoc(doc(db, 'leads', docSnap.id)).catch(() => {});
-            } else {
+            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
               remoteLeads.push(data);
             }
           });
           this.leads.set(remoteLeads);
-          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(remoteLeads));
+          try {
+            localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(remoteLeads));
+          } catch {}
         } else {
           this.leads.set([]);
-          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
+          try {
+            localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
+          } catch {}
         }
       }, err => {
         console.warn('Firestore leads sync notice:', err);
@@ -313,17 +317,19 @@ export class RealtyService {
           const remoteVisits: SiteVisit[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as SiteVisit;
-            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
-              deleteDoc(doc(db, 'siteVisits', docSnap.id)).catch(() => {});
-            } else {
+            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
               remoteVisits.push(data);
             }
           });
           this.siteVisits.set(remoteVisits);
-          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(remoteVisits));
+          try {
+            localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(remoteVisits));
+          } catch {}
         } else {
           this.siteVisits.set([]);
-          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
+          try {
+            localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
+          } catch {}
         }
       }, err => {
         console.warn('Firestore visits sync notice:', err);

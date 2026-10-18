@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild, inject, output, signal, OnDestroy } from '@angular/core';
+import { Component, ElementRef, ViewChild, inject, output, signal, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClassifiedParserService, ParsedClassified } from '../../services/classified-parser.service';
@@ -16,10 +16,10 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
         <!-- Header -->
         <div class="modal-header">
           <div>
-            <div class="eyebrow-chip">THE HINDU CLASSIFIEDS AI OCR</div>
+            <div class="eyebrow-chip">THE HINDU CLASSIFIEDS SCANNER</div>
             <h2 class="modal-title">Newspaper Classifieds Reader</h2>
             <p class="modal-subtitle">
-              Capture or upload real estate ads from The Hindu. AI automatically detects Buyer vs Seller and extracts all attributes.
+              Scan with live camera or paste classified ads. Auto-categorizes Buyer vs Seller, extracts attributes, and generates client-ready pitches.
             </p>
           </div>
           <button class="btn-icon-close" (click)="closeModal()" title="Close">
@@ -53,7 +53,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 [class.active]="activeInputMode() === 'upload'" 
                 (click)="switchInputMode('upload')">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                <span>Upload Photo / Clipping</span>
+                <span>Upload Clipping</span>
               </button>
 
               <button 
@@ -66,37 +66,59 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
               </button>
             </div>
 
-            <!-- MODE 1: LIVE CAMERA VIEW -->
+            <!-- MODE 1: LIVE CAMERA VIEW (DEFAULT) -->
             @if (activeInputMode() === 'camera') {
-              <div class="camera-viewport-card glass-panel">
+              <div class="camera-viewport-card glass-panel" [class.flash-active]="isShutterFlashing()">
                 @if (cameraError()) {
                   <div class="camera-error-box">
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                     <h5>{{ cameraError() }}</h5>
-                    <p>Make sure your browser has camera permission enabled, or choose the File Upload tab.</p>
-                    <button class="btn btn-primary btn-sm mt-2" (click)="startCamera()">Retry Camera</button>
+                    <p>Make sure your device has camera permissions enabled, or choose the File Upload tab below.</p>
+                    <div class="mt-3 d-flex gap-2 justify-content-center">
+                      <button class="btn btn-primary btn-sm" (click)="startCamera()">Retry Camera</button>
+                      <button class="btn btn-secondary btn-sm" (click)="switchInputMode('upload')">Switch to File Upload</button>
+                    </div>
                   </div>
                 } @else {
-                  <div class="camera-stream-wrapper">
+                  <div class="camera-stream-wrapper" (click)="captureFromCamera()" title="Click to Capture">
                     <video #videoElement autoplay playsinline muted></video>
+                    
+                    <!-- Futuristic Laser Scanning Beam -->
+                    <div class="camera-laser-sweep"></div>
+
+                    <!-- Alignment Guide Reticle -->
                     <div class="scanner-reticle">
                       <div class="reticle-corner tl"></div>
                       <div class="reticle-corner tr"></div>
                       <div class="reticle-corner bl"></div>
                       <div class="reticle-corner br"></div>
-                      <div class="reticle-guide-text">Align The Hindu classified column inside box</div>
+                      <div class="reticle-guide-text">📰 Hold camera steady over newspaper classified ad</div>
                     </div>
+
+                    <!-- Shutter Flash Overlay -->
+                    @if (isShutterFlashing()) {
+                      <div class="shutter-flash-overlay"></div>
+                    }
                   </div>
 
                   <div class="camera-controls-bar">
-                    <button type="button" class="btn btn-secondary btn-sm" (click)="toggleFacingMode()" title="Switch Front/Rear Camera">
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
-                      <span>Flip Camera</span>
-                    </button>
+                    <div class="camera-aux-controls">
+                      <button type="button" class="btn btn-secondary btn-sm" (click)="toggleFacingMode()" title="Switch Front/Rear Camera">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg>
+                        <span>Flip</span>
+                      </button>
 
-                    <button type="button" class="btn btn-shutter" (click)="captureFromCamera()" title="Capture Newspaper Photo">
+                      @if (isTorchSupported()) {
+                        <button type="button" class="btn btn-secondary btn-sm" [class.btn-active-torch]="isTorchOn()" (click)="toggleTorch()" title="Toggle Camera Flashlight">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>
+                          <span>{{ isTorchOn() ? 'Flash ON' : 'Flash' }}</span>
+                        </button>
+                      }
+                    </div>
+
+                    <button type="button" class="btn btn-shutter" (click)="captureFromCamera()" title="Capture Classified Clipping">
                       <span class="shutter-circle"></span>
-                      <span>Capture & Read</span>
+                      <span>Capture & Read Ad</span>
                     </button>
 
                     <button type="button" class="btn btn-secondary btn-sm" (click)="switchInputMode('upload')">
@@ -132,7 +154,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 </div>
                 <h4 class="dropzone-title">Upload The Hindu Newspaper Clipping</h4>
                 <p class="dropzone-desc">
-                  Drop a camera photo, e-paper screenshot, or WhatsApp clipping of the classified ad.<br>
+                  Drop a camera photo, e-paper screenshot, or clipping of the classified ad.<br>
                   JPG, PNG, WebP supported.
                 </p>
                 <button type="button" class="btn btn-gold btn-sm mt-3" (click)="$event.stopPropagation(); fileInput.click()">
@@ -174,9 +196,9 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                   <div class="scanning-placeholder-icon">📰</div>
                 }
               </div>
-              <h4 class="mt-3">Analyzing Newspaper Classified Print...</h4>
+              <h4 class="mt-3">Analyzing Classified Newsprint...</h4>
               <p class="text-muted text-sm">
-                Enhancing newsprint contrast and running optical character recognition.
+                Enhancing contrast, parsing Chennai corridors & generating professional real estate pitch.
               </p>
               <div class="progress-bar-wrap">
                 <div class="progress-bar-fill" [style.width.%]="ocrProgress()"></div>
@@ -191,7 +213,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
           @if (currentStage() === 'confirm' && parsedData(); as data) {
             <div class="confirmation-container">
               
-              <!-- 1. AI Detection Banner with Seller vs Buyer Switcher -->
+              <!-- 1. Category Detection Banner with Seller vs Buyer Switcher -->
               <div class="detection-alert-banner" [class.is-seller]="data.detectedType === 'seller'" [class.is-buyer]="data.detectedType === 'buyer'">
                 <div class="detection-main">
                   <div class="detection-icon">
@@ -203,17 +225,17 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                   </div>
                   <div>
                     <div class="detection-heading">
-                      AI DETECTED AS: <strong>{{ data.detectedType === 'seller' ? 'SELLER (PROPERTY LISTING FOR SALE / RENT)' : 'BUYER (CLIENT REQUIREMENT / WANTED)' }}</strong>
+                      CATEGORY: <strong>{{ data.detectedType === 'seller' ? 'SELLER (PROPERTY LISTING FOR SALE / RENT)' : 'BUYER (CLIENT REQUIREMENT / WANTED)' }}</strong>
                     </div>
                     <div class="detection-subtext">
-                      Confidence Score: <strong>{{ data.confidenceScore }}%</strong> • {{ data.detectionReasons.slice(0, 3).join(', ') }}
+                      Classified keyword match • {{ data.detectionReasons.slice(0, 3).join(', ') }}
                     </div>
                   </div>
                 </div>
 
                 <!-- Type Override Switcher -->
                 <div class="type-override-pill">
-                  <span class="override-label">Need to change?</span>
+                  <span class="override-label">Change category:</span>
                   <button 
                     type="button" 
                     class="btn-toggle-type" 
@@ -231,12 +253,56 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 </div>
               </div>
 
-              <!-- 2. Original Classified Snippet & Raw Text Toggle -->
+              <!-- 2. SMART PARAPHRASE CARD (PITCH & NARRATIVE) -->
+              <div class="paraphrase-card glass-panel">
+                <div class="paraphrase-header">
+                  <div class="paraphrase-title-group">
+                    <span class="paraphrase-badge">✨ SMART REAL ESTATE PARAPHRASE</span>
+                    <span class="paraphrase-sub">Client-ready narrative description & WhatsApp marketing pitch</span>
+                  </div>
+                  <div class="paraphrase-actions">
+                    <button 
+                      type="button" 
+                      class="btn-copy-pitch" 
+                      (click)="copyParaphrasedPitch(data)"
+                      [class.copied]="pitchCopied()">
+                      @if (pitchCopied()) {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Copied!</span>
+                      } @else {
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        <span>📋 Copy Pitch</span>
+                      }
+                    </button>
+                    <button 
+                      type="button" 
+                      class="btn-refresh-pitch" 
+                      (click)="regeneratePitch(data)" 
+                      title="Update pitch from current form fields">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l6 5.67"/></svg>
+                      <span>Refresh</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="paraphrase-body">
+                  <textarea 
+                    class="form-control paraphrase-textarea" 
+                    rows="7" 
+                    [(ngModel)]="data.paraphrasedPitch"
+                    placeholder="Professional listing pitch will appear here..."></textarea>
+                  <div class="paraphrase-footer-tip">
+                    💡 This pitch is automatically stored in listing notes and ready to send to clients on WhatsApp.
+                  </div>
+                </div>
+              </div>
+
+              <!-- 3. Original Classified Snippet & Raw Text Toggle -->
               <div class="source-snippet-card glass-panel">
                 <div class="snippet-header">
                   <div class="snippet-title-row">
                     <span class="newspaper-badge">THE HINDU CLASSIFIEDS</span>
-                    <span class="snippet-sub">Scanned & Parsed Classified Snippet</span>
+                    <span class="snippet-sub">Original Extracted Newspaper Snippet</span>
                   </div>
                   <button type="button" class="btn-text-link" (click)="toggleRawText()">
                     {{ showRawText() ? 'Hide Raw Text ▲' : 'View Raw OCR Text ▼' }}
@@ -247,7 +313,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                   <div class="clipping-thumb-row">
                     <img [src]="selectedImageThumbnail()" alt="Newspaper clipping thumbnail" class="clipping-thumb" />
                     <div class="clipping-note">
-                      <strong>Newspaper Image Attached:</strong> This clipping will be saved as a verified photo proof for this record.
+                      <strong>Newspaper Image Attached:</strong> This clipping will be saved as verified photo proof for this inventory record.
                     </div>
                   </div>
                 }
@@ -256,12 +322,12 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                   <div class="raw-text-box">
                     <label class="form-hint">Raw Extracted Text:</label>
                     <textarea class="form-control raw-textarea" rows="3" [(ngModel)]="data.rawText" (blur)="reparseFromEditedText()"></textarea>
-                    <span class="form-hint">You can edit the raw text above and click outside to re-parse.</span>
+                    <span class="form-hint">Edit the raw text above and click outside to re-extract attributes.</span>
                   </div>
                 }
               </div>
 
-              <!-- 3. Structured Review & Confirmation Form -->
+              <!-- 4. Structured Review & Confirmation Form -->
               <div class="review-form glass-panel p-4">
                 <h4 class="form-section-heading">
                   Confirm Extracted Details (Editable Before Saving)
@@ -270,11 +336,11 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 <div class="form-row">
                   <div class="form-group flex-2">
                     <label class="form-label">Title *</label>
-                    <input type="text" class="form-control" [(ngModel)]="data.title" />
+                    <input type="text" class="form-control" [(ngModel)]="data.title" (change)="regeneratePitch(data)" />
                   </div>
                   <div class="form-group flex-1">
                     <label class="form-label">Transaction</label>
-                    <select class="form-control" [(ngModel)]="data.transactionType">
+                    <select class="form-control" [(ngModel)]="data.transactionType" (change)="regeneratePitch(data)">
                       <option value="Sale">Sale (Outright)</option>
                       <option value="Rent">Rent / To Let</option>
                       <option value="Lease">Lease</option>
@@ -292,7 +358,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                     </div>
 
                     @if (!showNewLocalityInput()) {
-                      <select class="form-control" [(ngModel)]="data.locality" (change)="onLocalityChange($event)">
+                      <select class="form-control" [(ngModel)]="data.locality" (change)="onLocalityChange($event); regeneratePitch(data)">
                         @for (loc of localities; track loc) {
                           <option [value]="loc">{{ loc }}</option>
                         }
@@ -317,12 +383,12 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
 
                   <div class="form-group flex-1">
                     <label class="form-label">Sub-Location / Landmark</label>
-                    <input type="text" class="form-control" placeholder="e.g. Sholinganallur Junction" [(ngModel)]="data.subLocation" />
+                    <input type="text" class="form-control" placeholder="e.g. Sholinganallur Junction" [(ngModel)]="data.subLocation" (change)="regeneratePitch(data)" />
                   </div>
 
                   <div class="form-group flex-1">
                     <label class="form-label">Property Type</label>
-                    <select class="form-control" [(ngModel)]="data.propertyType">
+                    <select class="form-control" [(ngModel)]="data.propertyType" (change)="regeneratePitch(data)">
                       <option value="Apartment">Apartment</option>
                       <option value="Independent house">Independent house</option>
                       <option value="Villa">Villa</option>
@@ -335,7 +401,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 <div class="form-row">
                   <div class="form-group flex-1">
                     <label class="form-label">Bedrooms (BHK)</label>
-                    <select class="form-control" [(ngModel)]="data.bhk">
+                    <select class="form-control" [(ngModel)]="data.bhk" (change)="regeneratePitch(data)">
                       <option [ngValue]="1">1 BHK</option>
                       <option [ngValue]="2">2 BHK</option>
                       <option [ngValue]="3">3 BHK</option>
@@ -347,19 +413,19 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
 
                   <div class="form-group flex-1">
                     <label class="form-label">Built-up Area (sq.ft)</label>
-                    <input type="number" class="form-control" [(ngModel)]="data.builtUpAreaSqFt" />
+                    <input type="number" class="form-control" [(ngModel)]="data.builtUpAreaSqFt" (change)="regeneratePitch(data)" />
                   </div>
 
                   @if (data.detectedType === 'seller') {
                     <div class="form-group flex-1">
                       <label class="form-label">UDS (sq.ft) ★</label>
-                      <input type="number" class="form-control" placeholder="480" [(ngModel)]="data.udsSqFt" />
+                      <input type="number" class="form-control" placeholder="480" [(ngModel)]="data.udsSqFt" (change)="regeneratePitch(data)" />
                     </div>
                   }
 
                   <div class="form-group flex-1">
                     <label class="form-label">Facing</label>
-                    <select class="form-control" [(ngModel)]="data.facing">
+                    <select class="form-control" [(ngModel)]="data.facing" (change)="regeneratePitch(data)">
                       <option value="East">East</option>
                       <option value="North">North</option>
                       <option value="North-East">North-East</option>
@@ -376,19 +442,19 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                       {{ data.detectedType === 'seller' ? 'Asking Price (in Lakhs) *' : 'Maximum Budget (in Lakhs) *' }}
                     </label>
                     <div class="price-input-wrap">
-                      <input type="number" class="form-control" [(ngModel)]="data.priceLakhs" />
+                      <input type="number" class="form-control" [(ngModel)]="data.priceLakhs" (change)="onPriceChange(data)" />
                       <span class="price-conversion-tag">{{ formatLakhs(data.priceLakhs) }}</span>
                     </div>
                   </div>
 
                   <div class="form-group flex-1">
                     <label class="form-label">Contact Mobile Number *</label>
-                    <input type="tel" class="form-control" [(ngModel)]="data.contactPhone" />
+                    <input type="tel" class="form-control" [(ngModel)]="data.contactPhone" (change)="regeneratePitch(data)" />
                   </div>
 
                   <div class="form-group flex-1">
                     <label class="form-label">Advertiser Name</label>
-                    <input type="text" class="form-control" [(ngModel)]="data.contactName" />
+                    <input type="text" class="form-control" [(ngModel)]="data.contactName" (change)="regeneratePitch(data)" />
                   </div>
                 </div>
 
@@ -407,7 +473,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 }
               </div>
 
-              <!-- 4. Confirmation Action Buttons -->
+              <!-- 5. Confirmation Action Buttons -->
               <div class="confirmation-actions-bar">
                 <button type="button" class="btn btn-secondary" (click)="resetToCapture()">
                   ← Retake / Scan Another
@@ -449,8 +515,8 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
     }
     .scanner-modal-card {
       width: 100%;
-      max-width: 860px;
-      max-height: 90vh;
+      max-width: 890px;
+      max-height: 92vh;
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: 16px;
@@ -493,7 +559,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
     .modal-body-scroll {
       padding: 20px 24px;
       overflow-y: auto;
-      max-height: calc(90vh - 100px);
+      max-height: calc(92vh - 100px);
     }
 
     /* Mode Tabs */
@@ -537,57 +603,97 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
 
     /* Camera Viewport */
     .camera-viewport-card {
+      position: relative;
       border-radius: 14px;
       overflow: hidden;
       border: 1px solid var(--border-subtle);
       background: #000;
+      transition: box-shadow 0.2s;
     }
     .camera-stream-wrapper {
       position: relative;
       width: 100%;
-      height: 380px;
+      height: 400px;
       background: #05080f;
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      cursor: pointer;
     }
     .camera-stream-wrapper video {
       width: 100%;
       height: 100%;
       object-fit: cover;
     }
+
+    /* Animated Laser Scanner Sweep */
+    .camera-laser-sweep {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #ef4444, #f59e0b, #ef4444, transparent);
+      box-shadow: 0 0 14px #f59e0b, 0 0 6px #ef4444;
+      animation: sweepLaser 2.2s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: 5;
+    }
+    @keyframes sweepLaser {
+      0% { top: 10%; opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { top: 90%; opacity: 0.7; }
+    }
+
+    /* Reticle */
     .scanner-reticle {
       position: absolute;
-      inset: 40px;
-      border: 1px dashed rgba(234, 179, 8, 0.4);
-      border-radius: 8px;
+      inset: 32px;
+      border: 1px dashed rgba(234, 179, 8, 0.45);
+      border-radius: 10px;
       pointer-events: none;
       display: flex;
       align-items: flex-end;
       justify-content: center;
       padding-bottom: 12px;
+      z-index: 4;
     }
     .reticle-corner {
       position: absolute;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
       border-color: var(--gold);
       border-style: solid;
     }
-    .reticle-corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; }
-    .reticle-corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; }
-    .reticle-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; }
-    .reticle-corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; }
+    .reticle-corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-top-left-radius: 8px; }
+    .reticle-corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-top-right-radius: 8px; }
+    .reticle-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-bottom-left-radius: 8px; }
+    .reticle-corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-bottom-right-radius: 8px; }
     .reticle-guide-text {
-      background: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.75);
       color: var(--gold);
       font-size: 11px;
       font-weight: 700;
-      padding: 4px 10px;
+      padding: 5px 12px;
       border-radius: 20px;
-      backdrop-filter: blur(4px);
+      backdrop-filter: blur(6px);
+      letter-spacing: 0.2px;
     }
+
+    /* Shutter Flash */
+    .shutter-flash-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.85);
+      pointer-events: none;
+      z-index: 20;
+      animation: flashFade 0.22s ease-out forwards;
+    }
+    @keyframes flashFade {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
     .camera-controls-bar {
       padding: 14px 20px;
       display: flex;
@@ -595,6 +701,17 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       justify-content: space-between;
       background: var(--bg-surface);
       border-top: 1px solid var(--border-subtle);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .camera-aux-controls {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-active-torch {
+      background: var(--gold) !important;
+      color: #0b111e !important;
+      font-weight: 700 !important;
     }
     .btn-shutter {
       display: flex;
@@ -608,7 +725,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       font-size: 14px;
       font-weight: 800;
       cursor: pointer;
-      box-shadow: 0 4px 14px rgba(234, 179, 8, 0.4);
+      box-shadow: 0 4px 16px rgba(234, 179, 8, 0.4);
       transition: transform 0.15s, background-color 0.2s;
     }
     .btn-shutter:hover {
@@ -796,6 +913,101 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       font-weight: 800;
     }
 
+    /* SMART PARAPHRASE CARD */
+    .paraphrase-card {
+      border-radius: 12px;
+      border: 1px solid var(--gold-border);
+      background: rgba(234, 179, 8, 0.03);
+      padding: 16px 20px;
+    }
+    .paraphrase-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .paraphrase-title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .paraphrase-badge {
+      background: var(--gold);
+      color: #0b111e;
+      font-size: 11px;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 6px;
+      letter-spacing: 0.4px;
+    }
+    .paraphrase-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .paraphrase-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .btn-copy-pitch {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-surface);
+      color: var(--gold);
+      border: 1px solid var(--gold-border);
+      border-radius: 7px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-copy-pitch:hover {
+      background: rgba(234, 179, 8, 0.12);
+      border-color: var(--gold);
+    }
+    .btn-copy-pitch.copied {
+      background: #10b981;
+      color: #fff;
+      border-color: #10b981;
+    }
+    .btn-refresh-pitch {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--bg-surface);
+      color: var(--text-muted);
+      border: 1px solid var(--border-subtle);
+      border-radius: 7px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-refresh-pitch:hover {
+      color: var(--text-main);
+      background: var(--bg-card);
+    }
+    .paraphrase-textarea {
+      font-family: inherit;
+      font-size: 12.5px;
+      line-height: 1.55;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      border-radius: 8px;
+      padding: 10px 12px;
+      resize: vertical;
+    }
+    .paraphrase-footer-tip {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
     /* Source Snippet */
     .source-snippet-card {
       border-radius: 12px;
@@ -964,11 +1176,8 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       .modal-body-scroll {
         padding: 14px 14px;
       }
-      .camera-viewport {
-        height: 240px;
-      }
-      .form-grid-2col {
-        grid-template-columns: 1fr;
+      .camera-stream-wrapper {
+        height: 280px;
       }
       .confirmation-actions-bar {
         flex-direction: column-reverse;
@@ -990,7 +1199,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
     }
   `]
 })
-export class ClassifiedScannerModalComponent implements OnDestroy {
+export class ClassifiedScannerModalComponent implements OnInit, OnDestroy {
   public parserService = inject(ClassifiedParserService);
   public realtyService = inject(RealtyService);
 
@@ -999,11 +1208,16 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
   @ViewChild('videoElement') videoElement?: ElementRef<HTMLVideoElement>;
 
   public currentStage = signal<'capture' | 'confirm'>('capture');
-  public activeInputMode = signal<'camera' | 'upload' | 'text'>('upload');
+  public activeInputMode = signal<'camera' | 'upload' | 'text'>('camera');
   public isProcessing = signal<boolean>(false);
   public ocrProgress = signal<number>(0);
   public isDragOver = signal<boolean>(false);
   public cameraError = signal<string | null>(null);
+
+  public isShutterFlashing = signal<boolean>(false);
+  public isTorchSupported = signal<boolean>(false);
+  public isTorchOn = signal<boolean>(false);
+  public pitchCopied = signal<boolean>(false);
 
   public manualText = '';
   public selectedImageThumbnail = signal<string | null>(null);
@@ -1012,6 +1226,15 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
 
   public showNewLocalityInput = signal<boolean>(false);
   public newCustomLocalityName = '';
+
+  private stream: MediaStream | null = null;
+  private facingMode: 'environment' | 'user' = 'environment';
+
+  ngOnInit(): void {
+    if (this.activeInputMode() === 'camera') {
+      this.startCamera();
+    }
+  }
 
   get localities() {
     return this.realtyService.localities();
@@ -1041,13 +1264,11 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
     const cur = this.parsedData();
     if (cur) {
       cur.locality = trimmed;
+      this.regeneratePitch(cur);
     }
     this.showNewLocalityInput.set(false);
     this.newCustomLocalityName = '';
   }
-
-  private stream: MediaStream | null = null;
-  private facingMode: 'environment' | 'user' = 'environment';
 
   public switchInputMode(mode: 'camera' | 'upload' | 'text'): void {
     this.activeInputMode.set(mode);
@@ -1060,6 +1281,9 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
 
   public async startCamera(): Promise<void> {
     this.cameraError.set(null);
+    this.isTorchSupported.set(false);
+    this.isTorchOn.set(false);
+
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       this.cameraError.set('Camera is not supported on this browser device. Please upload a photo instead.');
       return;
@@ -1071,6 +1295,14 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
         video: { facingMode: this.facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
       });
       this.stream = stream;
+
+      // Check flashlight / torch capability
+      const track = stream.getVideoTracks()[0];
+      const capabilities = track?.getCapabilities?.() as any;
+      if (capabilities && capabilities.torch) {
+        this.isTorchSupported.set(true);
+      }
+
       setTimeout(() => {
         if (this.videoElement?.nativeElement) {
           this.videoElement.nativeElement.srcObject = stream;
@@ -1079,6 +1311,20 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
     } catch (err) {
       console.warn('Camera error:', err);
       this.cameraError.set('Unable to access device camera. Please check camera permissions or upload an image file.');
+    }
+  }
+
+  public async toggleTorch(): Promise<void> {
+    const track = this.stream?.getVideoTracks()[0];
+    if (!track) return;
+    try {
+      const nextState = !this.isTorchOn();
+      await (track as any).applyConstraints({
+        advanced: [{ torch: nextState }]
+      });
+      this.isTorchOn.set(nextState);
+    } catch (err) {
+      console.warn('Torch toggle failed:', err);
     }
   }
 
@@ -1092,20 +1338,31 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
       this.stream.getTracks().forEach(track => track.stop());
       this.stream = null;
     }
+    this.isTorchOn.set(false);
   }
 
   public captureFromCamera(): void {
     const video = this.videoElement?.nativeElement;
     if (!video) return;
 
+    // Visual shutter flash effect
+    this.isShutterFlashing.set(true);
+    setTimeout(() => this.isShutterFlashing.set(false), 220);
+
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 1280;
-    canvas.height = video.videoHeight || 720;
+    let width = video.videoWidth || 1280;
+    let height = video.videoHeight || 720;
+    if (width > 1280) {
+      height = Math.round((height * 1280) / width);
+      width = 1280;
+    }
+    canvas.width = width;
+    canvas.height = height;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+    ctx.drawImage(video, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
     this.stopCamera();
     this.processImage(dataUrl);
   }
@@ -1147,8 +1404,34 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
 
     const reader = new FileReader();
     reader.onload = (event) => {
-      const dataUrl = event.target?.result as string;
-      this.processImage(dataUrl);
+      const rawDataUrl = event.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 1280;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          this.processImage(canvas.toDataURL('image/jpeg', 0.82));
+        } else {
+          this.processImage(rawDataUrl);
+        }
+      };
+      img.onerror = () => this.processImage(rawDataUrl);
+      img.src = rawDataUrl;
     };
     reader.readAsDataURL(file);
   }
@@ -1165,7 +1448,7 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
 
       this.isProcessing.set(false);
       if (!text || text.trim().length < 10) {
-        this.realtyService.notify('Could not detect clear text from clipping. Please check the image or paste text.', 'info');
+        this.realtyService.notify('Could not detect clear text from clipping. Please check lighting or paste text.', 'info');
         this.manualText = text || '';
         this.activeInputMode.set('text');
         return;
@@ -1193,18 +1476,92 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
     }, 400);
   }
 
-
   public setType(type: 'seller' | 'buyer'): void {
     const cur = this.parsedData();
     if (cur) {
-      this.parsedData.set({
+      const updated: ParsedClassified = {
         ...cur,
         detectedType: type,
-        title: type === 'seller'
-          ? `${cur.bhk} BHK ${cur.propertyType} in ${cur.locality} (The Hindu Classified)`
-          : `Buyer Requirement: ${cur.bhk} BHK ${cur.propertyType} in ${cur.locality}`
+        contactName: type === 'seller' ? 'Classified Advertiser (The Hindu)' : 'Prospective Buyer (The Hindu)'
+      };
+      const { title, pitch } = this.parserService.generateParaphrase({
+        detectedType: type,
+        propertyType: updated.propertyType,
+        transactionType: updated.transactionType,
+        locality: updated.locality,
+        subLocation: updated.subLocation,
+        bhk: updated.bhk,
+        builtUpAreaSqFt: updated.builtUpAreaSqFt,
+        udsSqFt: updated.udsSqFt,
+        priceDisplay: updated.priceDisplay,
+        priceType: updated.priceType,
+        contactName: updated.contactName,
+        contactPhone: updated.contactPhone,
+        facing: updated.facing,
+        approvalStatus: updated.approvalStatus,
+        keyFeatures: updated.keyFeatures,
+        cleanText: updated.rawText
       });
+      updated.title = title;
+      updated.paraphrasedPitch = pitch;
+      updated.notes = pitch;
+      this.parsedData.set(updated);
     }
+  }
+
+  public onPriceChange(data: ParsedClassified): void {
+    if (data.priceLakhs >= 100) {
+      data.priceDisplay = `₹${(data.priceLakhs / 100).toFixed(2)} Cr`;
+    } else {
+      data.priceDisplay = `₹${data.priceLakhs} Lakhs`;
+    }
+    this.regeneratePitch(data);
+  }
+
+  public regeneratePitch(data: ParsedClassified): void {
+    const { title, pitch } = this.parserService.generateParaphrase({
+      detectedType: data.detectedType,
+      propertyType: data.propertyType,
+      transactionType: data.transactionType,
+      locality: data.locality,
+      subLocation: data.subLocation,
+      bhk: data.bhk,
+      builtUpAreaSqFt: data.builtUpAreaSqFt,
+      udsSqFt: data.udsSqFt,
+      priceDisplay: data.priceDisplay,
+      priceType: data.priceType,
+      contactName: data.contactName,
+      contactPhone: data.contactPhone,
+      facing: data.facing,
+      approvalStatus: data.approvalStatus,
+      keyFeatures: data.keyFeatures,
+      cleanText: data.rawText
+    });
+    data.paraphrasedPitch = pitch;
+    data.notes = pitch;
+  }
+
+  public copyParaphrasedPitch(data: ParsedClassified): void {
+    const textToCopy = data.paraphrasedPitch || data.notes || data.title;
+    if (!textToCopy) return;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        this.pitchCopied.set(true);
+        setTimeout(() => this.pitchCopied.set(false), 2000);
+      });
+    } else {
+      // Fallback
+      const el = document.createElement('textarea');
+      el.value = textToCopy;
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand('copy');
+      document.body.removeChild(el);
+      this.pitchCopied.set(true);
+      setTimeout(() => this.pitchCopied.set(false), 2000);
+    }
+    this.realtyService.notify('Pitch copied! Ready to paste into WhatsApp.', 'success');
   }
 
   public toggleRawText(): void {
@@ -1250,7 +1607,7 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
       amenities: data.keyFeatures,
       ownerName: data.contactName,
       ownerPhone: data.contactPhone,
-      notes: data.notes,
+      notes: data.paraphrasedPitch || data.notes,
       photos
     };
 
@@ -1276,7 +1633,7 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
       budgetMaxLakhs: budgetMax,
       minBuiltUpSqFt: data.builtUpAreaSqFt,
       source: 'The Hindu Classifieds' as LeadSource,
-      notes: data.notes
+      notes: data.paraphrasedPitch || data.notes
     };
 
     const ok = this.realtyService.saveLead(newLead);

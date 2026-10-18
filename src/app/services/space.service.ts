@@ -51,6 +51,7 @@ export class SpaceService {
   public readonly showSpaceSettingsModal = signal<boolean>(false);
   public readonly pendingRequestSent = signal<boolean>(false);
   public readonly pendingInviteFromUrl = signal<string | null>(null);
+  private isSyncingFromRemote = false;
 
   public readonly space = signal<AgencySpace>({
     id: 'space-chennai-hq',
@@ -160,30 +161,34 @@ export class SpaceService {
         if (snap.exists()) {
           const remoteData = snap.data() as AgencySpace;
           if (remoteData) {
-            this.space.update(curr => ({
-              ...curr,
-              name: remoteData.name || curr.name,
-              ownerUid: remoteData.ownerUid || curr.ownerUid,
-              ownerEmail: remoteData.ownerEmail || curr.ownerEmail,
-              ownerName: remoteData.ownerName || curr.ownerName,
-              allowedEmails: Array.isArray(remoteData.allowedEmails) ? remoteData.allowedEmails : curr.allowedEmails,
-              inviteCodes: Array.isArray(remoteData.inviteCodes) && remoteData.inviteCodes.length > 0 ? remoteData.inviteCodes : curr.inviteCodes,
-              members: Array.isArray(remoteData.members) ? remoteData.members : curr.members,
-              pendingRequests: Array.isArray(remoteData.pendingRequests) ? remoteData.pendingRequests : curr.pendingRequests
-            }));
-            localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
-            // Re-evaluate current user access against latest remote team data
-            this.evaluateAccessForUser(this.authService.currentUser());
+            this.isSyncingFromRemote = true;
+            try {
+              this.space.update(curr => ({
+                ...curr,
+                name: remoteData.name || curr.name,
+                ownerUid: remoteData.ownerUid || curr.ownerUid,
+                ownerEmail: remoteData.ownerEmail || curr.ownerEmail,
+                ownerName: remoteData.ownerName || curr.ownerName,
+                allowedEmails: Array.isArray(remoteData.allowedEmails) ? remoteData.allowedEmails : curr.allowedEmails,
+                inviteCodes: Array.isArray(remoteData.inviteCodes) && remoteData.inviteCodes.length > 0 ? remoteData.inviteCodes : curr.inviteCodes,
+                members: Array.isArray(remoteData.members) ? remoteData.members : curr.members,
+                pendingRequests: Array.isArray(remoteData.pendingRequests) ? remoteData.pendingRequests : curr.pendingRequests
+              }));
+              localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
+              // Re-evaluate current user access in-memory WITHOUT writing back to Firestore
+              this.evaluateAccessForUser(this.authService.currentUser(), false);
+            } finally {
+              this.isSyncingFromRemote = false;
+            }
           }
-        } else {
-          // Push initial space data to cloud
-          setDoc(spaceDocRef, this.space(), { merge: true }).catch(() => {});
         }
-      }, () => {});
+      }, (err) => {
+        console.warn('Firestore space sync notice:', err);
+      });
     } catch {}
   }
 
-  public evaluateAccessForUser(user: any): void {
+  public evaluateAccessForUser(user: any, allowRemoteWrite = true): void {
     if (!user) {
       // No Google login = No access to any data
       if (this.isUnlocked()) this.isUnlocked.set(false);
@@ -215,7 +220,9 @@ export class SpaceService {
         ownerName: user.displayName || userEmail.split('@')[0] || 'Space Owner',
         members: [ownerMember, ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)]
       }));
-      this.saveSpace();
+      if (allowRemoteWrite && !this.isSyncingFromRemote) {
+        this.saveSpace();
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
@@ -226,8 +233,10 @@ export class SpaceService {
       (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
       (currentSpace.ownerUid && currentSpace.ownerUid === user.uid)
     ) {
-      const isAlreadyRegisteredOwner = currentSpace.members.some(m => m.id === user.uid && m.role === 'owner');
-      if (!isAlreadyRegisteredOwner) {
+      const isAlreadyRegisteredOwner = currentSpace.members.some(
+        m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.role === 'owner'
+      );
+      if (!isAlreadyRegisteredOwner && allowRemoteWrite && !this.isSyncingFromRemote) {
         this.registerOrUpdateMember({
           id: user.uid,
           name: user.displayName || currentSpace.ownerName || 'Space Owner',
@@ -248,19 +257,21 @@ export class SpaceService {
     // 3. Check if user opened with an invite link (?invite=CODE)
     const pendingCode = this.pendingInviteFromUrl();
     if (pendingCode && currentSpace.inviteCodes.some(c => c.toUpperCase() === pendingCode.toUpperCase())) {
-      this.registerOrUpdateMember({
-        id: user.uid,
-        name: user.displayName || userEmail.split('@')[0],
-        email: user.email,
-        photoURL: user.photoURL,
-        role: 'agent',
-        status: 'active',
-        joinedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        joinedVia: 'invite_code',
-        invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
-      });
-      this.pendingInviteFromUrl.set(null);
+      if (allowRemoteWrite && !this.isSyncingFromRemote) {
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || userEmail.split('@')[0],
+          email: user.email,
+          photoURL: user.photoURL,
+          role: 'agent',
+          status: 'active',
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+          joinedVia: 'invite_code',
+          invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+        });
+        this.pendingInviteFromUrl.set(null);
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
@@ -269,18 +280,23 @@ export class SpaceService {
     // 4. Was this email pre-invited by the creator?
     const isPreInvited = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
     if (isPreInvited) {
-      this.registerOrUpdateMember({
-        id: user.uid,
-        name: user.displayName || userEmail.split('@')[0],
-        email: user.email,
-        photoURL: user.photoURL,
-        role: 'agent',
-        status: 'active',
-        joinedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        joinedVia: 'email_invite',
-        invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
-      });
+      const alreadyMember = currentSpace.members.some(
+        m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
+      );
+      if (!alreadyMember && allowRemoteWrite && !this.isSyncingFromRemote) {
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || userEmail.split('@')[0],
+          email: user.email,
+          photoURL: user.photoURL,
+          role: 'agent',
+          status: 'active',
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+          joinedVia: 'email_invite',
+          invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+        });
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
@@ -291,7 +307,9 @@ export class SpaceService {
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
     if (existingMember) {
-      this.updateMemberLastActive(user.uid);
+      if (allowRemoteWrite && !this.isSyncingFromRemote) {
+        this.updateMemberLastActive(user.uid);
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
@@ -515,9 +533,10 @@ export class SpaceService {
   }
 
   private updateMemberLastActive(uid: string): void {
+    if (this.isSyncingFromRemote) return;
     const target = this.space().members.find(m => m.id === uid);
-    // Throttle to at most once per 10 minutes to prevent continuous writes
-    if (target && target.lastActiveAt && (Date.now() - target.lastActiveAt < 600000)) {
+    // Throttle to at most once per 30 minutes to prevent continuous writes
+    if (target && target.lastActiveAt && (Date.now() - target.lastActiveAt < 1800000)) {
       return;
     }
     this.space.update(s => ({
@@ -528,6 +547,7 @@ export class SpaceService {
   }
 
   private saveSpace(): void {
+    if (this.isSyncingFromRemote) return;
     localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
