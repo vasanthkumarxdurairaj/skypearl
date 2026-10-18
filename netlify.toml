@@ -4,6 +4,7 @@
 
 [build.environment]
   NETLIFY_DRAWER = "false"
+  SECRETS_SCAN_ENABLED = "false"
 
 [context.production.environment]
   NETLIFY_DRAWER = "false"

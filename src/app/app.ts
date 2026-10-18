@@ -49,6 +49,7 @@ export class App {
   public showVisitModal = signal<boolean>(false);
   public editingProperty = signal<PropertyListing | null>(null);
   public editingLead = signal<LeadCRM | null>(null);
+  public propertyModalInitialTab = signal<'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal'>('contact');
   
   // Matching Engine Drawer
   public activeMatchingLead = signal<LeadCRM | null>(null);
@@ -190,12 +191,18 @@ export class App {
   // Property Actions
   public openAddProperty(): void {
     this.editingProperty.set(null);
+    this.propertyModalInitialTab.set('contact');
     this.showPropertyModal.set(true);
   }
 
-  public openEditProperty(p: PropertyListing): void {
+  public openEditProperty(p: PropertyListing, initialTab: 'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal' = 'contact'): void {
     this.editingProperty.set(p);
+    this.propertyModalInitialTab.set(initialTab);
     this.showPropertyModal.set(true);
+  }
+
+  public openAddPhotos(p: PropertyListing): void {
+    this.openEditProperty(p, 'photos');
   }
 
   public deleteProperty(p: PropertyListing): void {

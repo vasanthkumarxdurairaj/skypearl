@@ -50,11 +50,18 @@ import {
           </button>
           <button type="button" class="tab-btn" [class.active]="activeTab() === 'infra'" (click)="activeTab.set('infra')">
             <span class="tab-step">04</span>
-            <span>Water, Flood & Infra</span>
+            <span>Water & Infra</span>
+          </button>
+          <button type="button" class="tab-btn tab-btn-photos" [class.active]="activeTab() === 'photos'" (click)="activeTab.set('photos')">
+            <span class="tab-step">05</span>
+            <span>Photos & Gallery</span>
+            @if (photos.length > 0) {
+              <span class="tab-count-badge">{{ photos.length }}</span>
+            }
           </button>
           <button type="button" class="tab-btn" [class.active]="activeTab() === 'legal'" (click)="activeTab.set('legal')">
-            <span class="tab-step">05</span>
-            <span>Legal, TNRERA & Docs</span>
+            <span class="tab-step">06</span>
+            <span>Legal & Docs</span>
           </button>
         </div>
 
@@ -475,24 +482,162 @@ import {
                 </div>
               </div>
 
-              <div class="form-group mt-3">
-                <label class="form-label">Photo URLs (Multi-Image Previews)</label>
-                <div class="photos-input-row">
+              <!-- Photos Shortcut in Tab 4 -->
+              <div class="photos-shortcut-card glass-panel mt-4 p-3">
+                <div class="shortcut-info">
+                  <div class="shortcut-icon">📷</div>
+                  <div>
+                    <h5 class="shortcut-title">Property Showcase Gallery</h5>
+                    <p class="shortcut-desc">
+                      @if (photos.length > 0) {
+                        <span><strong>{{ photos.length }} photo(s)</strong> attached. First photo is displayed as cover.</span>
+                      } @else {
+                        <span>No photos added yet. Upload from device or paste image URLs in the dedicated Photos tab.</span>
+                      }
+                    </p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-gold" (click)="activeTab.set('photos')">
+                  <span>Manage Photos ({{ photos.length }}) →</span>
+                </button>
+              </div>
+            </div>
+          }
+
+          <!-- TAB 5: PHOTOS & MEDIA GALLERY SHOWCASE -->
+          @if (activeTab() === 'photos') {
+            <div class="tab-pane">
+              <div class="photos-tab-header">
+                <div>
+                  <h4 class="form-section-heading mb-1">05 · Property Photos & Media Gallery</h4>
+                  <p class="form-subheading">Upload photos directly from your phone / computer, or paste external image URLs.</p>
+                </div>
+                <div class="photo-mode-toggle">
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    [class.btn-gold]="photoUploadMode() === 'device'" 
+                    [class.btn-secondary]="photoUploadMode() !== 'device'"
+                    (click)="photoUploadMode.set('device')">
+                    📁 Upload from Device
+                  </button>
+                  <button 
+                    type="button" 
+                    class="btn btn-sm" 
+                    [class.btn-gold]="photoUploadMode() === 'url'" 
+                    [class.btn-secondary]="photoUploadMode() !== 'url'"
+                    (click)="photoUploadMode.set('url')">
+                    🔗 Paste Image URL
+                  </button>
+                </div>
+              </div>
+
+              <!-- DEVICE UPLOAD DROPZONE -->
+              @if (photoUploadMode() === 'device') {
+                <div 
+                  class="photo-dropzone" 
+                  [class.drag-over]="isDragOver()"
+                  (dragover)="onDragOver($event)"
+                  (dragleave)="onDragLeave($event)"
+                  (drop)="onDrop($event)"
+                  (click)="fileInput.click()">
                   <input 
-                    type="url" 
-                    class="form-control flex-1" 
-                    placeholder="Paste image URL (https://...)" 
-                    [(ngModel)]="newPhotoUrl" 
-                    (keydown.enter)="addPhoto()" />
-                  <button type="button" class="btn btn-secondary" (click)="addPhoto()">Add Photo</button>
+                    #fileInput 
+                    type="file" 
+                    multiple 
+                    accept="image/*" 
+                    (change)="onFilesSelected($event)" 
+                    style="display: none" />
+                  
+                  <div class="dropzone-icon">
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                      <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                      <polyline points="21 15 16 10 5 21"></polyline>
+                    </svg>
+                  </div>
+                  <h5 class="dropzone-title">Click to browse device or drag & drop photos here</h5>
+                  <p class="dropzone-hint">
+                    Select photos from your phone camera or computer library.<br>
+                    Automatically resized & optimized for crisp high-definition display across devices.
+                  </p>
+                  <button type="button" class="btn btn-outline btn-sm mt-3" (click)="$event.stopPropagation(); fileInput.click()">
+                    <span>Browse Files / Take Photo</span>
+                  </button>
+                </div>
+              }
+
+              <!-- URL INPUT ROW -->
+              @if (photoUploadMode() === 'url') {
+                <div class="photo-url-box glass-panel p-3">
+                  <label class="form-label">Add Image by Web Address (URL)</label>
+                  <div class="photos-input-row">
+                    <input 
+                      type="url" 
+                      class="form-control flex-1" 
+                      placeholder="Paste image URL (https://...jpg, png, webp)" 
+                      [(ngModel)]="newPhotoUrl" 
+                      (keydown.enter)="addPhoto()" />
+                    <button type="button" class="btn btn-gold" (click)="addPhoto()">
+                      <span>+ Add Image</span>
+                    </button>
+                  </div>
+                  <span class="form-hint">Tip: Paste any direct image link to include it in the property showcase.</span>
+                </div>
+              }
+
+              <!-- PROCESSING SPINNER -->
+              @if (isProcessingPhotos()) {
+                <div class="photo-processing-banner">
+                  <div class="spinner-small"></div>
+                  <span>Optimizing and loading {{ processingCount() }} photo(s)... Please wait.</span>
+                </div>
+              }
+
+              <!-- PHOTOS GALLERY SHOWCASE -->
+              <div class="photos-gallery-section mt-4">
+                <div class="gallery-header-row">
+                  <span class="gallery-title">
+                    Uploaded Gallery ({{ photos.length }} {{ photos.length === 1 ? 'photo' : 'photos' }})
+                  </span>
+                  @if (photos.length > 0) {
+                    <div class="gallery-actions">
+                      <span class="cover-hint">★ Photo #1 is the Cover Photo</span>
+                      <button type="button" class="btn btn-xs btn-outline-danger" (click)="clearAllPhotos()">Clear All Photos</button>
+                    </div>
+                  }
                 </div>
 
-                @if (photos.length > 0) {
-                  <div class="photos-preview-strip">
+                @if (photos.length === 0) {
+                  <div class="photos-empty-state">
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                    <span>No photos added yet. Use the upload area above to attach property photos.</span>
+                  </div>
+                } @else {
+                  <div class="photos-gallery-grid">
                     @for (photo of photos; track photo; let idx = $index) {
-                      <div class="photo-thumb-wrap">
-                        <img [src]="photo" alt="Property thumbnail" />
-                        <button type="button" class="btn-remove-photo" (click)="removePhoto(idx)" title="Remove">✕</button>
+                      <div class="gallery-photo-card" [class.is-cover]="idx === 0">
+                        <div class="photo-card-img-wrap">
+                          <img [src]="photo" alt="Property image {{ idx + 1 }}" />
+                          @if (idx === 0) {
+                            <div class="cover-badge">
+                              <span>★ COVER PHOTO</span>
+                            </div>
+                          }
+                          <div class="photo-card-overlay">
+                            @if (idx !== 0) {
+                              <button type="button" class="btn-card-action btn-set-cover" (click)="makeCover(idx)" title="Set as Cover Photo">
+                                ★ Set Cover
+                              </button>
+                            }
+                            <button type="button" class="btn-card-action btn-card-delete" (click)="removePhoto(idx)" title="Remove photo">
+                              ✕ Remove
+                            </button>
+                          </div>
+                        </div>
+                        <div class="photo-card-footer">
+                          <span class="photo-index-label">#{{ idx + 1 }} {{ idx === 0 ? '(Main Card Image)' : '' }}</span>
+                        </div>
                       </div>
                     }
                   </div>
@@ -501,10 +646,10 @@ import {
             </div>
           }
 
-          <!-- TAB 5: LEGAL, APPROVALS & TNRERA -->
+          <!-- TAB 6: LEGAL, APPROVALS & TNRERA -->
           @if (activeTab() === 'legal') {
             <div class="tab-pane">
-              <h4 class="form-section-heading">05 · Legal Clearances, CMDA / DTCP, TNRERA & Due Diligence</h4>
+              <h4 class="form-section-heading">06 · Legal Clearances, CMDA / DTCP, TNRERA & Due Diligence</h4>
 
               <div class="form-row">
                 <div class="form-group flex-1">
@@ -885,45 +1030,284 @@ import {
       accent-color: var(--gold);
     }
 
+    /* Photos & Media Showcase Styling */
+    .tab-btn-photos {
+      position: relative;
+    }
+    .tab-count-badge {
+      background: var(--gold);
+      color: #0d131f;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 10px;
+      margin-left: 5px;
+    }
+    .photos-tab-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .form-subheading {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 4px 0 0;
+    }
+    .photo-mode-toggle {
+      display: flex;
+      gap: 6px;
+      background: var(--bg-surface);
+      padding: 4px;
+      border-radius: 8px;
+      border: 1px solid var(--border-subtle);
+    }
+    .photo-dropzone {
+      border: 2px dashed var(--gold-border);
+      border-radius: 12px;
+      padding: 36px 20px;
+      text-align: center;
+      background: rgba(234, 179, 8, 0.03);
+      cursor: pointer;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+    .photo-dropzone:hover,
+    .photo-dropzone.drag-over {
+      border-color: var(--gold);
+      background: rgba(234, 179, 8, 0.08);
+      transform: translateY(-1px);
+    }
+    .dropzone-icon {
+      color: var(--gold);
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: center;
+    }
+    .dropzone-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0 0 6px;
+    }
+    .dropzone-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin: 0;
+      max-width: 480px;
+      line-height: 1.5;
+    }
+    .photo-url-box {
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
     .photos-input-row {
       display: flex;
       gap: 8px;
-      margin-bottom: 12px;
+      margin-top: 8px;
+      margin-bottom: 6px;
     }
-    .photos-preview-strip {
+    .photo-processing-banner {
       display: flex;
-      gap: 10px;
-      overflow-x: auto;
-      padding-bottom: 6px;
-    }
-    .photo-thumb-wrap {
-      position: relative;
-      width: 80px;
-      height: 60px;
+      align-items: center;
+      gap: 12px;
+      background: rgba(59, 130, 246, 0.1);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      color: #60a5fa;
+      padding: 10px 16px;
       border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid var(--border-subtle);
-      flex-shrink: 0;
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 16px;
     }
-    .photo-thumb-wrap img {
+    .spinner-small {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(96, 165, 250, 0.3);
+      border-top-color: #60a5fa;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .photos-gallery-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .gallery-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .gallery-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+    .gallery-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .cover-hint {
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .btn-outline-danger {
+      background: transparent;
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #f87171;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .btn-outline-danger:hover {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: #ef4444;
+    }
+    .photos-empty-state {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .photos-empty-state svg {
+      opacity: 0.5;
+    }
+    .photos-gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 14px;
+    }
+    .gallery-photo-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      overflow: hidden;
+      transition: all 0.2s;
+      position: relative;
+    }
+    .gallery-photo-card.is-cover {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 1px var(--gold);
+    }
+    .photo-card-img-wrap {
+      position: relative;
+      height: 120px;
+      overflow: hidden;
+      background: #000;
+    }
+    .photo-card-img-wrap img {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
-    .btn-remove-photo {
+    .cover-badge {
       position: absolute;
-      top: 3px;
-      right: 3px;
-      background: rgba(0, 0, 0, 0.7);
-      color: #fff;
+      top: 6px;
+      left: 6px;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-size: 9px;
+      font-weight: 900;
+      padding: 2px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.5px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      z-index: 2;
+    }
+    .photo-card-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      z-index: 3;
+    }
+    .gallery-photo-card:hover .photo-card-overlay {
+      opacity: 1;
+    }
+    .btn-card-action {
       border: 0;
-      border-radius: 50%;
-      width: 18px;
-      height: 18px;
-      font-size: 10px;
-      display: grid;
-      place-items: center;
+      border-radius: 6px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-weight: 700;
       cursor: pointer;
+      transition: transform 0.15s;
+    }
+    .btn-card-action:hover {
+      transform: scale(1.05);
+    }
+    .btn-set-cover {
+      background: var(--gold);
+      color: #000;
+    }
+    .btn-card-delete {
+      background: #ef4444;
+      color: #fff;
+    }
+    .photo-card-footer {
+      padding: 6px 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-surface);
+    }
+    .photos-shortcut-card {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      border-radius: 10px;
+      background: rgba(234, 179, 8, 0.04);
+      border: 1px dashed var(--gold-border);
+    }
+    .shortcut-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .shortcut-icon {
+      font-size: 24px;
+    }
+    .shortcut-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-main);
+      margin: 0;
+    }
+    .shortcut-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin: 2px 0 0;
     }
 
     .dup-alert {
@@ -1008,8 +1392,14 @@ export class PropertyModalComponent {
   public editingProperty = input<PropertyListing | null>(null);
   public close = output<void>();
 
-  public activeTab = signal<'contact' | 'pricing' | 'layout' | 'infra' | 'legal'>('contact');
+  public initialTab = input<'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal'>('contact');
+  public activeTab = signal<'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal'>('contact');
   public duplicateWarning = signal<PropertyListing | null>(null);
+
+  public photoUploadMode = signal<'device' | 'url'>('device');
+  public isProcessingPhotos = signal<boolean>(false);
+  public isDragOver = signal<boolean>(false);
+  public processingCount = signal<number>(0);
 
   // Form Fields
   public title = '';
@@ -1145,9 +1535,11 @@ export class PropertyModalComponent {
       this.photos = [...(edit.photos || [])];
       this.selectedAmenities = [...(edit.amenities || [])];
     } else {
-      this.photos = [
-        'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80'
-      ];
+      this.photos = [];
+    }
+
+    if (this.initialTab() && this.initialTab() !== 'contact') {
+      this.activeTab.set(this.initialTab());
     }
   }
 
@@ -1174,6 +1566,114 @@ export class PropertyModalComponent {
     }
   }
 
+  public onDragOver(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragOver.set(true);
+  }
+
+  public onDragLeave(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragOver.set(false);
+  }
+
+  public onDrop(e: DragEvent): void {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragOver.set(false);
+    if (e.dataTransfer && e.dataTransfer.files) {
+      this.handleFiles(e.dataTransfer.files);
+    }
+  }
+
+  public onFilesSelected(e: Event): void {
+    const input = e.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.handleFiles(input.files);
+      input.value = '';
+    }
+  }
+
+  public async handleFiles(fileList: FileList): Promise<void> {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    this.isProcessingPhotos.set(true);
+    this.processingCount.set(files.length);
+
+    for (const file of files) {
+      try {
+        const compressedDataUrl = await this.compressImage(file);
+        this.photos.push(compressedDataUrl);
+      } catch (err) {
+        console.error('Error processing photo:', err);
+      }
+    }
+
+    this.isProcessingPhotos.set(false);
+    this.processingCount.set(0);
+  }
+
+  private compressImage(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 1280;
+          const MAX_HEIGHT = 960;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height = Math.round((height * MAX_WIDTH) / width);
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width = Math.round((width * MAX_HEIGHT) / height);
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(readerEvent.target?.result as string);
+            return;
+          }
+
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, width, height);
+
+          // Return high-quality compressed JPEG (typically ~100-150KB)
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+          resolve(dataUrl);
+        };
+        img.onerror = () => reject(new Error('Image decode error'));
+        img.src = readerEvent.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error('File read error'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  public makeCover(index: number): void {
+    if (index <= 0 || index >= this.photos.length) return;
+    const [selected] = this.photos.splice(index, 1);
+    this.photos.unshift(selected);
+  }
+
+  public clearAllPhotos(): void {
+    if (!confirm('Are you sure you want to remove all photos for this property?')) return;
+    this.photos = [];
+  }
+
   public addPhoto(): void {
     if (!this.newPhotoUrl.trim()) return;
     this.photos.push(this.newPhotoUrl.trim());
@@ -1185,13 +1685,17 @@ export class PropertyModalComponent {
   }
 
   public nextTab(): void {
-    const tabs: ('contact' | 'pricing' | 'layout' | 'infra' | 'legal')[] = ['contact', 'pricing', 'layout', 'infra', 'legal'];
+    const tabs: ('contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal')[] = [
+      'contact', 'pricing', 'layout', 'infra', 'photos', 'legal'
+    ];
     const idx = tabs.indexOf(this.activeTab());
     if (idx < tabs.length - 1) this.activeTab.set(tabs[idx + 1]);
   }
 
   public prevTab(): void {
-    const tabs: ('contact' | 'pricing' | 'layout' | 'infra' | 'legal')[] = ['contact', 'pricing', 'layout', 'infra', 'legal'];
+    const tabs: ('contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal')[] = [
+      'contact', 'pricing', 'layout', 'infra', 'photos', 'legal'
+    ];
     const idx = tabs.indexOf(this.activeTab());
     if (idx > 0) this.activeTab.set(tabs[idx - 1]);
   }

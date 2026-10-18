@@ -153,6 +153,49 @@ export class RealtyService {
       document.documentElement.setAttribute('data-theme', savedTheme);
     }
 
+    // Auto-migration: Purge any previously stored mock seed data from localStorage
+    const MIGRATION_CLEAN_KEY = 'skypearl_purged_mock_v4';
+    if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_CLEAN_KEY) !== 'true') {
+      const dummyPropPrefixes = ['prop-omr-01', 'prop-ecr-02', 'prop-adyar-03', 'prop-annanagar-04', 'prop-besant-05', 'prop-velachery-06', 'prop-porur-07'];
+      const dummyLeadIds = ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05'];
+      const dummyVisitIds = ['visit-01', 'visit-02'];
+
+      const rawP = localStorage.getItem(STORAGE_KEY_PROPERTIES);
+      if (rawP) {
+        try {
+          const list = JSON.parse(rawP);
+          const cleaned = list.filter((p: any) => !dummyPropPrefixes.includes(p.id) && !p.id.startsWith('prop-omr-') && !p.id.startsWith('prop-ecr-') && !p.id.startsWith('prop-adyar-') && !p.id.startsWith('prop-annanagar-') && !p.id.startsWith('prop-besant-') && !p.id.startsWith('prop-velachery-') && !p.id.startsWith('prop-porur-'));
+          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(cleaned));
+        } catch {
+          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
+        }
+      }
+
+      const rawL = localStorage.getItem(STORAGE_KEY_LEADS);
+      if (rawL) {
+        try {
+          const list = JSON.parse(rawL);
+          const cleaned = list.filter((l: any) => !dummyLeadIds.includes(l.id));
+          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(cleaned));
+        } catch {
+          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
+        }
+      }
+
+      const rawV = localStorage.getItem(STORAGE_KEY_VISITS);
+      if (rawV) {
+        try {
+          const list = JSON.parse(rawV);
+          const cleaned = list.filter((v: any) => !dummyVisitIds.includes(v.id));
+          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(cleaned));
+        } catch {
+          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
+        }
+      }
+
+      localStorage.setItem(MIGRATION_CLEAN_KEY, 'true');
+    }
+
     const savedProps = localStorage.getItem(STORAGE_KEY_PROPERTIES);
     const savedLeads = localStorage.getItem(STORAGE_KEY_LEADS);
     const savedVisits = localStorage.getItem(STORAGE_KEY_VISITS);
@@ -164,545 +207,24 @@ export class RealtyService {
       } catch {}
     }
 
-    if (savedProps && savedLeads) {
-      try {
-        this.properties.set(JSON.parse(savedProps));
-        this.leads.set(JSON.parse(savedLeads));
-        this.siteVisits.set(savedVisits ? JSON.parse(savedVisits) : []);
-        return;
-      } catch (err) {
-        console.warn('Parsing error, reseeding advanced Chennai realty data...', err);
-      }
+    try {
+      this.properties.set(savedProps ? JSON.parse(savedProps) : []);
+    } catch {
+      this.properties.set([]);
     }
 
-    // Rich initial seed data for Chennai micro-markets conforming to SkyPearl Realty OS specs
-    const seedProperties: PropertyListing[] = [
-      {
-        id: 'prop-omr-01',
-        title: 'Prestige Courtyards 3 BHK Luxury High-Rise',
-        propertyType: 'Apartment',
-        transactionType: 'Sale',
-        locality: 'OMR',
-        subLocation: 'Sholinganallur Junction',
-        city: 'Chennai',
-        bhk: 3,
-        builtUpAreaSqFt: 1845,
-        carpetAreaSqFt: 1420,
-        superBuiltUpAreaSqFt: 1845,
-        udsSqFt: 590, // UDS
-        priceLakhs: 142,
-        priceType: 'Total price',
-        priceInclusions: 'All-in cost confirmed in writing',
-        maintenanceMonthlyINR: 5200,
-        furnishing: 'Semi-Furnished',
-        facing: 'East',
-        floorNumber: 11,
-        totalFloors: 19,
-        floorPreferenceDetail: 'High floor',
-        balconies: '2 balconies',
-        bathrooms: '3 bathrooms',
-        buildingAge: '2–5 years',
-        carParkingCount: 2,
-        parkingType: 'Covered car parking',
-        parkingCountDetail: '2 cars',
-        liftFacility: 'Passenger + service lift',
-        waterSource: 'Metro + borewell',
-        drainage: 'UGD / municipal sewer',
-        floodHistory: 'No known issue — verify locally',
-        powerBackup: 'Full backup',
-        metroDistanceKm: 1.2,
-        commutePriority: 'OMR / IT corridor',
-        amenities: ['Swimming Pool', 'Clubhouse', 'Gym', '24/7 Security', 'Covered Parking', 'Power Backup', 'CCTV', 'Children\'s play area'],
-        
-        verificationStatus: 'Verified',
-        approvalStatus: 'CMDA approved',
-        approvalAuthority: 'CMDA',
-        reraNumber: 'TN/01/Building/0192/2019',
-        occupancyCertificate: 'Available',
-        pattaStatus: 'Patta available',
-        titleChainStatus: 'Reviewed by lawyer',
-        encumbranceCertificate: 'Verified clear',
-        propertyTaxStatus: 'Receipts available, no known dues',
-        possessionTimeline: 'Ready to occupy',
-        tenancyStatus: 'Vacant possession',
-        loanEligibility: 'Bank loan possible (verify)',
-        negotiability: 'Negotiable',
-        brokerageTerms: '2% agreed',
-        siteVisitTiming: 'Weekends after 11 AM',
-        floodAndRiskNotes: 'Elevated podium, wide 60ft approach road, rainwater harvesting functional.',
+    try {
+      this.leads.set(savedLeads ? JSON.parse(savedLeads) : []);
+    } catch {
+      this.leads.set([]);
+    }
 
-        ownerName: 'V. Sundararajan (NRI)',
-        ownerPhone: '+91 94440 12890',
-        ownerAltPhone: '+91 94440 12891',
-        ownerEmail: 'sundar.v@gmail.com',
-        listingStatus: 'Available',
-        photos: [
-          'https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80'
-        ],
-        assignedAgentId: 'agent-karthik-03',
-        assignedAgentName: 'Karthik Raman',
-        createdAt: Date.now() - 86400000 * 5,
-        updatedAt: Date.now() - 86400000 * 1,
-        viewCount: 148
-      },
-      {
-        id: 'prop-ecr-02',
-        title: 'Sea-Facing 4 BHK Gated Villa on ECR',
-        propertyType: 'Villa',
-        transactionType: 'Sale',
-        locality: 'ECR',
-        subLocation: 'Uthandi Beach Road',
-        city: 'Chennai',
-        bhk: 4,
-        builtUpAreaSqFt: 3800,
-        carpetAreaSqFt: 3250,
-        superBuiltUpAreaSqFt: 3800,
-        udsSqFt: 2400, // Individual plot share
-        priceLakhs: 485,
-        priceType: 'Total price',
-        priceInclusions: 'Registration / statutory charges included',
-        maintenanceMonthlyINR: 12000,
-        furnishing: 'Fully Furnished',
-        facing: 'North-East',
-        floorNumber: 2,
-        totalFloors: 2,
-        floorPreferenceDetail: 'Ground / low floor',
-        balconies: '3+ balconies',
-        bathrooms: '4+ bathrooms',
-        buildingAge: '0–1 year',
-        carParkingCount: 3,
-        parkingType: 'Covered car parking',
-        parkingCountDetail: '3+ cars',
-        liftFacility: 'Required / available',
-        waterSource: 'Borewell',
-        drainage: 'Septic tank',
-        floodHistory: 'No known issue — verify locally',
-        powerBackup: 'Full backup',
-        metroDistanceKm: 6.5,
-        commutePriority: 'Quiet residential street',
-        amenities: ['Private Garden', 'Swimming pool', 'Solar Backup', '24/7 Gated Security', 'Gym', 'Pet friendly', 'Vastu preferred'],
+    try {
+      this.siteVisits.set(savedVisits ? JSON.parse(savedVisits) : []);
+    } catch {
+      this.siteVisits.set([]);
+    }
 
-        verificationStatus: 'Verified',
-        approvalStatus: 'DTCP approved',
-        approvalAuthority: 'DTCP',
-        reraNumber: 'TN/01/Layout/0088/2021',
-        occupancyCertificate: 'Available',
-        pattaStatus: 'Patta available',
-        titleChainStatus: 'Reviewed by lawyer',
-        encumbranceCertificate: 'Verified clear',
-        propertyTaxStatus: 'Receipts available, no known dues',
-        possessionTimeline: 'Ready to occupy',
-        tenancyStatus: 'Owner occupied',
-        loanEligibility: 'Bank loan possible (verify)',
-        negotiability: 'Open to offer',
-        brokerageTerms: '2% standard',
-        siteVisitTiming: 'Prior 24h notice required',
-        floodAndRiskNotes: 'Natural sand aquifer with clear drainage towards sea, no storm water stagnation.',
-
-        ownerName: 'Anand Chandrasekar',
-        ownerPhone: '+91 98402 77112',
-        ownerEmail: 'anand.c@realty.com',
-        listingStatus: 'Available',
-        photos: [
-          'https://images.unsplash.com/photo-1613977257363-707ba9348227?auto=format&fit=crop&w=800&q=80',
-          'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=800&q=80'
-        ],
-        assignedAgentId: 'agent-rajesh-admin-01',
-        assignedAgentName: 'Rajesh Kumar',
-        createdAt: Date.now() - 86400000 * 7,
-        updatedAt: Date.now() - 86400000 * 2,
-        viewCount: 312
-      },
-      {
-        id: 'prop-adyar-03',
-        title: 'Ceebros Boulevard 3 BHK River-View Flat',
-        propertyType: 'Apartment',
-        transactionType: 'Rent',
-        locality: 'Adyar',
-        subLocation: 'Gandhi Nagar',
-        city: 'Chennai',
-        bhk: 3,
-        builtUpAreaSqFt: 2150,
-        carpetAreaSqFt: 1780,
-        superBuiltUpAreaSqFt: 2150,
-        udsSqFt: 710,
-        priceLakhs: 0.95, // 95,000 rent per month
-        priceType: 'Total price',
-        priceInclusions: 'Parking / amenities included',
-        maintenanceMonthlyINR: 7500,
-        furnishing: 'Fully Furnished',
-        facing: 'East',
-        floorNumber: 6,
-        totalFloors: 14,
-        floorPreferenceDetail: 'Middle floors',
-        balconies: '2 balconies',
-        bathrooms: '3 bathrooms',
-        buildingAge: '2–5 years',
-        carParkingCount: 2,
-        parkingType: 'Covered car parking',
-        parkingCountDetail: '2 cars',
-        liftFacility: 'Passenger + service lift',
-        waterSource: 'Metro + borewell',
-        drainage: 'UGD / municipal sewer',
-        floodHistory: 'No known issue — verify locally',
-        powerBackup: 'Full backup',
-        metroDistanceKm: 1.8,
-        commutePriority: 'Schools & hospitals',
-        amenities: ['River View Balcony', 'Clubhouse', 'Gym', '24/7 Security', 'Power backup', 'CCTV', 'Lift'],
-
-        verificationStatus: 'Verified',
-        approvalStatus: 'CMDA approved',
-        approvalAuthority: 'CMDA',
-        reraNumber: 'TN/01/Building/0342/2018',
-        occupancyCertificate: 'Available',
-        pattaStatus: 'Patta available',
-        titleChainStatus: 'Reviewed by lawyer',
-        encumbranceCertificate: 'Verified clear',
-        propertyTaxStatus: 'Receipts available, no known dues',
-        possessionTimeline: 'Ready to occupy',
-        tenancyStatus: 'Vacant possession',
-        loanEligibility: 'Bank loan possible (verify)',
-        negotiability: 'Fixed price',
-        brokerageTerms: '1 month rent',
-        siteVisitTiming: 'Any weekday 4 PM - 7 PM',
-        floodAndRiskNotes: 'Constructed on elevated land above high-flood levels. High compound wall.',
-
-        ownerName: 'Dr. Meenakshi S.',
-        ownerPhone: '+91 98418 33219',
-        ownerEmail: 'dr.meenakshi@apollo.in',
-        listingStatus: 'Available',
-        photos: [
-          'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=800&q=80'
-        ],
-        assignedAgentId: 'agent-priya-mgr-02',
-        assignedAgentName: 'Priya Sundaram',
-        createdAt: Date.now() - 86400000 * 3,
-        updatedAt: Date.now() - 86400000 * 1,
-        viewCount: 194
-      },
-      {
-        id: 'prop-annanagar-04',
-        title: 'Appaswamy Trellis 2.5 BHK Premium Community',
-        propertyType: 'Apartment',
-        transactionType: 'Sale',
-        locality: 'Anna Nagar',
-        subLocation: 'Near Tower Park',
-        city: 'Chennai',
-        bhk: 2,
-        builtUpAreaSqFt: 1320,
-        carpetAreaSqFt: 1040,
-        superBuiltUpAreaSqFt: 1320,
-        udsSqFt: 460,
-        priceLakhs: 165,
-        priceType: 'Total price',
-        priceInclusions: 'Base price only',
-        maintenanceMonthlyINR: 4200,
-        furnishing: 'Semi-Furnished',
-        facing: 'North',
-        floorNumber: 4,
-        totalFloors: 12,
-        floorPreferenceDetail: 'Middle floors',
-        balconies: '1 balcony',
-        bathrooms: '2 bathrooms',
-        buildingAge: '6–10 years',
-        carParkingCount: 1,
-        parkingType: 'Covered car parking',
-        parkingCountDetail: '1 car',
-        liftFacility: 'Passenger + service lift',
-        waterSource: 'Metro water',
-        drainage: 'UGD / municipal sewer',
-        floodHistory: 'No known issue — verify locally',
-        powerBackup: 'Common-area backup only',
-        metroDistanceKm: 0.8,
-        commutePriority: 'Metro access',
-        amenities: ['Gym', 'Children\'s play area', '24/7 Security', 'Covered Parking', 'Power backup', 'Lift'],
-
-        verificationStatus: 'Verified',
-        approvalStatus: 'CMDA approved',
-        approvalAuthority: 'CMDA',
-        reraNumber: 'TN/01/Building/0112/2016',
-        occupancyCertificate: 'Available',
-        pattaStatus: 'Patta available',
-        titleChainStatus: 'Reviewed by lawyer',
-        encumbranceCertificate: 'Verified clear',
-        propertyTaxStatus: 'Receipts available, no known dues',
-        possessionTimeline: 'Under construction',
-        tenancyStatus: 'Owner occupied',
-        loanEligibility: 'Bank loan possible (verify)',
-        negotiability: 'Negotiable',
-        brokerageTerms: '2% standard',
-        siteVisitTiming: 'Sunday mornings 10 AM - 1 PM',
-        floodAndRiskNotes: 'Prime central Anna Nagar avenue with municipal storm drains.',
-
-        ownerName: 'K. Balasubramanian',
-        ownerPhone: '+91 94441 55667',
-        listingStatus: 'Under negotiation',
-        photos: [
-          'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
-        ],
-        assignedAgentId: 'agent-priya-mgr-02',
-        assignedAgentName: 'Priya Sundaram',
-        createdAt: Date.now() - 86400000 * 10,
-        updatedAt: Date.now() - 86400000 * 2,
-        viewCount: 265
-      },
-      {
-        id: 'prop-velachery-05',
-        title: 'Purva Windermere 2 BHK Ready to Move',
-        propertyType: 'Apartment',
-        transactionType: 'Sale',
-        locality: 'Velachery',
-        subLocation: 'Pallikaranai High Road',
-        city: 'Chennai',
-        bhk: 2,
-        builtUpAreaSqFt: 1240,
-        carpetAreaSqFt: 980,
-        superBuiltUpAreaSqFt: 1240,
-        udsSqFt: 420,
-        priceLakhs: 78,
-        priceType: 'Total price',
-        priceInclusions: 'All-in cost confirmed in writing',
-        maintenanceMonthlyINR: 3500,
-        furnishing: 'Unfurnished',
-        facing: 'East',
-        floorNumber: 7,
-        totalFloors: 15,
-        floorPreferenceDetail: 'Middle floors',
-        balconies: '1 balcony',
-        bathrooms: '2 bathrooms',
-        buildingAge: '2–5 years',
-        carParkingCount: 1,
-        parkingType: 'Covered car parking',
-        parkingCountDetail: '1 car',
-        liftFacility: 'Required / available',
-        waterSource: 'Metro + borewell',
-        drainage: 'UGD / municipal sewer',
-        floodHistory: 'No known issue — verify locally',
-        powerBackup: 'Full backup',
-        metroDistanceKm: 2.4,
-        commutePriority: 'OMR / IT corridor',
-        amenities: ['Clubhouse', 'Gym', 'Jogging Track', 'Power backup', 'Lift', '24/7 Security'],
-
-        verificationStatus: 'Verified',
-        approvalStatus: 'CMDA approved',
-        approvalAuthority: 'CMDA',
-        reraNumber: 'TN/01/Building/0254/2019',
-        occupancyCertificate: 'Available',
-        pattaStatus: 'Patta available',
-        titleChainStatus: 'Reviewed by lawyer',
-        encumbranceCertificate: 'Verified clear',
-        propertyTaxStatus: 'Receipts available, no known dues',
-        possessionTimeline: 'Ready to occupy',
-        tenancyStatus: 'Vacant possession',
-        loanEligibility: 'Bank loan possible (verify)',
-        negotiability: 'Negotiable',
-        brokerageTerms: '2% standard',
-        siteVisitTiming: 'Any day after 10 AM',
-        floodAndRiskNotes: 'Built on elevated ground outside natural lake catchments. Water pump system installed.',
-
-        ownerName: 'Muruganandam P.',
-        ownerPhone: '+91 98845 22199',
-        listingStatus: 'Available',
-        photos: [
-          'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80'
-        ],
-        assignedAgentId: 'agent-karthik-03',
-        assignedAgentName: 'Karthik Raman',
-        createdAt: Date.now() - 86400000 * 4,
-        updatedAt: Date.now() - 86400000 * 1,
-        viewCount: 180
-      }
-    ];
-
-    const seedLeads: LeadCRM[] = [
-      {
-        id: 'lead-01',
-        name: 'Senthil Nathan',
-        phone: '+91 98408 11223',
-        altPhone: '+91 98408 11224',
-        email: 'senthil.nathan@zoho.com',
-        leadType: 'Buyer',
-        stage: 'Site Visit Scheduled',
-        priority: 'High',
-        source: 'Website Form',
-        preferredLocalities: ['OMR', 'Velachery', 'Perungudi'],
-        preferredPropertyType: 'Apartment',
-        preferredBhk: 3,
-        purpose: 'Self-use',
-        budgetMinLakhs: 120,
-        budgetMaxLakhs: 150,
-        preferredFacing: 'East',
-        minBuiltUpSqFt: 1500,
-        minCarpetSqFt: 1200,
-        minUdsSqFt: 500,
-        requiredBalconies: '2 balconies',
-        requiredBathrooms: '3 bathrooms',
-        preferredAge: '2–5 years',
-        liftRequired: 'Required / available',
-        parkingRequired: 'Covered car parking',
-        waterSourcePreference: 'Metro + borewell',
-        drainagePreference: 'UGD / municipal sewer',
-        floodPreference: 'No known issue — verify locally',
-        powerBackupPreference: 'Full backup',
-        commutePriority: 'OMR / IT corridor',
-        requiredApproval: 'CMDA approved',
-        timeline: 'Immediate (0–30 days)',
-        fundingReadiness: 'Loan pre-approved',
-        decisionMakerConfirmed: 'Yes',
-        amenitiesPreferred: ['Swimming Pool', 'Clubhouse', 'Gym', '24/7 Security', 'Power Backup'],
-        assignedAgentId: 'agent-karthik-03',
-        assignedAgentName: 'Karthik Raman',
-        notes: 'Senior Tech Lead at Zoho Estancia. Looking for 3 BHK ready-to-move within 30 mins drive to OMR with Metro water & CMDA approval.',
-        lastContactDate: Date.now() - 86400000 * 1,
-        nextFollowUpDate: Date.now() + 86400000 * 1,
-        matchedPropertyIds: ['prop-omr-01'],
-        dealValueLakhs: 142,
-        expectedCommissionINR: 284000
-      },
-      {
-        id: 'lead-02',
-        name: 'Varun K. & Deepa Varun',
-        phone: '+91 98840 99887',
-        altPhone: '+65 9123 4567',
-        email: 'varun.deepa@gmail.com',
-        leadType: 'Buyer',
-        stage: 'In Negotiation',
-        priority: 'Urgent',
-        source: 'Referral',
-        preferredLocalities: ['ECR', 'Adyar'],
-        preferredPropertyType: 'Villa',
-        preferredBhk: 4,
-        purpose: 'Self-use',
-        budgetMinLakhs: 400,
-        budgetMaxLakhs: 500,
-        preferredFacing: 'North-East',
-        minBuiltUpSqFt: 3000,
-        minUdsSqFt: 2000,
-        requiredBalconies: '3+ balconies',
-        requiredBathrooms: '4+ bathrooms',
-        preferredAge: '0–1 year',
-        liftRequired: 'Required / available',
-        parkingRequired: 'Covered car parking',
-        waterSourcePreference: 'Borewell',
-        floodPreference: 'No known issue — verify locally',
-        powerBackupPreference: 'Full backup',
-        commutePriority: 'Quiet residential street',
-        requiredApproval: 'DTCP approved',
-        timeline: '1–3 months',
-        fundingReadiness: 'Funds ready',
-        decisionMakerConfirmed: 'Family / partner involved',
-        amenitiesPreferred: ['Private Garden', 'Swimming pool', 'Solar Backup', '24/7 Gated Security'],
-        assignedAgentId: 'agent-rajesh-admin-01',
-        assignedAgentName: 'Rajesh Kumar',
-        notes: 'HNIs relocating from Singapore. Inspected Uthandi villa. Offered ₹4.6 Cr against ₹4.85 Cr asking. Title verified.',
-        lastContactDate: Date.now() - 86400000 * 1,
-        nextFollowUpDate: Date.now() + 86400000 * 2,
-        matchedPropertyIds: ['prop-ecr-02'],
-        dealValueLakhs: 470,
-        expectedCommissionINR: 940000
-      },
-      {
-        id: 'lead-03',
-        name: 'Ashwin Chidambaram',
-        phone: '+91 98412 77665',
-        email: 'ashwin.c@cognizant.com',
-        leadType: 'Tenant',
-        stage: 'Qualified',
-        priority: 'Medium',
-        source: '99acres',
-        preferredLocalities: ['Adyar', 'Besant Nagar', 'Thiruvanmiyur'],
-        preferredPropertyType: 'Apartment',
-        preferredBhk: 3,
-        purpose: 'Rental income',
-        budgetMinLakhs: 0.8,
-        budgetMaxLakhs: 1.1,
-        preferredFacing: 'East',
-        minBuiltUpSqFt: 1800,
-        liftRequired: 'Required / available',
-        parkingRequired: 'Covered car parking',
-        waterSourcePreference: 'Metro + borewell',
-        timeline: 'Immediate (0–30 days)',
-        fundingReadiness: 'Funds ready',
-        decisionMakerConfirmed: 'Yes',
-        amenitiesPreferred: ['River View Balcony', 'Clubhouse', 'Gym', '24/7 Security'],
-        assignedAgentId: 'agent-priya-mgr-02',
-        assignedAgentName: 'Priya Sundaram',
-        notes: 'Expats VP at Cognizant. Needs river-view or beach vicinity fully furnished apartment.',
-        lastContactDate: Date.now() - 86400000 * 2,
-        nextFollowUpDate: Date.now() + 86400000 * 1,
-        matchedPropertyIds: ['prop-adyar-03'],
-        dealValueLakhs: 1.0,
-        expectedCommissionINR: 95000
-      },
-      {
-        id: 'lead-04',
-        name: 'Gopinath V. (Auditor)',
-        phone: '+91 94440 88214',
-        email: 'gopinath.ca@yahoo.com',
-        leadType: 'Buyer',
-        stage: 'Closed Won',
-        priority: 'High',
-        source: 'Walk-in',
-        preferredLocalities: ['Anna Nagar', 'Kilpauk'],
-        preferredPropertyType: 'Apartment',
-        preferredBhk: 2,
-        purpose: 'Self-use',
-        budgetMinLakhs: 150,
-        budgetMaxLakhs: 175,
-        minBuiltUpSqFt: 1200,
-        minUdsSqFt: 400,
-        timeline: 'Immediate (0–30 days)',
-        fundingReadiness: 'Loan pre-approved',
-        decisionMakerConfirmed: 'Yes',
-        assignedAgentId: 'agent-priya-mgr-02',
-        assignedAgentName: 'Priya Sundaram',
-        notes: 'Deal closed for Appaswamy Trellis flat. Registration completed at Sub-Registrar office.',
-        lastContactDate: Date.now() - 86400000 * 3,
-        nextFollowUpDate: Date.now() + 86400000 * 15,
-        matchedPropertyIds: ['prop-annanagar-04'],
-        dealValueLakhs: 165,
-        expectedCommissionINR: 330000,
-        collectedCommissionINR: 330000
-      }
-    ];
-
-    const seedVisits: SiteVisit[] = [
-      {
-        id: 'visit-01',
-        propertyId: 'prop-omr-01',
-        propertyTitle: 'Prestige Courtyards 3 BHK Luxury High-Rise',
-        locality: 'OMR',
-        leadId: 'lead-01',
-        leadName: 'Senthil Nathan',
-        leadPhone: '+91 98408 11223',
-        agentId: 'agent-karthik-03',
-        agentName: 'Karthik Raman',
-        scheduledTime: Date.now() + 86400000 * 1 + 3600000 * 4,
-        status: 'Scheduled',
-        feedbackNotes: 'Buyer interested in 11th floor cross-ventilation, UDS share and clubhouse access.',
-        interestLevel: 'Hot'
-      },
-      {
-        id: 'visit-02',
-        propertyId: 'prop-ecr-02',
-        propertyTitle: 'Sea-Facing 4 BHK Gated Villa on ECR',
-        locality: 'ECR',
-        leadId: 'lead-02',
-        leadName: 'Varun K. & Deepa Varun',
-        leadPhone: '+91 98840 99887',
-        agentId: 'agent-rajesh-admin-01',
-        agentName: 'Rajesh Kumar',
-        scheduledTime: Date.now() - 86400000 * 2,
-        status: 'Completed',
-        feedbackNotes: 'Client visited with architect. Positive on foundation & beach access. Negotiation underway.',
-        interestLevel: 'Hot'
-      }
-    ];
-
-    this.properties.set(seedProperties);
-    this.leads.set(seedLeads);
-    this.siteVisits.set(seedVisits);
     this.saveData();
   }
 
@@ -717,6 +239,20 @@ export class RealtyService {
     return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
   }
 
+  private isDummyListing(id: string): boolean {
+    return id.startsWith('prop-omr-') || id.startsWith('prop-ecr-') || id.startsWith('prop-adyar-') || 
+           id.startsWith('prop-annanagar-') || id.startsWith('prop-besant-') || id.startsWith('prop-velachery-') || 
+           id.startsWith('prop-porur-');
+  }
+
+  private isDummyLead(id: string): boolean {
+    return ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05'].includes(id);
+  }
+
+  private isDummyVisit(id: string): boolean {
+    return ['visit-01', 'visit-02'].includes(id);
+  }
+
   private setupFirestoreSync(): void {
     if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
     const db = this.firebaseService.firestore;
@@ -728,15 +264,19 @@ export class RealtyService {
         if (!snapshot.empty) {
           const remoteProps: PropertyListing[] = [];
           snapshot.forEach(docSnap => {
-            remoteProps.push(docSnap.data() as PropertyListing);
+            const data = docSnap.data() as PropertyListing;
+            if (this.isDummyListing(docSnap.id) || this.isDummyListing(data?.id || '')) {
+              // Automatically delete legacy dummy doc from Firestore
+              deleteDoc(doc(db, 'properties', docSnap.id)).catch(() => {});
+            } else {
+              remoteProps.push(data);
+            }
           });
           this.properties.set(remoteProps);
           localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(remoteProps));
-        } else if (this.properties().length > 0) {
-          // Push initial Chennai seed properties to Firestore
-          this.properties().forEach(p => {
-            setDoc(doc(db, 'properties', p.id), this.cleanForFirestore(p), { merge: true }).catch(() => {});
-          });
+        } else {
+          this.properties.set([]);
+          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
         }
       }, err => {
         console.warn('Firestore properties sync notice:', err);
@@ -752,15 +292,18 @@ export class RealtyService {
         if (!snapshot.empty) {
           const remoteLeads: LeadCRM[] = [];
           snapshot.forEach(docSnap => {
-            remoteLeads.push(docSnap.data() as LeadCRM);
+            const data = docSnap.data() as LeadCRM;
+            if (this.isDummyLead(docSnap.id) || this.isDummyLead(data?.id || '')) {
+              deleteDoc(doc(db, 'leads', docSnap.id)).catch(() => {});
+            } else {
+              remoteLeads.push(data);
+            }
           });
           this.leads.set(remoteLeads);
           localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(remoteLeads));
-        } else if (this.leads().length > 0) {
-          // Push initial Chennai leads to Firestore
-          this.leads().forEach(l => {
-            setDoc(doc(db, 'leads', l.id), this.cleanForFirestore(l), { merge: true }).catch(() => {});
-          });
+        } else {
+          this.leads.set([]);
+          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
         }
       }, err => {
         console.warn('Firestore leads sync notice:', err);
@@ -776,14 +319,18 @@ export class RealtyService {
         if (!snapshot.empty) {
           const remoteVisits: SiteVisit[] = [];
           snapshot.forEach(docSnap => {
-            remoteVisits.push(docSnap.data() as SiteVisit);
+            const data = docSnap.data() as SiteVisit;
+            if (this.isDummyVisit(docSnap.id) || this.isDummyVisit(data?.id || '')) {
+              deleteDoc(doc(db, 'siteVisits', docSnap.id)).catch(() => {});
+            } else {
+              remoteVisits.push(data);
+            }
           });
           this.siteVisits.set(remoteVisits);
           localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(remoteVisits));
-        } else if (this.siteVisits().length > 0) {
-          this.siteVisits().forEach(v => {
-            setDoc(doc(db, 'siteVisits', v.id), this.cleanForFirestore(v), { merge: true }).catch(() => {});
-          });
+        } else {
+          this.siteVisits.set([]);
+          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
         }
       }, err => {
         console.warn('Firestore visits sync notice:', err);
@@ -791,6 +338,25 @@ export class RealtyService {
     } catch (e) {
       console.warn('Firestore visits setup error:', e);
     }
+  }
+
+  // Clear all data (Clean Slate utility)
+  public clearAllData(): void {
+    if (!confirm('Are you sure you want to completely clear all property listings, leads, and visits to start 100% fresh?')) {
+      return;
+    }
+    this.properties.set([]);
+    this.leads.set([]);
+    this.siteVisits.set([]);
+    this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      const db = this.firebaseService.firestore;
+      this.properties().forEach(p => deleteDoc(doc(db, 'properties', p.id)).catch(() => {}));
+      this.leads().forEach(l => deleteDoc(doc(db, 'leads', l.id)).catch(() => {}));
+      this.siteVisits().forEach(v => deleteDoc(doc(db, 'siteVisits', v.id)).catch(() => {}));
+    }
+    this.notify('All inventory and leads cleared. Fresh clean slate ready!', 'info');
   }
 
   // Active agent switcher (Admin, Manager, Agent)
@@ -902,9 +468,7 @@ export class RealtyService {
       ownerPhone: propertyData.ownerPhone || '+91 98400 00000',
       ownerAltPhone: propertyData.ownerAltPhone,
       ownerEmail: propertyData.ownerEmail,
-      photos: propertyData.photos && propertyData.photos.length > 0 ? propertyData.photos : [
-        'https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?auto=format&fit=crop&w=800&q=80'
-      ],
+      photos: propertyData.photos && propertyData.photos.length > 0 ? propertyData.photos : [],
       assignedAgentId: this.activeAgent().uid,
       assignedAgentName: this.activeAgent().name,
       createdAt: Date.now(),

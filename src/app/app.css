@@ -599,6 +599,83 @@
   color: #101b2a;
 }
 
+.property-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: linear-gradient(135deg, rgba(203, 168, 107, 0.08), rgba(59, 130, 246, 0.05));
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.25s ease;
+  border: 1px dashed var(--border-subtle);
+}
+
+.property-img-placeholder:hover {
+  background: linear-gradient(135deg, rgba(203, 168, 107, 0.16), rgba(59, 130, 246, 0.1));
+  color: var(--gold);
+  border-color: var(--gold);
+}
+
+.placeholder-add-text {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.photo-count-pill {
+  position: absolute;
+  bottom: 10px;
+  right: 12px;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(16, 27, 42, 0.85);
+  color: #fff;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 2;
+}
+
+.photo-count-pill:hover {
+  background: var(--gold);
+  color: #101b2a;
+  transform: scale(1.05);
+}
+
+.matched-img-placeholder {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-surface);
+  color: var(--text-muted);
+}
+
+.empty-icon-circle {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: rgba(203, 168, 107, 0.1);
+  color: var(--gold);
+  display: grid;
+  place-items: center;
+  margin: 0 auto;
+  border: 1px solid rgba(203, 168, 107, 0.25);
+}
+
+.empty-feed-card {
+  padding: 32px 16px;
+  border: 1px dashed var(--border-subtle);
+  border-radius: 10px;
+}
+
 .property-content {
   padding: 16px 18px;
   display: flex;
