@@ -1,4 +1,6 @@
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject } from '@angular/core';
+import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { FirebaseService } from './firebase.service';
 import {
   PropertyListing,
   LeadCRM,
@@ -73,6 +75,8 @@ export const CHENNAI_MARKET_INSIGHTS: LocalityMarketData[] = [
   providedIn: 'root'
 })
 export class RealtyService {
+  public firebaseService = inject(FirebaseService);
+
   public readonly properties = signal<PropertyListing[]>([]);
   public readonly leads = signal<LeadCRM[]>([]);
   public readonly siteVisits = signal<SiteVisit[]>([]);
@@ -137,6 +141,7 @@ export class RealtyService {
 
   constructor() {
     this.initData();
+    this.setupFirestoreSync();
   }
 
   private initData(): void {
@@ -708,6 +713,86 @@ export class RealtyService {
     localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(this.activeAgent()));
   }
 
+  private cleanForFirestore(obj: any): any {
+    return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
+  }
+
+  private setupFirestoreSync(): void {
+    if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
+    const db = this.firebaseService.firestore;
+
+    // 1. Properties Collection Listener
+    try {
+      const propCol = collection(db, 'properties');
+      onSnapshot(propCol, snapshot => {
+        if (!snapshot.empty) {
+          const remoteProps: PropertyListing[] = [];
+          snapshot.forEach(docSnap => {
+            remoteProps.push(docSnap.data() as PropertyListing);
+          });
+          this.properties.set(remoteProps);
+          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(remoteProps));
+        } else if (this.properties().length > 0) {
+          // Push initial Chennai seed properties to Firestore
+          this.properties().forEach(p => {
+            setDoc(doc(db, 'properties', p.id), this.cleanForFirestore(p), { merge: true }).catch(() => {});
+          });
+        }
+      }, err => {
+        console.warn('Firestore properties sync notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore setup error:', e);
+    }
+
+    // 2. Leads Collection Listener
+    try {
+      const leadCol = collection(db, 'leads');
+      onSnapshot(leadCol, snapshot => {
+        if (!snapshot.empty) {
+          const remoteLeads: LeadCRM[] = [];
+          snapshot.forEach(docSnap => {
+            remoteLeads.push(docSnap.data() as LeadCRM);
+          });
+          this.leads.set(remoteLeads);
+          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(remoteLeads));
+        } else if (this.leads().length > 0) {
+          // Push initial Chennai leads to Firestore
+          this.leads().forEach(l => {
+            setDoc(doc(db, 'leads', l.id), this.cleanForFirestore(l), { merge: true }).catch(() => {});
+          });
+        }
+      }, err => {
+        console.warn('Firestore leads sync notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore leads setup error:', e);
+    }
+
+    // 3. Site Visits Listener
+    try {
+      const visitCol = collection(db, 'siteVisits');
+      onSnapshot(visitCol, snapshot => {
+        if (!snapshot.empty) {
+          const remoteVisits: SiteVisit[] = [];
+          snapshot.forEach(docSnap => {
+            remoteVisits.push(docSnap.data() as SiteVisit);
+          });
+          this.siteVisits.set(remoteVisits);
+          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(remoteVisits));
+        } else if (this.siteVisits().length > 0) {
+          this.siteVisits().forEach(v => {
+            setDoc(doc(db, 'siteVisits', v.id), this.cleanForFirestore(v), { merge: true }).catch(() => {});
+          });
+        }
+      }, err => {
+        console.warn('Firestore visits sync notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore visits setup error:', e);
+    }
+  }
+
   // Active agent switcher (Admin, Manager, Agent)
   public switchAgent(agent: AgentProfile): void {
     this.activeAgent.set(agent);
@@ -744,6 +829,10 @@ export class RealtyService {
         list.map(p => p.id === existingId ? { ...p, ...propertyData, updatedAt: Date.now() } as PropertyListing : p)
       );
       this.saveData();
+      const updated = this.properties().find(p => p.id === existingId);
+      if (updated && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+        setDoc(doc(this.firebaseService.firestore, 'properties', existingId), this.cleanForFirestore(updated), { merge: true }).catch(() => {});
+      }
       this.notify('Property listing updated successfully!', 'success');
       return true;
     }
@@ -831,6 +920,11 @@ export class RealtyService {
 
     this.properties.update(list => [newProp, ...list]);
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      setDoc(doc(this.firebaseService.firestore, 'properties', newProp.id), this.cleanForFirestore(newProp), { merge: true }).catch(() => {});
+    }
+
     this.notify('Property listing added to SkyPearl Inventory!', 'success');
     return true;
   }
@@ -842,6 +936,11 @@ export class RealtyService {
     }
     this.properties.update(list => list.filter(p => p.id !== id));
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      deleteDoc(doc(this.firebaseService.firestore, 'properties', id)).catch(() => {});
+    }
+
     this.notify('Property listing deleted from inventory.', 'info');
   }
 
@@ -854,6 +953,10 @@ export class RealtyService {
         list.map(l => l.id === existingId ? { ...l, ...leadData } as LeadCRM : l)
       );
       this.saveData();
+      const updated = this.leads().find(l => l.id === existingId);
+      if (updated && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+        setDoc(doc(this.firebaseService.firestore, 'leads', existingId), this.cleanForFirestore(updated), { merge: true }).catch(() => {});
+      }
       this.notify('Customer requirement updated.', 'success');
       return true;
     }
@@ -924,6 +1027,11 @@ export class RealtyService {
 
     this.leads.update(list => [newLead, ...list]);
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      setDoc(doc(this.firebaseService.firestore, 'leads', newLead.id), this.cleanForFirestore(newLead), { merge: true }).catch(() => {});
+    }
+
     this.notify('New Client Lead added to SkyPearl CRM pipeline!', 'success');
     return true;
   }
@@ -935,6 +1043,11 @@ export class RealtyService {
     }
     this.leads.update(list => list.filter(l => l.id !== id));
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      deleteDoc(doc(this.firebaseService.firestore, 'leads', id)).catch(() => {});
+    }
+
     this.notify('Client record deleted.', 'info');
   }
 
@@ -954,6 +1067,14 @@ export class RealtyService {
       })
     );
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      const updated = this.leads().find(l => l.id === leadId);
+      if (updated) {
+        setDoc(doc(this.firebaseService.firestore, 'leads', leadId), this.cleanForFirestore(updated), { merge: true }).catch(() => {});
+      }
+    }
+
     this.notify(`Lead stage updated to ${stage}`, 'info');
   }
 
@@ -1124,6 +1245,11 @@ export class RealtyService {
     }
 
     this.saveData();
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      setDoc(doc(this.firebaseService.firestore, 'siteVisits', newVisit.id), this.cleanForFirestore(newVisit), { merge: true }).catch(() => {});
+    }
+
     this.notify('Site visit scheduled successfully!', 'success');
     return true;
   }

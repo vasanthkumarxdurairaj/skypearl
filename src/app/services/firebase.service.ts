@@ -3,6 +3,7 @@ import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
 import { FirebaseConfigOptions } from '../models/workspace.model';
+import { environment } from '../../environments/environment';
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'skypearl_firebase_config';
 
@@ -15,8 +16,8 @@ export class FirebaseService {
   public firestore: Firestore | null = null;
 
   public readonly isConnected = signal<boolean>(false);
-  public readonly isDemoMode = signal<boolean>(true);
-  public readonly projectId = signal<string>('demo-skypearl-shared');
+  public readonly isDemoMode = signal<boolean>(false);
+  public readonly projectId = signal<string>('skypearl-217d7');
   public readonly currentConfig = signal<FirebaseConfigOptions | null>(null);
 
   constructor() {
@@ -35,6 +36,11 @@ export class FirebaseService {
       }
     } catch (err) {
       console.warn('Failed to parse saved Firebase config:', err);
+    }
+
+    if (environment?.firebase?.apiKey && environment.firebase.projectId) {
+      this.initializeWithConfig(environment.firebase);
+      return;
     }
 
     // Default to interactive demo mode

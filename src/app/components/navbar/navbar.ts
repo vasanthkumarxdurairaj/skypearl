@@ -29,6 +29,16 @@ import { AgentProfile } from '../../models/realty.model';
           <span class="city-name">Chennai Corridor</span>
           <span class="city-badge">38 Localities</span>
         </div>
+
+        <!-- Cloud Database Status Pill -->
+        <div class="cloud-pill" [class.cloud-connected]="realtyService.firebaseService.isConnected() && !realtyService.firebaseService.isDemoMode()">
+          <span class="cloud-dot"></span>
+          @if (realtyService.firebaseService.isConnected() && !realtyService.firebaseService.isDemoMode()) {
+            <span class="cloud-text">Cloud DB: {{ realtyService.firebaseService.projectId() }}</span>
+          } @else {
+            <span class="cloud-text">Offline Local DB</span>
+          }
+        </div>
       </div>
 
       <div class="nav-right">
@@ -239,6 +249,38 @@ import { AgentProfile } from '../../models/realty.model';
       padding: 1px 6px;
       border-radius: var(--radius-full);
       font-family: var(--font-mono);
+    }
+
+    .cloud-pill {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      transition: all 0.2s ease;
+    }
+
+    .cloud-pill.cloud-connected {
+      border-color: rgba(16, 185, 129, 0.35);
+      background: rgba(16, 185, 129, 0.08);
+      color: #10b981;
+    }
+
+    .cloud-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .cloud-pill.cloud-connected .cloud-dot {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
     }
 
     /* Theme Toggle Button */
