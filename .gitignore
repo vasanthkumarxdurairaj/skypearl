@@ -1,17 +1,56 @@
-# See https://docs.github.com/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
+# ===================================================================
+# SkyPearl Realty OS — Comprehensive Git Ignore Configuration
+# ===================================================================
 
-# Compiled output
+# Compiled output & Caches
 /dist
-/tmp
 /out-tsc
 /bazel-out
+/tmp
+/.angular
+/.angular/cache
+/.vite
+.sass-cache/
+/connect.lock
 
-# Node
+# Dependencies
 /node_modules
-npm-debug.log
-yarn-error.log
+/.pnpm-store
 
-# IDEs and editors
+# Environment variables & Private secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.*.local
+*.pem
+*serviceAccountKey*.json
+*firebase-adminsdk*.json
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+/libpeerconnection.log
+testem.log
+
+# Testing, Coverage & Reports
+/coverage
+*.lcov
+.nyc_output
+/playwright-report
+/test-results
+__screenshots__/
+
+# IDEs, Editors & Workspaces
 .idea/
 .project
 .classpath
@@ -19,6 +58,14 @@ yarn-error.log
 *.launch
 .settings/
 *.sublime-workspace
+*.sublime-project
+.fleet/
+.zed/
+.cursor/
+.history/
+*.swp
+*.swo
+*~
 
 # Visual Studio Code
 .vscode/*
@@ -27,18 +74,21 @@ yarn-error.log
 !.vscode/launch.json
 !.vscode/extensions.json
 !.vscode/mcp.json
-.history/*
 
-# Miscellaneous
-/.angular/cache
-.sass-cache/
-/connect.lock
-/coverage
-/libpeerconnection.log
-testem.log
-/typings
-__screenshots__/
-
-# System files
+# Operating System Files
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+desktop.ini
+
+# Temporary and Scratch Files
+/typings
+*.tmp
+*.bak
+*.orig
+scratch/
+
