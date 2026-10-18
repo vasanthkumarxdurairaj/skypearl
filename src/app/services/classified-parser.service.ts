@@ -36,29 +36,7 @@ export interface ParsedClassified {
   notes: string;
 }
 
-export const SAMPLE_HINDU_CLASSIFIEDS = [
-  {
-    name: 'Sample 1: Seller (OMR 3 BHK Flat)',
-    type: 'seller' as const,
-    text: `THE HINDU CLASSIFIEDS — CHENNAI RESIDENTIAL
-OMR SHOLINGANALLUR: 3 BHK Luxury Apartment for Immediate Sale. 1,540 Sq.ft Built-up, UDS 520 Sq.ft. East Facing, 2 Covered Car Parking (CCP), 11th Floor, High-Speed Lifts, Power Backup, Metro Water & Borewell, CMDA Approved. Brand New, Ready to Occupy. Price: Rs. 1.15 Cr Negotiable. 
-Direct Owner: +91 98401 22334 / 94440 12345. Brokers Excuse.`
-  },
-  {
-    name: 'Sample 2: Buyer (Wanted Ad in Adyar / Besant Nagar)',
-    type: 'buyer' as const,
-    text: `THE HINDU CLASSIFIEDS — BUYERS & WANTED
-WANTED: 2 or 3 BHK Apartment in Adyar, Besant Nagar or Thiruvanmiyur for Senior IT Director at Cognizant. Ready funds, pre-approved loan available. Budget: Rs. 1.40 Cr to 1.95 Cr. Minimum 1,300 sq.ft with Lift and Covered Car Park required. Immediate decision within 15 days. 
-Contact Client Representative: +91 98410 44556. Direct Owners Only.`
-  },
-  {
-    name: 'Sample 3: Seller (ECR Sea-Facing Villa)',
-    type: 'seller' as const,
-    text: `THE HINDU CLASSIFIEDS — RESIDENTIAL HOUSES & VILLAS
-ECR INJAMBAKKAM: Luxury 4 BHK Sea-Facing Gated Community Villa for Sale. 3,200 Sq.ft Built-up Area on 1.5 Grounds Land. Private Swimming Pool, Landscaped Garden, North-East Facing, 24/7 Security, CMDA & DTCP Approved with clear Patta title. Asking Price: Rs. 3.45 Crores. 
-Call Owner: +91 98840 88990.`
-  }
-];
+export const SAMPLE_HINDU_CLASSIFIEDS: Array<{ name: string; type: 'seller' | 'buyer'; text: string }> = [];
 
 @Injectable({
   providedIn: 'root'

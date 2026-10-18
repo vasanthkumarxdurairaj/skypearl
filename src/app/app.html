@@ -631,6 +631,16 @@
               }
             </select>
 
+            <button 
+              type="button" 
+              class="btn-due-toggle" 
+              [class.active]="filterOnlyDueFollowUps()" 
+              (click)="filterOnlyDueFollowUps.set(!filterOnlyDueFollowUps())"
+              title="Filter leads needing follow-up today">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              <span>{{ dueFollowUpsCount() }} Due Follow-ups</span>
+            </button>
+
             <div class="view-mode-toggle">
               <button class="toggle-btn" [class.active]="leadViewMode() === 'kanban'" (click)="leadViewMode.set('kanban')" title="Kanban Pipeline">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"></rect><rect x="10" y="3" width="5" height="12" rx="1"></rect><rect x="17" y="3" width="5" height="15" rx="1"></rect></svg>
@@ -659,9 +669,14 @@
                   @for (lead of getLeadsByStage(stage); track lead.id) {
                     <div class="lead-card glass-panel" (click)="openMatchingDrawer(lead)">
                       <div class="lead-top-row">
-                        <span class="lead-priority-badge priority-{{ lead.priority.toLowerCase() }}">
-                          {{ lead.priority }}
-                        </span>
+                        <div class="lead-top-badges">
+                          <span class="lead-priority-badge priority-{{ lead.priority.toLowerCase() }}">
+                            {{ lead.priority }}
+                          </span>
+                          @if (isLeadFollowUpDue(lead)) {
+                            <span class="lead-due-chip" title="Follow-up due today or overdue">⚡ Due</span>
+                          }
+                        </div>
                         <span class="lead-budget">
                           {{ formatLakhs(lead.budgetMinLakhs) }}–{{ formatLakhs(lead.budgetMaxLakhs) }}
                         </span>
@@ -699,6 +714,9 @@
                       <div class="lead-card-actions" (click)="$event.stopPropagation()">
                         <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')" title="WhatsApp Client">
                           <span>WA</span>
+                        </button>
+                        <button class="btn btn-xs btn-email" (click)="openFollowUpEmailModal(lead)" title="Follow-up Email (1-Click or Automated)">
+                          <span>Mail</span>
                         </button>
                         <button class="btn btn-xs btn-outline" (click)="openEditLead(lead)" title="Edit">
                           <span>Edit</span>
@@ -767,6 +785,7 @@
                     <td>
                       <div class="row-actions">
                         <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')">WA</button>
+                        <button class="btn btn-xs btn-email" (click)="openFollowUpEmailModal(lead)" title="Follow-up Email">Mail</button>
                         <button class="btn btn-xs btn-gold" (click)="openMatchingDrawer(lead)">Matches</button>
                         <button class="btn btn-xs btn-outline" (click)="openEditLead(lead)">Edit</button>
                         <button class="btn btn-xs btn-danger-icon" (click)="deleteLead(lead)">✕</button>
@@ -1076,6 +1095,9 @@
                   <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')">
                     <span>WA Client</span>
                   </button>
+                  <button class="btn btn-xs btn-email" (click)="openFollowUpEmailModal(lead)">
+                    <span>Email Matches</span>
+                  </button>
                   <button class="btn btn-xs btn-primary" (click)="showVisitModal.set(true)">
                     <span>Book Visit</span>
                   </button>
@@ -1124,5 +1146,10 @@
 <!-- The Hindu Newspaper Classifieds Scanner Modal -->
 @if (showClassifiedScannerModal()) {
   <app-classified-scanner-modal (close)="showClassifiedScannerModal.set(false)" />
+}
+
+<!-- Follow-Up Email Composer Modal -->
+@if (showFollowUpEmailModal() && activeEmailLead(); as emailLead) {
+  <app-followup-email-modal [lead]="emailLead" (close)="closeFollowUpEmailModal()"></app-followup-email-modal>
 }
 

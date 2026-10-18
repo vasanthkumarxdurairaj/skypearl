@@ -8,6 +8,7 @@ import { VisitModalComponent } from './components/visit-modal/visit-modal';
 import { SpaceGateModalComponent } from './components/space-gate-modal/space-gate-modal';
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
+import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
 import { RealtyService, CHENNAI_MARKET_INSIGHTS } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
@@ -35,7 +36,8 @@ import {
     VisitModalComponent,
     SpaceGateModalComponent,
     SpaceSettingsModalComponent,
-    ClassifiedScannerModalComponent
+    ClassifiedScannerModalComponent,
+    FollowUpEmailModalComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -50,6 +52,8 @@ export class App {
   public showLeadModal = signal<boolean>(false);
   public showVisitModal = signal<boolean>(false);
   public showClassifiedScannerModal = signal<boolean>(false);
+  public showFollowUpEmailModal = signal<boolean>(false);
+  public activeEmailLead = signal<LeadCRM | null>(null);
   public editingProperty = signal<PropertyListing | null>(null);
   public editingLead = signal<LeadCRM | null>(null);
   public propertyModalInitialTab = signal<'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal'>('contact');
@@ -69,6 +73,13 @@ export class App {
   public leadSearchQuery = signal<string>('');
   public selectedLeadStage = signal<LeadStage | 'All'>('All');
   public leadViewMode = signal<'kanban' | 'table'>('kanban');
+  public filterOnlyDueFollowUps = signal<boolean>(false);
+
+  public dueFollowUpsCount = computed<number>(() => {
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    return this.realtyService.leads().filter(l => l.nextFollowUpDate && l.nextFollowUpDate <= endOfToday.getTime()).length;
+  });
 
   // Connections (Compatibility) Filters
   public selectedMatchBuyerId = signal<string>('All');
@@ -139,6 +150,12 @@ export class App {
     const stage = this.selectedLeadStage();
     if (stage !== 'All') {
       list = list.filter(l => l.stage === stage);
+    }
+
+    if (this.filterOnlyDueFollowUps()) {
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+      list = list.filter(l => l.nextFollowUpDate && l.nextFollowUpDate <= endOfToday.getTime());
     }
 
     const q = this.leadSearchQuery().toLowerCase().trim();
@@ -241,6 +258,24 @@ export class App {
 
   public closeMatchingDrawer(): void {
     this.activeMatchingLead.set(null);
+  }
+
+  // Follow-Up Email Actions
+  public openFollowUpEmailModal(lead: LeadCRM): void {
+    this.activeEmailLead.set(lead);
+    this.showFollowUpEmailModal.set(true);
+  }
+
+  public closeFollowUpEmailModal(): void {
+    this.showFollowUpEmailModal.set(false);
+    this.activeEmailLead.set(null);
+  }
+
+  public isLeadFollowUpDue(lead: LeadCRM): boolean {
+    if (!lead.nextFollowUpDate) return false;
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    return lead.nextFollowUpDate <= endOfToday.getTime();
   }
 
   // Site Visit Actions

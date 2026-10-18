@@ -188,7 +188,7 @@ export class RealtyService {
     }
 
     // Auto-migration: Purge any previously stored mock seed data from localStorage
-    const MIGRATION_CLEAN_KEY = 'skypearl_purged_mock_v4';
+    const MIGRATION_CLEAN_KEY = 'skypearl_purged_mock_v5';
     if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_CLEAN_KEY) !== 'true') {
       const dummyPropPrefixes = ['prop-omr-01', 'prop-ecr-02', 'prop-adyar-03', 'prop-annanagar-04', 'prop-besant-05', 'prop-velachery-06', 'prop-porur-07'];
       const dummyLeadIds = ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05'];
@@ -198,7 +198,17 @@ export class RealtyService {
       if (rawP) {
         try {
           const list = JSON.parse(rawP);
-          const cleaned = list.filter((p: any) => !dummyPropPrefixes.includes(p.id) && !p.id.startsWith('prop-omr-') && !p.id.startsWith('prop-ecr-') && !p.id.startsWith('prop-adyar-') && !p.id.startsWith('prop-annanagar-') && !p.id.startsWith('prop-besant-') && !p.id.startsWith('prop-velachery-') && !p.id.startsWith('prop-porur-'));
+          const cleaned = list.filter((p: any) => 
+            !dummyPropPrefixes.includes(p.id) && 
+            !p.id.startsWith('prop-omr-') && 
+            !p.id.startsWith('prop-ecr-') && 
+            !p.id.startsWith('prop-adyar-') && 
+            !p.id.startsWith('prop-annanagar-') && 
+            !p.id.startsWith('prop-besant-') && 
+            !p.id.startsWith('prop-velachery-') && 
+            !p.id.startsWith('prop-porur-') &&
+            p.ownerPhone !== '+91 98400 00000'
+          );
           localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(cleaned));
         } catch {
           localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
@@ -209,7 +219,11 @@ export class RealtyService {
       if (rawL) {
         try {
           const list = JSON.parse(rawL);
-          const cleaned = list.filter((l: any) => !dummyLeadIds.includes(l.id));
+          const cleaned = list.filter((l: any) => 
+            !dummyLeadIds.includes(l.id) && 
+            l.email !== 'client@example.com' && 
+            l.phone !== '+91 98400 11111'
+          );
           localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(cleaned));
         } catch {
           localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
@@ -513,8 +527,8 @@ export class RealtyService {
       floodAndRiskNotes: propertyData.floodAndRiskNotes || '',
       notes: propertyData.notes || '',
       listingStatus: propertyData.listingStatus || 'Available',
-      ownerName: propertyData.ownerName || 'Property Owner',
-      ownerPhone: propertyData.ownerPhone || '+91 98400 00000',
+      ownerName: propertyData.ownerName || '',
+      ownerPhone: propertyData.ownerPhone || '',
       ownerAltPhone: propertyData.ownerAltPhone,
       ownerEmail: propertyData.ownerEmail,
       photos: propertyData.photos && propertyData.photos.length > 0 ? propertyData.photos : [],
@@ -597,10 +611,10 @@ export class RealtyService {
 
     const newLead: LeadCRM = {
       id: 'lead-' + now.toString(36),
-      name: leadData.name || 'Prospective Client',
-      phone: leadData.phone || '+91 98400 11111',
+      name: leadData.name || 'Client',
+      phone: leadData.phone || '',
       altPhone: leadData.altPhone,
-      email: leadData.email || 'client@example.com',
+      email: leadData.email || '',
       leadType: leadData.leadType || 'Buyer',
       stage: leadData.stage || 'New',
       priority: leadData.priority || 'Medium',

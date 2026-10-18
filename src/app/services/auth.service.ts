@@ -20,29 +20,7 @@ export interface DemoUserPersona {
   avatarColor: string;
 }
 
-export const DEMO_PERSONAS: DemoUserPersona[] = [
-  {
-    uid: 'user-alice-owner-001',
-    email: 'alice.lead@skypearl.io',
-    displayName: 'Alice Chen (Owner)',
-    roleHint: 'Workspace Owner - Full Access & Member Management',
-    avatarColor: 'linear-gradient(135deg, #6366f1, #a855f7)'
-  },
-  {
-    uid: 'user-bob-editor-002',
-    email: 'bob.dev@skypearl.io',
-    displayName: 'Bob Rivera (Editor)',
-    roleHint: 'Editor - Can Create & Edit Shared Data',
-    avatarColor: 'linear-gradient(135deg, #06b6d4, #3b82f6)'
-  },
-  {
-    uid: 'user-charlie-viewer-003',
-    email: 'charlie.audit@skypearl.io',
-    displayName: 'Charlie Kim (Viewer)',
-    roleHint: 'Viewer - Read Only Access to Workspace',
-    avatarColor: 'linear-gradient(135deg, #10b981, #14b8a6)'
-  }
-];
+export const DEMO_PERSONAS: DemoUserPersona[] = [];
 
 @Injectable({
   providedIn: 'root'
@@ -73,17 +51,29 @@ export class AuthService {
         }
       });
     } else {
-      // Default to Alice in demo mode for instant testing
+      // Local session check - purge any legacy mock personas
       const savedUser = localStorage.getItem('skypearl_demo_user');
       if (savedUser) {
         try {
-          this.currentUser.set(JSON.parse(savedUser));
-          return;
+          const parsed = JSON.parse(savedUser);
+          if (
+            parsed &&
+            parsed.email &&
+            !parsed.email.includes('alice.lead') &&
+            !parsed.email.includes('bob.dev') &&
+            !parsed.email.includes('charlie.audit') &&
+            !parsed.email.includes('google.collaborator')
+          ) {
+            this.currentUser.set(parsed);
+            return;
+          } else {
+            localStorage.removeItem('skypearl_demo_user');
+          }
         } catch {
-          // fallback
+          localStorage.removeItem('skypearl_demo_user');
         }
       }
-      this.switchDemoUser(DEMO_PERSONAS[0]);
+      this.currentUser.set(null);
     }
   }
 
@@ -102,15 +92,15 @@ export class AuthService {
         });
         return true;
       } else {
-        // Demo login
-        const persona = DEMO_PERSONAS.find(p => p.email.toLowerCase() === email.toLowerCase()) || {
-          uid: 'user-custom-' + Date.now(),
+        const cleanName = email.split('@')[0];
+        const user: AppUser = {
+          uid: 'user-' + Date.now().toString(36),
           email,
-          displayName: email.split('@')[0],
-          roleHint: 'Custom User',
-          avatarColor: 'linear-gradient(135deg, #ec4899, #8b5cf6)'
+          displayName: cleanName,
+          photoURL: undefined
         };
-        this.switchDemoUser(persona);
+        this.currentUser.set(user);
+        localStorage.setItem('skypearl_demo_user', JSON.stringify(user));
         return true;
       }
     } catch (err: any) {
@@ -138,15 +128,13 @@ export class AuthService {
         });
         return true;
       } else {
-        // Demo signup
-        const newPersona: DemoUserPersona = {
-          uid: 'user-' + Date.now(),
+        const user: AppUser = {
+          uid: 'user-' + Date.now().toString(36),
           email,
-          displayName: displayName || email.split('@')[0],
-          roleHint: 'Registered Member',
-          avatarColor: 'linear-gradient(135deg, #f59e0b, #ef4444)'
+          displayName: displayName || email.split('@')[0]
         };
-        this.switchDemoUser(newPersona);
+        this.currentUser.set(user);
+        localStorage.setItem('skypearl_demo_user', JSON.stringify(user));
         return true;
       }
     } catch (err: any) {
@@ -162,7 +150,7 @@ export class AuthService {
     this.authError.set(null);
 
     try {
-      if (this.firebaseService.auth && !this.firebaseService.isDemoMode()) {
+      if (this.firebaseService.auth) {
         const provider = new GoogleAuthProvider();
         const cred = await signInWithPopup(this.firebaseService.auth, provider);
         this.currentUser.set({
@@ -173,15 +161,8 @@ export class AuthService {
         });
         return true;
       } else {
-        // Demo google login
-        this.switchDemoUser({
-          uid: 'user-google-' + Date.now(),
-          email: 'google.collaborator@gmail.com',
-          displayName: 'Google Collaborator',
-          roleHint: 'Signed in with Google',
-          avatarColor: 'linear-gradient(135deg, #4285F4, #34A853)'
-        });
-        return true;
+        this.authError.set('Firebase Auth is not initialized. Please connect Firebase to use Google Sign-In.');
+        return false;
       }
     } catch (err: any) {
       this.authError.set(err.message || 'Google Sign-In failed.');

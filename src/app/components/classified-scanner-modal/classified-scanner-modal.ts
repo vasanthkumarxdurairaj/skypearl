@@ -1,7 +1,7 @@
 import { Component, ElementRef, ViewChild, inject, output, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { ClassifiedParserService, ParsedClassified, SAMPLE_HINDU_CLASSIFIEDS } from '../../services/classified-parser.service';
+import { ClassifiedParserService, ParsedClassified } from '../../services/classified-parser.service';
 import { RealtyService } from '../../services/realty.service';
 import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, LeadSource } from '../../models/realty.model';
 
@@ -63,15 +63,6 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 (click)="switchInputMode('text')">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                 <span>Paste Classified Text</span>
-              </button>
-
-              <button 
-                type="button" 
-                class="mode-tab-btn" 
-                [class.active]="activeInputMode() === 'samples'" 
-                (click)="switchInputMode('samples')">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="10 8 16 12 10 16 10 8"></polygon></svg>
-                <span>Try Hindu Samples</span>
               </button>
             </div>
 
@@ -166,26 +157,6 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                     <span>Analyze & Extract Ad</span>
                   </button>
                 </div>
-              </div>
-            }
-
-            <!-- MODE 4: SAMPLES -->
-            @if (activeInputMode() === 'samples') {
-              <div class="samples-grid">
-                @for (sample of sampleAds; track sample.name) {
-                  <div class="sample-card glass-panel">
-                    <div class="sample-card-header">
-                      <span class="sample-type-badge" [class.badge-seller]="sample.type === 'seller'" [class.badge-buyer]="sample.type === 'buyer'">
-                        {{ sample.type | uppercase }}
-                      </span>
-                      <strong class="sample-name">{{ sample.name }}</strong>
-                    </div>
-                    <p class="sample-snippet">{{ sample.text }}</p>
-                    <button type="button" class="btn btn-sm btn-outline-gold mt-2" (click)="loadSample(sample)">
-                      <span>Test Scan This Ad →</span>
-                    </button>
-                  </div>
-                }
               </div>
             }
           }
@@ -1000,7 +971,7 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
   @ViewChild('videoElement') videoElement?: ElementRef<HTMLVideoElement>;
 
   public currentStage = signal<'capture' | 'confirm'>('capture');
-  public activeInputMode = signal<'camera' | 'upload' | 'text' | 'samples'>('upload');
+  public activeInputMode = signal<'camera' | 'upload' | 'text'>('upload');
   public isProcessing = signal<boolean>(false);
   public ocrProgress = signal<number>(0);
   public isDragOver = signal<boolean>(false);
@@ -1012,12 +983,11 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
   public showRawText = signal<boolean>(false);
 
   public localities = CHENNAI_LOCALITIES;
-  public sampleAds = SAMPLE_HINDU_CLASSIFIEDS;
 
   private stream: MediaStream | null = null;
   private facingMode: 'environment' | 'user' = 'environment';
 
-  public switchInputMode(mode: 'camera' | 'upload' | 'text' | 'samples'): void {
+  public switchInputMode(mode: 'camera' | 'upload' | 'text'): void {
     this.activeInputMode.set(mode);
     if (mode === 'camera') {
       this.startCamera();
@@ -1161,10 +1131,6 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
     }, 400);
   }
 
-  public loadSample(sample: typeof SAMPLE_HINDU_CLASSIFIEDS[0]): void {
-    this.selectedImageThumbnail.set(null);
-    this.processText(sample.text);
-  }
 
   public setType(type: 'seller' | 'buyer'): void {
     const cur = this.parsedData();
