@@ -850,6 +850,66 @@ import {
       color: var(--text-main);
       border-color: var(--border-hover);
     }
+
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 6px;
+        align-items: flex-end;
+      }
+      .lead-modal-card {
+        max-height: 94vh;
+        border-radius: 16px 16px 0 0;
+      }
+      .modal-header {
+        padding: 14px 16px 10px;
+      }
+      .modal-title {
+        font-size: 17px;
+      }
+      .modal-tabs {
+        padding: 6px 10px;
+        gap: 4px;
+      }
+      .tab-btn {
+        padding: 6px 10px;
+        font-size: 11px;
+      }
+      .modal-body-scroll {
+        padding: 14px 14px;
+      }
+      .form-row {
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .flex-1, .flex-2 {
+        min-width: 100% !important;
+        flex: 1 1 100% !important;
+      }
+      .localities-checkbox-grid {
+        grid-template-columns: 1fr;
+      }
+      .amenities-grid {
+        grid-template-columns: 1fr;
+      }
+      .modal-footer {
+        padding: 12px 14px;
+        flex-direction: column-reverse;
+        gap: 8px;
+      }
+      .tab-nav-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .modal-footer > .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+      }
+      .tab-nav-actions .btn {
+        flex: 1;
+        justify-content: center;
+      }
+    }
   `]
 })
 export class LeadModalComponent {

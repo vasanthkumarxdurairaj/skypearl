@@ -899,6 +899,82 @@ import { AgentProfile, UserRole } from '../../models/realty.model';
       padding-top: 8px;
       border-top: 1px solid var(--border-subtle);
     }
+
+    /* Mobile Responsiveness for Top Navbar */
+    @media (max-width: 768px) {
+      .navbar-container {
+        padding: 0 10px;
+        gap: 6px;
+        height: 56px;
+      }
+
+      .brand-sub,
+      .city-pill,
+      .passcode-tag {
+        display: none !important;
+      }
+
+      .brand-title {
+        font-size: 0.92rem;
+      }
+
+      .nav-right {
+        gap: 5px;
+      }
+
+      .nav-right .btn-sm span,
+      .theme-toggle-btn span {
+        display: none !important;
+      }
+
+      .nav-right .btn-sm,
+      .theme-toggle-btn {
+        padding: 6px;
+        min-width: 32px;
+        height: 32px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+      }
+
+      .agent-pill {
+        padding: 4px;
+        gap: 4px;
+      }
+
+      .agent-details {
+        display: none;
+      }
+
+      .agent-dropdown {
+        position: fixed;
+        top: 58px;
+        right: 8px;
+        left: 8px;
+        width: auto;
+        max-width: calc(100vw - 16px);
+      }
+    }
+
+    @media (max-width: 420px) {
+      .brand-gem {
+        width: 28px;
+        height: 28px;
+      }
+      .brand-title {
+        font-size: 0.85rem;
+      }
+      .nav-right {
+        gap: 4px;
+      }
+      .nav-right .btn-sm,
+      .theme-toggle-btn {
+        min-width: 30px;
+        height: 30px;
+        padding: 5px;
+      }
+    }
   `]
 })
 export class NavbarComponent {

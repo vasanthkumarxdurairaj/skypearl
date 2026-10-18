@@ -946,6 +946,49 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       display: flex;
       gap: 10px;
     }
+
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 6px;
+        align-items: flex-end;
+      }
+      .scanner-modal-card {
+        max-height: 94vh;
+        border-radius: 16px 16px 0 0;
+      }
+      .modal-header {
+        padding: 14px 16px 10px;
+      }
+      .modal-title {
+        font-size: 17px;
+      }
+      .modal-body-scroll {
+        padding: 14px 14px;
+      }
+      .camera-viewport {
+        height: 240px;
+      }
+      .form-grid-2col {
+        grid-template-columns: 1fr;
+      }
+      .confirmation-actions-bar {
+        flex-direction: column-reverse;
+        gap: 8px;
+      }
+      .confirm-buttons-group {
+        width: 100%;
+        flex-direction: column;
+      }
+      .confirm-buttons-group .btn {
+        width: 100%;
+        justify-content: center;
+        padding: 10px;
+      }
+      .confirmation-actions-bar > .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   `]
 })
 export class ClassifiedScannerModalComponent implements OnDestroy {

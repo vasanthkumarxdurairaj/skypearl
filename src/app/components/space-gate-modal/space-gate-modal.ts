@@ -377,6 +377,25 @@ import { AuthService } from '../../services/auth.service';
     .btn-link:hover {
       color: var(--gold);
     }
+
+    @media (max-width: 480px) {
+      .space-gate-card {
+        padding: 22px 16px;
+        border-radius: var(--radius-lg);
+      }
+      .gate-title {
+        font-size: 1.25rem;
+      }
+      .brand-crest {
+        width: 44px;
+        height: 44px;
+        margin-bottom: 10px;
+      }
+      .btn-google {
+        font-size: 0.82rem;
+        padding: 10px 12px;
+      }
+    }
   `]
 })
 export class SpaceGateModalComponent {

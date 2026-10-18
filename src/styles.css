@@ -479,6 +479,33 @@ textarea.form-control {
 .flex-2 { flex: 2; min-width: 240px; }
 .flex-3 { flex: 3; min-width: 320px; }
 
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 6px;
+    align-items: flex-end;
+  }
+  .modal-card {
+    padding: 16px 14px;
+    max-height: 94vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+  .modal-title {
+    font-size: 1.12rem;
+  }
+  .flex-1, .flex-2, .flex-3 {
+    min-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+  .modal-footer {
+    flex-direction: column-reverse;
+    gap: 8px;
+  }
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
 .btn-text-link {
   background: none;
   border: none;
