@@ -14,10 +14,7 @@ import { AuthService } from '../../services/auth.service';
         <!-- Logo & Header -->
         <div class="gate-header">
           <div class="brand-crest">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
+            <img src="logo.png" alt="SkyPearl Build Real Estate" class="gate-logo-img" />
           </div>
           <h2 class="gate-title">SkyPearl <span class="gold-text">Space</span></h2>
           <p class="gate-subtitle">Chennai Agency Property Intelligence • Private Space</p>
@@ -156,16 +153,25 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .brand-crest {
-      width: 52px;
-      height: 52px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #cba86b, #b28b4c);
-      color: #101b2a;
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
+      background: #000000;
+      border: 1px solid rgba(203, 168, 107, 0.45);
       display: flex;
       align-items: center;
       justify-content: center;
       margin: 0 auto 14px;
-      box-shadow: 0 8px 20px rgba(178, 139, 76, 0.35);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 20px rgba(203, 168, 107, 0.25);
+      overflow: hidden;
+      padding: 4px;
+    }
+
+    .gate-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     .gate-title {
@@ -387,8 +393,8 @@ import { AuthService } from '../../services/auth.service';
         font-size: 1.25rem;
       }
       .brand-crest {
-        width: 44px;
-        height: 44px;
+        width: 62px;
+        height: 62px;
         margin-bottom: 10px;
       }
       .btn-google {

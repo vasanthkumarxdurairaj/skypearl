@@ -15,10 +15,7 @@ import { AuthService } from '../../services/auth.service';
         <div class="modal-header">
           <div class="header-left">
             <div class="space-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-              </svg>
+              <img src="logo.png" alt="SkyPearl Build Real Estate" class="space-logo-img" />
             </div>
             <div>
               <h3 class="modal-title">Agency Space & Invites</h3>
@@ -163,15 +160,25 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .space-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 10px;
-      background: var(--gold-surface);
-      color: var(--gold);
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #000000;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid var(--gold-border);
+      border: 1px solid rgba(203, 168, 107, 0.45);
+      box-shadow: 0 4px 14px rgba(203, 168, 107, 0.2);
+      overflow: hidden;
+      padding: 3px;
+      flex-shrink: 0;
+    }
+
+    .space-logo-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
     }
 
     .modal-title {
