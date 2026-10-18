@@ -189,7 +189,7 @@ export interface PropertyListing {
 export type LeadType = 'Buyer' | 'Tenant' | 'Seller' | 'Landlord';
 export type LeadStage = 'New' | 'Contacted' | 'Qualified' | 'Site Visit Scheduled' | 'In Negotiation' | 'Closed Won' | 'Closed Lost' | 'On Hold';
 export type LeadPriority = 'High' | 'Medium' | 'Low' | 'Urgent';
-export type LeadSource = 'Website Form' | 'Referral' | '99acres' | 'MagicBricks' | 'Walk-in' | 'Instagram/Facebook' | 'WhatsApp' | 'Cold call' | 'Existing client' | 'Signboard' | 'Other';
+export type LeadSource = 'Website Form' | 'Referral' | '99acres' | 'MagicBricks' | 'Walk-in' | 'Instagram/Facebook' | 'WhatsApp' | 'Cold call' | 'Existing client' | 'Signboard' | 'The Hindu Classifieds' | 'Other';
 
 export interface LeadCRM {
   id: string;

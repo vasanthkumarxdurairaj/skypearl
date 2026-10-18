@@ -19,7 +19,8 @@
   <app-navbar 
     (openPropertyModal)="openAddProperty()"
     (openLeadModal)="openAddLead()"
-    (openVisitModal)="showVisitModal.set(true)" />
+    (openVisitModal)="showVisitModal.set(true)"
+    (openClassifiedScanner)="showClassifiedScannerModal.set(true)" />
 
   <div class="main-body">
     <!-- Sidebar Navigation -->
@@ -192,17 +193,21 @@
             </div>
 
             <div class="banner-actions">
+              <button class="btn btn-gold" (click)="showClassifiedScannerModal.set(true)" title="Capture or upload newspaper classified ad (The Hindu)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                <span>Scan Hindu Classifieds</span>
+              </button>
               <button class="btn btn-primary" (click)="openAddProperty()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span>Add Property (Seller)</span>
               </button>
-              <button class="btn btn-gold" (click)="openAddLead()">
+              <button class="btn btn-secondary" (click)="openAddLead()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
                 <span>Add Buyer / Client</span>
               </button>
               <button class="btn btn-secondary" (click)="setView('connections')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line></svg>
-                <span>View Connections ({{ realtyService.highMatchesCount() }})</span>
+                <span>Connections ({{ realtyService.highMatchesCount() }})</span>
               </button>
             </div>
           </div>
@@ -328,6 +333,10 @@
             <p class="view-desc">Verified apartments, independent houses, villas and plots with complete UDS, water, and legal attributes</p>
           </div>
           <div class="header-action-group">
+            <button class="btn btn-gold" (click)="showClassifiedScannerModal.set(true)" title="Scan seller classified from The Hindu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <span>Scan Newspaper Ad</span>
+            </button>
             <button class="btn btn-primary" (click)="openAddProperty()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span>Add Property Listing</span>
@@ -573,6 +582,10 @@
             <p class="view-desc">Track buyer preferences across Chennai corridors with budget, UDS targets, and follow-ups</p>
           </div>
           <div class="header-action-group">
+            <button class="btn btn-primary" (click)="showClassifiedScannerModal.set(true)" title="Scan buyer wanted ad from The Hindu">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <span>Scan Buyer Ad</span>
+            </button>
             <button class="btn btn-gold" (click)="openAddLead()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span>Add Buyer Requirement</span>
@@ -1076,5 +1089,10 @@
 <!-- Space Settings & Shareable Invite Links Modal -->
 @if (spaceService.showSpaceSettingsModal()) {
   <app-space-settings-modal />
+}
+
+<!-- The Hindu Newspaper Classifieds Scanner Modal -->
+@if (showClassifiedScannerModal()) {
+  <app-classified-scanner-modal (close)="showClassifiedScannerModal.set(false)" />
 }
 

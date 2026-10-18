@@ -7,6 +7,7 @@ import { LeadModalComponent } from './components/lead-modal/lead-modal';
 import { VisitModalComponent } from './components/visit-modal/visit-modal';
 import { SpaceGateModalComponent } from './components/space-gate-modal/space-gate-modal';
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
+import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
 import { RealtyService, CHENNAI_MARKET_INSIGHTS } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
@@ -33,7 +34,8 @@ import {
     LeadModalComponent,
     VisitModalComponent,
     SpaceGateModalComponent,
-    SpaceSettingsModalComponent
+    SpaceSettingsModalComponent,
+    ClassifiedScannerModalComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -47,6 +49,7 @@ export class App {
   public showPropertyModal = signal<boolean>(false);
   public showLeadModal = signal<boolean>(false);
   public showVisitModal = signal<boolean>(false);
+  public showClassifiedScannerModal = signal<boolean>(false);
   public editingProperty = signal<PropertyListing | null>(null);
   public editingLead = signal<LeadCRM | null>(null);
   public propertyModalInitialTab = signal<'contact' | 'pricing' | 'layout' | 'infra' | 'photos' | 'legal'>('contact');
