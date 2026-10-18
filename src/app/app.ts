@@ -5,7 +5,10 @@ import { NavbarComponent } from './components/navbar/navbar';
 import { PropertyModalComponent } from './components/property-modal/property-modal';
 import { LeadModalComponent } from './components/lead-modal/lead-modal';
 import { VisitModalComponent } from './components/visit-modal/visit-modal';
+import { SpaceGateModalComponent } from './components/space-gate-modal/space-gate-modal';
+import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { RealtyService, CHENNAI_MARKET_INSIGHTS } from './services/realty.service';
+import { SpaceService } from './services/space.service';
 import { 
   PropertyListing, 
   LeadCRM, 
@@ -28,13 +31,16 @@ import {
     NavbarComponent,
     PropertyModalComponent,
     LeadModalComponent,
-    VisitModalComponent
+    VisitModalComponent,
+    SpaceGateModalComponent,
+    SpaceSettingsModalComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
 })
 export class App {
   public realtyService = inject(RealtyService);
+  public spaceService = inject(SpaceService);
   public Math = Math;
 
   // Modals & Drawers

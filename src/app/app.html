@@ -117,6 +117,17 @@
             </svg>
             <span class="tab-label">Team & Security</span>
           </button>
+
+          <button 
+            class="nav-tab" 
+            (click)="spaceService.showSpaceSettingsModal.set(true)">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+              <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+            </svg>
+            <span class="tab-label">Space & Invites</span>
+            <span class="tab-badge" style="background: rgba(203, 168, 107, 0.2); color: var(--gold);">PIN</span>
+          </button>
         </div>
       </div>
 
@@ -1004,3 +1015,14 @@
 @if (showVisitModal()) {
   <app-visit-modal (close)="showVisitModal.set(false)" />
 }
+
+<!-- Space Access Gate Modal (Passcode, Invite Code & Google Login) -->
+@if (!spaceService.isUnlocked() || spaceService.showAccessModal()) {
+  <app-space-gate-modal />
+}
+
+<!-- Space Settings & Shareable Invite Links Modal -->
+@if (spaceService.showSpaceSettingsModal()) {
+  <app-space-settings-modal />
+}
+
