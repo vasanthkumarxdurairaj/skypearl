@@ -2,6 +2,12 @@
   command = "npm run build"
   publish = "dist/skypearl/browser"
 
+[build.environment]
+  NETLIFY_DRAWER = "false"
+
+[context.production.environment]
+  NETLIFY_DRAWER = "false"
+
 [[redirects]]
   from = "/*"
   to = "/index.html"
