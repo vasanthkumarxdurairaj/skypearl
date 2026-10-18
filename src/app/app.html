@@ -1,0 +1,1006 @@
+<!-- Toast Notifications -->
+@if (realtyService.notification(); as notif) {
+  <div class="toast-notification" [ngClass]="'toast-' + notif.type">
+    <span class="toast-icon">
+      @if (notif.type === 'success') {
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+      } @else if (notif.type === 'error') {
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      } @else {
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+      }
+    </span>
+    <span class="toast-message">{{ notif.message }}</span>
+  </div>
+}
+
+<div class="app-layout">
+  <!-- Top Navbar -->
+  <app-navbar 
+    (openPropertyModal)="openAddProperty()"
+    (openLeadModal)="openAddLead()"
+    (openVisitModal)="showVisitModal.set(true)" />
+
+  <div class="main-body">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <span class="section-title">Core Operations</span>
+        <div class="nav-menu">
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'dashboard'"
+            (click)="setView('dashboard')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7"></rect>
+              <rect x="14" y="3" width="7" height="7"></rect>
+              <rect x="14" y="14" width="7" height="7"></rect>
+              <rect x="3" y="14" width="7" height="7"></rect>
+            </svg>
+            <span class="tab-label">Dashboard</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'properties'"
+            (click)="setView('properties')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+            <span class="tab-label">Property Inventory</span>
+            <span class="tab-badge">{{ realtyService.totalPropertiesCount() }}</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'leads'"
+            (click)="setView('leads')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+              <circle cx="9" cy="7" r="4"></circle>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            <span class="tab-label">Buyers & Clients</span>
+            <span class="tab-badge highlight">{{ realtyService.activePipelineCount() }}</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'connections'"
+            (click)="setView('connections')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="16 3 21 3 21 8"></polyline>
+              <line x1="4" y1="20" x2="21" y2="3"></line>
+              <polyline points="21 16 21 21 16 21"></polyline>
+              <line x1="15" y1="15" x2="21" y2="21"></line>
+              <line x1="4" y1="4" x2="9" y2="9"></line>
+            </svg>
+            <span class="tab-label">Connections (Matches)</span>
+            <span class="tab-badge match-count-badge">{{ realtyService.highMatchesCount() }}</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'visits'"
+            (click)="setView('visits')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+            <span class="tab-label">Site Visits</span>
+            <span class="tab-badge">{{ realtyService.siteVisits().length }}</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'insights'"
+            (click)="setView('insights')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <line x1="17" y1="6" x2="23" y2="6"></line>
+              <line x1="23" y1="12" x2="23" y2="6"></line>
+            </svg>
+            <span class="tab-label">Chennai Insights</span>
+          </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'access'"
+            (click)="setView('access')">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+            <span class="tab-label">Team & Security</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Export Reports -->
+      <div class="sidebar-section mt-auto">
+        <span class="section-title">Reports & Backup</span>
+        <button class="btn btn-secondary w-100 sidebar-action-btn" (click)="realtyService.exportPropertiesToCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export Properties CSV</span>
+        </button>
+
+        <button class="btn btn-secondary w-100 sidebar-action-btn mt-2" (click)="realtyService.exportLeadsToCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export Buyers CSV</span>
+        </button>
+
+        <button class="btn btn-secondary w-100 sidebar-action-btn mt-2" (click)="realtyService.exportMatchesToCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export Matches CSV</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Dynamic Content Workspace -->
+    <main class="content-area">
+
+      <!-- ============================================== -->
+      <!-- VIEW 1: EXECUTIVE DASHBOARD                    -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'dashboard') {
+        <header class="workspace-banner glass-panel">
+          <div class="banner-top">
+            <div class="banner-info">
+              <div class="banner-title-row">
+                <h1 class="workspace-title">SkyPearl Realty Operations Hub</h1>
+                <span class="badge" [ngClass]="'badge-' + realtyService.activeAgent().role">
+                  {{ realtyService.activeAgent().role | uppercase }} SESSION
+                </span>
+              </div>
+              <p class="workspace-desc">
+                High-performance real estate brokerage & CRM platform managing properties, buyers, and deals across Chennai's premier corridors.
+              </p>
+            </div>
+
+            <div class="banner-actions">
+              <button class="btn btn-primary" (click)="openAddProperty()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>Add Property (Seller)</span>
+              </button>
+              <button class="btn btn-gold" (click)="openAddLead()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                <span>Add Buyer / Client</span>
+              </button>
+              <button class="btn btn-secondary" (click)="setView('connections')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line></svg>
+                <span>View Connections ({{ realtyService.highMatchesCount() }})</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 4-Metric Ribbon -->
+          <div class="metrics-grid">
+            <div class="metric-card glass-panel" (click)="setView('properties')">
+              <div class="metric-label">Active Seller Inventory</div>
+              <div class="metric-value">{{ realtyService.availablePropertiesCount() }} / {{ realtyService.totalPropertiesCount() }}</div>
+              <div class="metric-hint">Apartments, houses, villas in Chennai</div>
+            </div>
+
+            <div class="metric-card glass-panel" (click)="setView('leads')">
+              <div class="metric-label">Client Pipeline</div>
+              <div class="metric-value">{{ realtyService.activePipelineCount() }}</div>
+              <div class="metric-hint">Active buyers & tenants qualified</div>
+            </div>
+
+            <div class="metric-card glass-panel highlight-metric" (click)="setView('connections')">
+              <div class="metric-label">Compatible Connections</div>
+              <div class="metric-value">{{ realtyService.highMatchesCount() }}</div>
+              <div class="metric-hint">Scored ≥ 60% compatibility</div>
+            </div>
+
+            <div class="metric-card glass-panel">
+              <div class="metric-label">Deals Closed Won</div>
+              <div class="metric-value text-green">{{ realtyService.dealsWonCount() }}</div>
+              <div class="metric-hint">Earned ₹{{ formatINR(realtyService.totalCommissionEarnedINR()) }}</div>
+            </div>
+          </div>
+        </header>
+
+        <!-- Live Snapshot Grid -->
+        <div class="dashboard-split-grid mt-4">
+          <!-- Recent Properties -->
+          <div class="glass-panel feed-panel">
+            <div class="feed-header">
+              <h3 class="feed-title">Latest Property Inventory</h3>
+              <button class="btn-text-link" (click)="setView('properties')">View All Inventory →</button>
+            </div>
+            <div class="feed-list">
+              @for (p of realtyService.properties().slice(0, 4); track p.id) {
+                <div class="feed-item">
+                  <div class="feed-item-info">
+                    <h4 class="item-title">{{ p.title }}</h4>
+                    <div class="item-meta">
+                      {{ p.locality }} • {{ p.bhk }} BHK • {{ p.builtUpAreaSqFt }} sq.ft • UDS: {{ p.udsSqFt || '—' }} sq.ft
+                    </div>
+                    <div class="item-tags">
+                      <span class="badge badge-gold">{{ p.approvalStatus || 'Verified' }}</span>
+                      <span class="badge badge-water">{{ p.waterSource || 'Metro water' }}</span>
+                    </div>
+                  </div>
+                  <div class="feed-item-side">
+                    <span class="feed-price">{{ formatLakhs(p.priceLakhs) }}</span>
+                    <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(p.ownerPhone, p.ownerName, 'Owner', p.title)" title="WhatsApp Owner">
+                      <span>WhatsApp</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+
+          <!-- Top Compatibility Connections -->
+          <div class="glass-panel feed-panel">
+            <div class="feed-header">
+              <h3 class="feed-title">Strongest Buyer ↔ Property Connections</h3>
+              <button class="btn-text-link" (click)="setView('connections')">Explore All Matches →</button>
+            </div>
+            <div class="feed-list">
+              @for (m of realtyService.allCompatibilityMatches().slice(0, 4); track m.buyer.id + m.property.id) {
+                <div class="feed-item match-feed-item">
+                  <div class="feed-item-info">
+                    <div class="match-client-row">
+                      <strong class="text-sky">{{ m.buyer.name }}</strong>
+                      <span class="match-arrow">↔</span>
+                      <strong>{{ m.property.title }}</strong>
+                    </div>
+                    <div class="item-meta">
+                      Budget: {{ formatLakhs(m.buyer.budgetMinLakhs) }}–{{ formatLakhs(m.buyer.budgetMaxLakhs) }} • Asking: {{ formatLakhs(m.property.priceLakhs) }} • {{ m.property.locality }}
+                    </div>
+                    <div class="match-reasons-preview">
+                      @for (reason of m.why.slice(0, 3); track reason) {
+                        <span class="reason-chip-sm">✓ {{ reason }}</span>
+                      }
+                    </div>
+                  </div>
+                  <div class="feed-item-side">
+                    <span class="feed-match-score">{{ m.score }}%</span>
+                    <button class="btn btn-xs btn-primary" (click)="openWhatsApp(m.buyer.phone, m.buyer.name, 'Buyer')">
+                      <span>Contact</span>
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 2: PROPERTY INVENTORY REGISTER (SELLERS)  -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'properties') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">SELLER LISTING REGISTER</div>
+            <h2 class="view-title">Property Inventory (Chennai)</h2>
+            <p class="view-desc">Verified apartments, independent houses, villas and plots with complete UDS, water, and legal attributes</p>
+          </div>
+          <div class="header-action-group">
+            <button class="btn btn-primary" (click)="openAddProperty()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Add Property Listing</span>
+            </button>
+            <button class="btn btn-secondary" (click)="realtyService.exportPropertiesToCSV()">
+              <span>Export CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Toolbar -->
+        <div class="filter-toolbar glass-panel">
+          <div class="search-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input 
+              type="text" 
+              class="toolbar-search" 
+              placeholder="Search properties, areas, owners, approvals..." 
+              [ngModel]="propertySearchQuery()"
+              (ngModelChange)="propertySearchQuery.set($event)" />
+          </div>
+
+          <div class="filter-group">
+            <select class="toolbar-select" [ngModel]="selectedLocality()" (ngModelChange)="selectedLocality.set($event)">
+              <option value="All">All 38 Localities</option>
+              @for (loc of localities; track loc) {
+                <option [value]="loc">{{ loc }}</option>
+              }
+            </select>
+
+            <select class="toolbar-select" [ngModel]="selectedPropertyType()" (ngModelChange)="selectedPropertyType.set($event)">
+              <option value="All">All Types</option>
+              <option value="Apartment">Apartment</option>
+              <option value="Independent house">Independent House</option>
+              <option value="Villa">Villa</option>
+              <option value="Builder floor">Builder Floor</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Residential Plot">Residential Plot</option>
+            </select>
+
+            <select class="toolbar-select" [ngModel]="selectedTransaction()" (ngModelChange)="selectedTransaction.set($event)">
+              <option value="All">All Transactions</option>
+              <option value="Sale">Sale</option>
+              <option value="Rent">Rent</option>
+              <option value="Lease">Lease</option>
+            </select>
+
+            <select class="toolbar-select" [ngModel]="selectedBhk()" (ngModelChange)="selectedBhk.set($event)">
+              <option value="All">All BHK</option>
+              <option value="1">1 BHK</option>
+              <option value="2">2 BHK</option>
+              <option value="3">3 BHK</option>
+              <option value="4">4 BHK</option>
+              <option value="5">5+ BHK</option>
+            </select>
+
+            <div class="view-mode-toggle">
+              <button class="toggle-btn" [class.active]="propertyViewMode() === 'grid'" (click)="propertyViewMode.set('grid')" title="Grid View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+              </button>
+              <button class="toggle-btn" [class.active]="propertyViewMode() === 'table'" (click)="propertyViewMode.set('table')" title="Dense Table View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Property Grid View -->
+        @if (propertyViewMode() === 'grid') {
+          <div class="properties-grid">
+            @for (p of filteredProperties(); track p.id) {
+              <div class="property-card glass-panel">
+                <div class="property-img-container">
+                  <img [src]="p.photos[0]" [alt]="p.title" loading="lazy" />
+                  <span class="status-pill status-{{ p.listingStatus.toLowerCase().replace(' ', '-') }}">
+                    {{ p.listingStatus }}
+                  </span>
+                  <span class="transaction-pill">{{ p.transactionType }}</span>
+                </div>
+
+                <div class="property-content">
+                  <div class="property-price-row">
+                    <span class="property-price">{{ formatLakhs(p.priceLakhs) }}</span>
+                    <span class="property-sqft-price">
+                      ₹{{ formatINR(Math.round(p.priceLakhs * 100000 / (p.builtUpAreaSqFt || 1))) }}/sq.ft
+                    </span>
+                  </div>
+
+                  <h3 class="property-title" [title]="p.title">{{ p.title }}</h3>
+                  
+                  <div class="property-location">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span>{{ p.locality }} • {{ p.subLocation || 'Chennai Prime' }}</span>
+                  </div>
+
+                  <!-- Chennai Specific Specification Badges -->
+                  <div class="property-specs-ribbon">
+                    <span class="spec-tag"><strong>{{ p.bhk }}</strong> BHK</span>
+                    <span class="spec-tag"><strong>{{ p.builtUpAreaSqFt }}</strong> sq.ft</span>
+                    @if (p.udsSqFt) {
+                      <span class="spec-tag uds-tag" title="Undivided Share of Land">UDS: <strong>{{ p.udsSqFt }}</strong> sq.ft</span>
+                    }
+                    <span class="spec-tag">{{ p.facing }} Facing</span>
+                  </div>
+
+                  <!-- Chennai Infrastructure Badges -->
+                  <div class="property-infra-badges">
+                    @if (p.approvalStatus) {
+                      <span class="tag-approval">{{ p.approvalStatus }}</span>
+                    }
+                    @if (p.waterSource) {
+                      <span class="tag-water">{{ p.waterSource }}</span>
+                    }
+                    @if (p.floodHistory && p.floodHistory.includes('No known')) {
+                      <span class="tag-flood" title="Waterlogging clearance">Flood Safe</span>
+                    }
+                  </div>
+
+                  <!-- Owner Contact & Actions -->
+                  <div class="property-owner-bar">
+                    <div class="owner-meta">
+                      <span class="owner-label">Seller / Owner</span>
+                      <strong class="owner-name">{{ p.ownerName }}</strong>
+                      @if (realtyService.canViewOwnerContacts()) {
+                        <span class="owner-phone">{{ p.ownerPhone }}</span>
+                      } @else {
+                        <span class="owner-phone text-muted">[Contact Protected]</span>
+                      }
+                    </div>
+
+                    <div class="property-action-buttons">
+                      @if (realtyService.canViewOwnerContacts()) {
+                        <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(p.ownerPhone, p.ownerName, 'Owner', p.title)" title="Direct WhatsApp">
+                          <span>WA</span>
+                        </button>
+                        <button class="btn btn-xs btn-secondary" (click)="copyToClipboard(p.ownerPhone, 'Owner phone')" title="Copy Phone">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        </button>
+                      }
+                      <button class="btn btn-xs btn-outline" (click)="openEditProperty(p)" title="Edit">
+                        <span>Edit</span>
+                      </button>
+                      @if (realtyService.isAdmin() || realtyService.isManager()) {
+                        <button class="btn btn-xs btn-danger-icon" (click)="deleteProperty(p)" title="Delete">✕</button>
+                      }
+                    </div>
+                  </div>
+                </div>
+              </div>
+            } @empty {
+              <div class="empty-state-card glass-panel">
+                <h3>No Properties Match Criteria</h3>
+                <p>Try adjusting your search query, locality, or transaction filters.</p>
+                <button class="btn btn-primary mt-3" (click)="openAddProperty()">Add New Property Listing</button>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Property Table View -->
+        @if (propertyViewMode() === 'table') {
+          <div class="table-container glass-panel">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Property / Owner</th>
+                  <th>Type</th>
+                  <th>Locality</th>
+                  <th>BHK & Built-Up</th>
+                  <th>UDS (sq.ft)</th>
+                  <th>Water & Approval</th>
+                  <th>Asking Price</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (p of filteredProperties(); track p.id) {
+                  <tr class="table-row">
+                    <td>
+                      <strong>{{ p.title }}</strong>
+                      <div class="row-subtext">{{ p.ownerName }} • {{ realtyService.canViewOwnerContacts() ? p.ownerPhone : '[Protected]' }}</div>
+                    </td>
+                    <td>{{ p.propertyType }}</td>
+                    <td>{{ p.locality }}</td>
+                    <td>{{ p.bhk }} BHK • {{ p.builtUpAreaSqFt }} sq.ft</td>
+                    <td><strong class="text-gold">{{ p.udsSqFt || '—' }}</strong></td>
+                    <td>
+                      <span class="badge badge-water">{{ p.waterSource || 'Metro water' }}</span>
+                      <span class="badge badge-gold ml-1">{{ p.approvalStatus || 'Verified' }}</span>
+                    </td>
+                    <td><strong>{{ formatLakhs(p.priceLakhs) }}</strong></td>
+                    <td><span class="badge badge-status">{{ p.listingStatus }}</span></td>
+                    <td>
+                      <div class="row-actions">
+                        @if (realtyService.canViewOwnerContacts()) {
+                          <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(p.ownerPhone, p.ownerName, 'Owner', p.title)">WA</button>
+                        }
+                        <button class="btn btn-xs btn-outline" (click)="openEditProperty(p)">Edit</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 3: LEADS & CRM PIPELINE (BUYERS)          -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'leads') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">BUYER CRM & PIPELINE</div>
+            <h2 class="view-title">Customer Requirements & Pipeline</h2>
+            <p class="view-desc">Track buyer preferences across Chennai corridors with budget, UDS targets, and follow-ups</p>
+          </div>
+          <div class="header-action-group">
+            <button class="btn btn-gold" (click)="openAddLead()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              <span>Add Buyer Requirement</span>
+            </button>
+            <button class="btn btn-secondary" (click)="realtyService.exportLeadsToCSV()">
+              <span>Export Buyers CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Toolbar -->
+        <div class="filter-toolbar glass-panel">
+          <div class="search-box">
+            <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input 
+              type="text" 
+              class="toolbar-search" 
+              placeholder="Search clients, phone, localities, requirements..." 
+              [ngModel]="leadSearchQuery()"
+              (ngModelChange)="leadSearchQuery.set($event)" />
+          </div>
+
+          <div class="filter-group">
+            <select class="toolbar-select" [ngModel]="selectedLeadStage()" (ngModelChange)="selectedLeadStage.set($event)">
+              <option value="All">All Pipeline Stages</option>
+              @for (stg of leadStages; track stg) {
+                <option [value]="stg">{{ stg }}</option>
+              }
+            </select>
+
+            <div class="view-mode-toggle">
+              <button class="toggle-btn" [class.active]="leadViewMode() === 'kanban'" (click)="leadViewMode.set('kanban')" title="Kanban Pipeline">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="5" height="18" rx="1"></rect><rect x="10" y="3" width="5" height="12" rx="1"></rect><rect x="17" y="3" width="5" height="15" rx="1"></rect></svg>
+              </button>
+              <button class="toggle-btn" [class.active]="leadViewMode() === 'table'" (click)="leadViewMode.set('table')" title="Table View">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Kanban Pipeline View -->
+        @if (leadViewMode() === 'kanban') {
+          <div class="kanban-board">
+            @for (stage of leadStages; track stage) {
+              <div class="kanban-column glass-panel">
+                <div class="column-header">
+                  <div class="column-title-wrap">
+                    <span class="column-indicator"></span>
+                    <h3 class="column-title">{{ stage }}</h3>
+                  </div>
+                  <span class="column-count">{{ getLeadsByStage(stage).length }}</span>
+                </div>
+
+                <div class="column-cards-container">
+                  @for (lead of getLeadsByStage(stage); track lead.id) {
+                    <div class="lead-card glass-panel" (click)="openMatchingDrawer(lead)">
+                      <div class="lead-top-row">
+                        <span class="lead-priority-badge priority-{{ lead.priority.toLowerCase() }}">
+                          {{ lead.priority }}
+                        </span>
+                        <span class="lead-budget">
+                          {{ formatLakhs(lead.budgetMinLakhs) }}–{{ formatLakhs(lead.budgetMaxLakhs) }}
+                        </span>
+                      </div>
+
+                      <h4 class="lead-name">{{ lead.name }}</h4>
+                      <div class="lead-phone">{{ lead.phone }}</div>
+
+                      <div class="lead-localities-wrap">
+                        @for (loc of lead.preferredLocalities; track loc) {
+                          <span class="lead-loc-pill">{{ loc }}</span>
+                        }
+                      </div>
+
+                      <div class="lead-specs-line">
+                        {{ lead.preferredBhk }} BHK • {{ lead.preferredPropertyType }}
+                        @if (lead.minUdsSqFt) {
+                          • Min UDS: {{ lead.minUdsSqFt }} sq.ft
+                        }
+                      </div>
+
+                      <!-- Direct Actions -->
+                      <div class="lead-card-actions" (click)="$event.stopPropagation()">
+                        <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')" title="WhatsApp Client">
+                          <span>WA</span>
+                        </button>
+                        <button class="btn btn-xs btn-outline" (click)="openEditLead(lead)" title="Edit">
+                          <span>Edit</span>
+                        </button>
+                        <button class="btn btn-xs btn-gold" (click)="openMatchingDrawer(lead)" title="View Matches">
+                          <span>Matches</span>
+                        </button>
+                      </div>
+                    </div>
+                  } @empty {
+                    <div class="column-empty">No leads in {{ stage }}</div>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        }
+
+        <!-- Table View -->
+        @if (leadViewMode() === 'table') {
+          <div class="table-container glass-panel">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Client / Contact</th>
+                  <th>Type & Stage</th>
+                  <th>Preferred Localities</th>
+                  <th>Budget Bracket</th>
+                  <th>Key Preferences</th>
+                  <th>Timeline & Funding</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (lead of filteredLeads(); track lead.id) {
+                  <tr class="table-row">
+                    <td>
+                      <strong>{{ lead.name }}</strong>
+                      <div class="row-subtext">{{ lead.phone }} • {{ lead.email }}</div>
+                    </td>
+                    <td>
+                      <span class="badge" [ngClass]="getStageBadgeClass(lead.stage)">{{ lead.stage }}</span>
+                      <div class="row-subtext">{{ lead.leadType }}</div>
+                    </td>
+                    <td>
+                      <div class="lead-localities-wrap">
+                        @for (loc of lead.preferredLocalities; track loc) {
+                          <span class="lead-loc-pill">{{ loc }}</span>
+                        }
+                      </div>
+                    </td>
+                    <td><strong>{{ formatLakhs(lead.budgetMinLakhs) }} – {{ formatLakhs(lead.budgetMaxLakhs) }}</strong></td>
+                    <td>
+                      {{ lead.preferredBhk }} BHK • {{ lead.preferredPropertyType }}
+                      @if (lead.minUdsSqFt) {
+                        • UDS ≥ {{ lead.minUdsSqFt }} sq.ft
+                      }
+                    </td>
+                    <td>
+                      <span>{{ lead.timeline || '1–3 months' }}</span>
+                      <div class="row-subtext">{{ lead.fundingReadiness || 'Funds ready' }}</div>
+                    </td>
+                    <td>
+                      <div class="row-actions">
+                        <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')">WA</button>
+                        <button class="btn btn-xs btn-gold" (click)="openMatchingDrawer(lead)">Matches</button>
+                        <button class="btn btn-xs btn-outline" (click)="openEditLead(lead)">Edit</button>
+                        <button class="btn btn-xs btn-danger-icon" (click)="deleteLead(lead)">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 4: COMPATIBILITY CONNECTIONS (MATCHES)    -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'connections') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">COMPATIBILITY ENGINE · CHENNAI</div>
+            <h2 class="view-title">Connections & Fit Intelligence</h2>
+            <p class="view-desc">Scored buyer–property connections across Chennai with explainable fit reasons and 1-click WhatsApp communication</p>
+          </div>
+          <div class="header-action-group">
+            <button class="btn btn-gold" (click)="realtyService.exportMatchesToCSV()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+              <span>Export Matches CSV</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Connection Filters -->
+        <div class="filter-toolbar glass-panel">
+          <div class="filter-group">
+            <select class="toolbar-select" [ngModel]="selectedMatchBuyerId()" (ngModelChange)="selectedMatchBuyerId.set($event)">
+              <option value="All">All Buyers ({{ realtyService.leads().length }})</option>
+              @for (buyer of realtyService.leads(); track buyer.id) {
+                <option [value]="buyer.id">{{ buyer.name }} ({{ buyer.preferredLocalities.join(', ') }})</option>
+              }
+            </select>
+
+            <select class="toolbar-select" [ngModel]="selectedMatchPropertyId()" (ngModelChange)="selectedMatchPropertyId.set($event)">
+              <option value="All">All Properties ({{ realtyService.properties().length }})</option>
+              @for (prop of realtyService.properties(); track prop.id) {
+                <option [value]="prop.id">{{ prop.title }} ({{ prop.locality }})</option>
+              }
+            </select>
+
+            <select class="toolbar-select" [ngModel]="selectedMatchThreshold()" (ngModelChange)="selectedMatchThreshold.set($event)">
+              <option [ngValue]="0">All Compatibility Scores</option>
+              <option [ngValue]="50">50%+ Match</option>
+              <option [ngValue]="70">70%+ Match (High Fit)</option>
+              <option [ngValue]="85">85%+ Match (Super Fit)</option>
+            </select>
+          </div>
+          <span class="match-count-badge">{{ filteredCompatibilityMatches().length }} active connections</span>
+        </div>
+
+        <!-- Matches Cards Grid -->
+        <div class="connections-grid">
+          @for (m of filteredCompatibilityMatches(); track m.buyer.id + m.property.id) {
+            <div class="connection-card glass-panel">
+              <div class="connection-top-bar">
+                <div class="buyer-tag">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                  <span>BUYER: <strong>{{ m.buyer.name }}</strong> ({{ m.buyer.phone }})</span>
+                </div>
+                <div class="score-badge" [class.score-super]="m.score >= 80" [class.score-good]="m.score >= 60 && m.score < 80">
+                  {{ m.score }}% FIT
+                </div>
+              </div>
+
+              <div class="connection-body">
+                <div class="property-snippet">
+                  <h4 class="prop-snippet-title">{{ m.property.title }}</h4>
+                  <div class="prop-snippet-meta">
+                    <strong>{{ m.property.locality }}</strong> • {{ m.property.bhk }} BHK • {{ m.property.builtUpAreaSqFt }} sq.ft
+                    @if (m.property.udsSqFt) {
+                      • UDS: {{ m.property.udsSqFt }} sq.ft
+                    }
+                  </div>
+                  <div class="prop-pricing-row">
+                    <span class="price-val">Asking: {{ formatLakhs(m.property.priceLakhs) }}</span>
+                    <span class="budget-val">Buyer Budget: {{ formatLakhs(m.buyer.budgetMinLakhs) }}–{{ formatLakhs(m.buyer.budgetMaxLakhs) }}</span>
+                  </div>
+                </div>
+
+                <!-- Explainable Reasons -->
+                <div class="reasons-container">
+                  <div class="reasons-title">Matched Criteria:</div>
+                  <div class="reasons-chips-wrap">
+                    @for (item of m.why; track item) {
+                      <span class="chip-why">✓ {{ item }}</span>
+                    }
+                    @for (gap of m.miss.slice(0, 3); track gap) {
+                      <span class="chip-miss">? {{ gap }}</span>
+                    }
+                  </div>
+                </div>
+
+                <!-- Contact & Action Shortcuts -->
+                <div class="connection-actions-row">
+                  <button class="btn btn-sm btn-whatsapp" (click)="openWhatsApp(m.buyer.phone, m.buyer.name, 'Buyer')">
+                    <span>WhatsApp Buyer</span>
+                  </button>
+                  @if (realtyService.canViewOwnerContacts()) {
+                    <button class="btn btn-sm btn-whatsapp" (click)="openWhatsApp(m.property.ownerPhone, m.property.ownerName, 'Owner', m.property.title)">
+                      <span>WhatsApp Seller</span>
+                    </button>
+                  }
+                  <button class="btn btn-sm btn-secondary" (click)="copyToClipboard(m.buyer.phone, 'Buyer phone')">
+                    <span>Copy Buyer #</span>
+                  </button>
+                  <button class="btn btn-sm btn-gold" (click)="showVisitModal.set(true)">
+                    <span>Schedule Visit</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <div class="empty-state-card glass-panel" style="grid-column: 1 / -1;">
+              <h3>No Matches Found For Current Filter</h3>
+              <p>Lower the threshold or add active seller listings and buyer requirements with overlapping criteria.</p>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 5: SITE VISITS REGISTER                   -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'visits') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">OPERATIONS & FIELD AUDIT</div>
+            <h2 class="view-title">Scheduled Property Inspections</h2>
+            <p class="view-desc">Track client site visits, feedback notes, and conversion interest levels across Chennai</p>
+          </div>
+          <button class="btn btn-primary" (click)="showVisitModal.set(true)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            <span>Book Site Visit</span>
+          </button>
+        </div>
+
+        <div class="table-container glass-panel">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Property</th>
+                <th>Client / Contact</th>
+                <th>Scheduled Date & Time</th>
+                <th>Locality</th>
+                <th>Interest Level</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of realtyService.siteVisits(); track v.id) {
+                <tr class="table-row">
+                  <td><strong>{{ v.propertyTitle }}</strong></td>
+                  <td>
+                    <strong>{{ v.leadName }}</strong>
+                    <div class="row-subtext">{{ v.leadPhone }}</div>
+                  </td>
+                  <td>{{ v.scheduledTime | date:'medium' }}</td>
+                  <td>{{ v.locality }}</td>
+                  <td><span class="badge badge-interest-{{ v.interestLevel.toLowerCase() }}">{{ v.interestLevel }}</span></td>
+                  <td><span class="badge badge-status">{{ v.status }}</span></td>
+                  <td>
+                    @if (v.status === 'Scheduled') {
+                      <button class="btn btn-xs btn-primary" (click)="markVisitCompleted(v)">Mark Completed</button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 6: CHENNAI MICRO-MARKET INSIGHTS          -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'insights') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">LOCAL INTELLIGENCE</div>
+            <h2 class="view-title">Chennai Real Estate Market Trends</h2>
+            <p class="view-desc">Live micro-market pricing, rental yields, and demand drivers across Chennai</p>
+          </div>
+        </div>
+
+        <div class="table-container glass-panel">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Chennai Locality</th>
+                <th>Avg Capital Rate</th>
+                <th>Rental Yield</th>
+                <th>Quarterly Growth</th>
+                <th>Active SkyPearl Listings</th>
+                <th>Primary Demand Driver</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (m of marketInsights; track m.locality) {
+                <tr class="table-row">
+                  <td><strong>{{ m.locality }}</strong></td>
+                  <td>₹{{ formatINR(m.avgPricePerSqFtINR) }} / sq.ft</td>
+                  <td><span class="badge badge-viewer">{{ m.avgRentalYieldPercent }}%</span></td>
+                  <td><span class="badge badge-editor">+{{ m.quarterlyGrowthPercent }}%</span></td>
+                  <td>{{ m.activeListingsCount }} verified</td>
+                  <td>{{ m.highDemandSegment }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 7: TEAM ACCESS & ROLE SECURITY            -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'access') {
+        <div class="section-header-row">
+          <div>
+            <div class="eyebrow-chip">RBAC ACCESS CONTROL</div>
+            <h2 class="view-title">Employee Accounts & Permissions Matrix</h2>
+            <p class="view-desc">Role-based access control protecting raw client contacts, financial ledgers, and inventory deletions</p>
+          </div>
+        </div>
+
+        <div class="access-matrix-grid">
+          <div class="glass-panel access-card">
+            <span class="badge badge-owner">Admin (Principal Broker)</span>
+            <p class="access-card-desc">Full administrative ownership. Can view financial ledgers, raw owner telephone numbers, export records, and manage employee accounts.</p>
+            <ul class="access-bullets">
+              <li>View unmasked property owner telephone numbers</li>
+              <li>Approve deal commission payouts</li>
+              <li>Provision and revoke agent accounts</li>
+            </ul>
+          </div>
+
+          <div class="glass-panel access-card">
+            <span class="badge badge-editor">Sales Manager</span>
+            <p class="access-card-desc">Supervises lead allocation across Chennai corridors and inspects pipeline health.</p>
+            <ul class="access-bullets">
+              <li>Assign leads to field agents</li>
+              <li>Approve physical property verification status</li>
+              <li>Track agent sales quotas and follow-up metrics</li>
+            </ul>
+          </div>
+
+          <div class="glass-panel access-card">
+            <span class="badge badge-viewer">Property Agent</span>
+            <p class="access-card-desc">Manages field site visits, publishes property specifications, and records customer interaction feedback.</p>
+            <ul class="access-bullets">
+              <li>Create and update property listings</li>
+              <li>Log site visit inspection notes</li>
+              <li>Owner direct phone is masked to prevent bypass</li>
+            </ul>
+          </div>
+        </div>
+      }
+    </main>
+
+    <!-- SMART PROPERTY-BUYER MATCHING DRAWER -->
+    @if (activeMatchingLead(); as lead) {
+      <aside class="matching-drawer glass-panel">
+        <div class="drawer-header">
+          <div>
+            <h3 class="drawer-title">Inventory Matches for {{ lead.name }}</h3>
+            <p class="drawer-subtitle">
+              Budget: {{ formatLakhs(lead.budgetMinLakhs) }}–{{ formatLakhs(lead.budgetMaxLakhs) }} • Localities: {{ lead.preferredLocalities.join(', ') }}
+            </p>
+          </div>
+          <button class="btn-icon-close" (click)="closeMatchingDrawer()" title="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+
+        <div class="matched-properties-list">
+          @for (item of matchedPropertiesForActiveLead(); track item.property.id) {
+            <div class="matched-card glass-panel">
+              <div class="matched-img">
+                <img [src]="item.property.photos[0]" [alt]="item.property.title" />
+              </div>
+              <div class="matched-info">
+                <div class="drawer-match-score">{{ item.match.score }}% MATCH</div>
+                <h4 class="matched-title">{{ item.property.title }}</h4>
+                <div class="matched-price">
+                  {{ formatLakhs(item.property.priceLakhs) }} • {{ item.property.bhk }} BHK • {{ item.property.locality }}
+                </div>
+                <div class="drawer-matched-chips">
+                  @for (reason of item.match.why.slice(0, 3); track reason) {
+                    <span class="drawer-chip">✓ {{ reason }}</span>
+                  }
+                </div>
+                <div class="drawer-actions mt-2">
+                  <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')">
+                    <span>WA Client</span>
+                  </button>
+                  <button class="btn btn-xs btn-primary" (click)="showVisitModal.set(true)">
+                    <span>Book Visit</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          } @empty {
+            <div class="no-activity">
+              No current inventory directly matches this client's exact budget and locality preferences.
+            </div>
+          }
+        </div>
+      </aside>
+    }
+  </div>
+</div>
+
+<!-- Modals -->
+@if (showPropertyModal()) {
+  <app-property-modal 
+    [editingProperty]="editingProperty()" 
+    (close)="showPropertyModal.set(false); editingProperty.set(null)" />
+}
+
+@if (showLeadModal()) {
+  <app-lead-modal 
+    [editingLead]="editingLead()" 
+    (close)="showLeadModal.set(false); editingLead.set(null)" />
+}
+
+@if (showVisitModal()) {
+  <app-visit-modal (close)="showVisitModal.set(false)" />
+}
