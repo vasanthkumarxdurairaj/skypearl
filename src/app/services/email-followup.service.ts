@@ -198,6 +198,20 @@ SkyPearl Realty Advisors · Chennai`;
   }
 
   /**
+   * 1-Click Direct Google Mail (Gmail Web)
+   * Opens Gmail directly in a new browser tab with recipient, subject, and body pre-filled.
+   */
+  public openGmailWebClient(toEmail: string, subject: string, body: string): boolean {
+    const cleanEmail = toEmail ? toEmail.trim() : '';
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(cleanEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    if (typeof window !== 'undefined') {
+      window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      return true;
+    }
+    return false;
+  }
+
+  /**
    * Automated Background Email Dispatch via EmailJS REST API
    * Requires EmailJS public key, service ID, and template ID.
    */

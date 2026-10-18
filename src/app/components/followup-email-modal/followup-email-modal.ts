@@ -153,11 +153,11 @@ import { RealtyService } from '../../services/realty.service';
             @if (showSettingsPanel()) {
               <div class="settings-content glass-panel p-3 mt-2">
                 <div class="faq-callout">
-                  <strong>Do you need an API Key?</strong>
+                  <strong>Using Google Mail (Gmail) & API Keys:</strong>
                   <ul class="faq-list">
-                    <li><strong>No key needed</strong> to use <em>1-Click Native Email</em>: Clicking "Send via Default Email App" opens Gmail/Outlook with the message already written!</li>
-                    <li><strong>An API Key is needed</strong> ONLY if you want the app to send emails completely silently in the background without opening an email app.</li>
-                    <li>You can get free keys on <a href="https://www.emailjs.com" target="_blank" rel="noopener">EmailJS.com</a> (200 free automated emails/month).</li>
+                    <li><strong>Google Mail (Gmail Web) — 0 Keys Needed:</strong> Click <em>"Open in Gmail (Web)"</em> below to open your Gmail with the recipient, subject, and customized Chennai property matches already written!</li>
+                    <li><strong>Automate Gmail in Background:</strong> Create a free account on <a href="https://www.emailjs.com" target="_blank" rel="noopener">EmailJS.com</a>, click <em>Add Service</em>, choose <strong>Gmail</strong>, and connect your Google account. Paste your keys below for 100% automated background delivery!</li>
+                    <li><strong>Default Email App:</strong> Opens whichever desktop or mobile email app is installed.</li>
                   </ul>
                 </div>
 
@@ -204,14 +204,27 @@ import { RealtyService } from '../../services/realty.service';
             <span>{{ copied() ? 'Copied! ✓' : 'Copy Text' }}</span>
           </button>
 
-          <!-- OPTION A: 1-Click Native Mail Client (Zero Keys Needed) -->
+          <!-- OPTION A1: Open Directly in Google Mail (Gmail Web) -->
+          <button 
+            type="button" 
+            class="btn btn-gmail" 
+            (click)="dispatchGmailWeb()"
+            title="Opens Google Mail (Gmail) in browser with pre-filled message">
+            <svg width="15" height="15" viewBox="0 0 24 24">
+              <path fill="#EA4335" d="M12 13L2 6.5V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V6.5L12 13Z"/>
+              <path fill="#FBBC05" d="M20 4H4C2.9 4 2 4.9 2 6L12 12.5L22 6C22 4.9 21.1 4 20 4Z"/>
+            </svg>
+            <span>Open in Gmail (Web)</span>
+          </button>
+
+          <!-- OPTION A2: 1-Click Native Mail Client (Zero Keys Needed) -->
           <button 
             type="button" 
             class="btn btn-primary" 
             (click)="dispatchNativeMail()"
-            title="Opens your default email app (Gmail/Outlook/Apple Mail) with pre-filled message">
+            title="Opens your default email app (Outlook/Apple Mail) with pre-filled message">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-            <span>Send via Default Email App (1-Click)</span>
+            <span>Default Mail App</span>
           </button>
 
           <!-- OPTION B: Background EmailJS Send (If keys configured) -->
@@ -576,6 +589,18 @@ import { RealtyService } from '../../services/realty.service';
       background: rgba(255, 255, 255, 0.14);
     }
 
+    .btn-gmail {
+      background: linear-gradient(135deg, rgba(234, 67, 53, 0.16), rgba(234, 67, 53, 0.28));
+      color: #fca5a5;
+      border: 1px solid rgba(234, 67, 53, 0.45);
+    }
+
+    .btn-gmail:hover {
+      background: #ea4335;
+      color: #ffffff;
+      box-shadow: 0 0 12px rgba(234, 67, 53, 0.45);
+    }
+
     .btn-primary {
       background: #3b82f6;
       color: #ffffff;
@@ -719,6 +744,20 @@ export class FollowUpEmailModalComponent implements OnInit {
     if (ok) {
       this.commitFollowUpLog('Sent via default email client');
       this.realtyService.notify(`Opened email client for ${this.lead.name}. Follow-up scheduled!`, 'success');
+      this.closeModal();
+    }
+  }
+
+  public dispatchGmailWeb(): void {
+    if (!this.toEmail) {
+      this.realtyService.notify('Please provide a valid recipient email address.', 'error');
+      return;
+    }
+
+    const ok = this.emailService.openGmailWebClient(this.toEmail, this.subject, this.messageBody);
+    if (ok) {
+      this.commitFollowUpLog('Drafted & sent via Google Mail (Gmail Web)');
+      this.realtyService.notify(`Opened Google Mail for ${this.lead.name}. Follow-up scheduled!`, 'success');
       this.closeModal();
     }
   }
