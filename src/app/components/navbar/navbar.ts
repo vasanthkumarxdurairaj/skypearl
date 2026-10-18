@@ -1,9 +1,9 @@
 import { Component, inject, output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RealtyService, CHENNAI_TEAM_AGENTS } from '../../services/realty.service';
-import { SpaceService } from '../../services/space.service';
+import { RealtyService } from '../../services/realty.service';
+import { SpaceService, SpaceMember } from '../../services/space.service';
 import { AuthService } from '../../services/auth.service';
-import { AgentProfile } from '../../models/realty.model';
+import { AgentProfile, UserRole } from '../../models/realty.model';
 
 @Component({
   selector: 'app-navbar',
@@ -136,16 +136,28 @@ import { AgentProfile } from '../../models/realty.model';
           <span>Add Property</span>
         </button>
 
-        <!-- Agent Role Persona Switcher -->
+        <!-- Real Logged In User / Session Persona & Accessed Space Members -->
         <div class="agent-menu-container">
           <button class="agent-pill" (click)="toggleAgentMenu()">
-            <div class="avatar" [style.background]="realtyService.activeAgent().avatarColor">
-              {{ realtyService.activeAgent().name.charAt(0) }}
-            </div>
+            @if (realtyService.activeAgent().photoURL) {
+              <img [src]="realtyService.activeAgent().photoURL" [alt]="realtyService.activeAgent().name" class="avatar-img" />
+            } @else {
+              <div class="avatar" [style.background]="realtyService.activeAgent().avatarColor">
+                {{ realtyService.activeAgent().name.charAt(0) }}
+              </div>
+            }
             <div class="agent-details">
               <span class="agent-name">{{ realtyService.activeAgent().name }}</span>
               <span class="agent-role-tag" [ngClass]="'role-' + realtyService.activeAgent().role">
-                {{ realtyService.activeAgent().role | uppercase }}
+                @if (realtyService.activeAgent().joinedVia === 'google') {
+                  GOOGLE AUTH
+                } @else if (realtyService.activeAgent().joinedVia === 'passcode') {
+                  PASSCODE VERIFIED
+                } @else if (realtyService.activeAgent().joinedVia === 'invite') {
+                  INVITED MEMBER
+                } @else {
+                  GUEST USER
+                }
               </span>
             </div>
             <svg class="chevron" [class.open]="showAgentMenu()" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -156,35 +168,97 @@ import { AgentProfile } from '../../models/realty.model';
           @if (showAgentMenu()) {
             <div class="agent-dropdown glass-panel">
               <div class="dropdown-header">
-                <span class="dropdown-title">Switch Employee Account</span>
-                <span class="dropdown-desc">Simulate permissions for Principal Admin, Sales Manager & Agent</span>
+                <span class="dropdown-title">Active Account & Space Access</span>
+                <span class="dropdown-desc">Live authenticated profile & team access directory</span>
+              </div>
+
+              <!-- Current User Profile Card -->
+              <div class="current-user-card">
+                <div class="current-user-main">
+                  @if (realtyService.activeAgent().photoURL) {
+                    <img [src]="realtyService.activeAgent().photoURL" [alt]="realtyService.activeAgent().name" class="avatar-card-img" />
+                  } @else {
+                    <div class="avatar-card" [style.background]="realtyService.activeAgent().avatarColor">
+                      {{ realtyService.activeAgent().name.charAt(0) }}
+                    </div>
+                  }
+                  <div class="current-user-meta">
+                    <div class="current-name">{{ realtyService.activeAgent().name }}</div>
+                    <div class="current-email">{{ realtyService.activeAgent().email }}</div>
+                    <div class="current-tag-row">
+                      <span class="badge" [ngClass]="'badge-' + realtyService.activeAgent().role">{{ realtyService.activeAgent().role | uppercase }}</span>
+                      <span class="access-method-chip">Via {{ (realtyService.activeAgent().joinedVia || 'session') | uppercase }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Account Actions -->
+                <div class="user-action-buttons">
+                  @if (!authService.currentUser()) {
+                    <button class="btn btn-xs btn-google-action" (click)="signInWithGoogle()">
+                      <svg width="12" height="12" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+                      </svg>
+                      <span>Sign in with Google</span>
+                    </button>
+                  } @else {
+                    <button class="btn btn-xs btn-outline" (click)="signOutGoogle()">
+                      <span>Sign out of Google</span>
+                    </button>
+                  }
+                  <button class="btn btn-xs btn-outline" (click)="lockAndSwitch()">
+                    <span>Lock / Switch Access</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- People Who Accessed This Space Section -->
+              <div class="accessed-header">
+                <span class="accessed-title">PEOPLE WHO ACCESSED ({{ spaceService.space().members.length }})</span>
+                <span class="accessed-subtitle">Real authenticated accounts and sessions</span>
               </div>
 
               <div class="agent-list">
-                @for (agent of teamAgents; track agent.uid) {
+                @for (member of spaceService.space().members; track member.id) {
                   <button 
                     class="agent-item" 
-                    [class.active]="realtyService.activeAgent().uid === agent.uid"
-                    (click)="selectAgent(agent)">
-                    <div class="avatar-sm" [style.background]="agent.avatarColor">
-                      {{ agent.name.charAt(0) }}
-                    </div>
+                    [class.active]="realtyService.activeAgent().uid === member.id || realtyService.activeAgent().email === member.email"
+                    (click)="selectMemberPersona(member)">
+                    @if (member.photoURL) {
+                      <img [src]="member.photoURL" [alt]="member.name" class="avatar-sm-img" />
+                    } @else {
+                      <div class="avatar-sm" [style.background]="member.role === 'owner' ? 'linear-gradient(135deg, #4285F4, #34A853)' : (member.role === 'guest' ? 'linear-gradient(135deg, #64748b, #94a3b8)' : 'linear-gradient(135deg, #10b981, #14b8a6)')">
+                        {{ member.name.charAt(0) }}
+                      </div>
+                    }
                     <div class="agent-info">
                       <div class="agent-title-row">
-                        <span class="agent-name-text">{{ agent.name }}</span>
-                        <span class="badge" [ngClass]="'badge-' + agent.role">{{ agent.role | uppercase }}</span>
+                        <span class="agent-name-text">{{ member.name }}</span>
+                        <span class="badge" [ngClass]="'badge-' + member.joinedVia">{{ member.joinedVia | uppercase }}</span>
                       </div>
-                      <div class="agent-meta-text">{{ agent.phone }} • {{ agent.activeListingsCount }} listings</div>
+                      <div class="agent-meta-text">
+                        {{ member.email }} • Accessed {{ formatAccessTime(member.lastActiveAt || member.joinedAt) }}
+                      </div>
                     </div>
+                    @if (realtyService.activeAgent().uid === member.id || realtyService.activeAgent().email === member.email) {
+                      <span class="active-dot" title="Active on this device">●</span>
+                    }
                   </button>
+                } @empty {
+                  <div class="empty-accessed-note">
+                    <span>Only your current session has accessed this space so far. Share invite code to collaborate with your team.</span>
+                  </div>
                 }
               </div>
 
               <div class="dropdown-footer">
-                <div class="role-hint-box">
-                  <strong>Admin:</strong> Full unmasked owner phone numbers & financials.<br>
-                  <strong>Agent:</strong> Masked contacts to prevent unauthorized leakage.
-                </div>
+                <button class="btn btn-xs btn-secondary w-full" (click)="copyInviteLink()">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                  <span>Share Space Invite Link</span>
+                </button>
               </div>
             </div>
           }
@@ -538,7 +612,8 @@ import { AgentProfile } from '../../models/realty.model';
       position: absolute;
       top: calc(100% + 8px);
       right: 0;
-      width: 310px;
+      width: 320px;
+      max-width: 90vw;
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
@@ -556,11 +631,11 @@ import { AgentProfile } from '../../models/realty.model';
     .dropdown-header {
       padding-bottom: 8px;
       border-bottom: 1px solid var(--border-subtle);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .dropdown-title {
-      font-size: 0.78rem;
+      font-size: 0.8rem;
       font-weight: 700;
       color: var(--text-main);
       display: block;
@@ -571,10 +646,144 @@ import { AgentProfile } from '../../models/realty.model';
       color: var(--text-dim);
     }
 
+    .avatar-img {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    /* Current User Card */
+    .current-user-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .current-user-main {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .avatar-card-img {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 2px solid var(--gold-accent);
+    }
+
+    .avatar-card {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+    }
+
+    .current-user-meta {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .current-name {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .current-email {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .current-tag-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .access-method-chip {
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(203, 168, 107, 0.15);
+      color: var(--gold-accent);
+      letter-spacing: 0.4px;
+    }
+
+    .user-action-buttons {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .btn-google-action {
+      background: #ffffff;
+      color: #1f2937;
+      border: 1px solid #d1d5db;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-google-action:hover {
+      background: #f9fafb;
+      border-color: #9ca3af;
+    }
+
+    /* Accessed Members Section */
+    .accessed-header {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 6px;
+      padding-top: 4px;
+    }
+
+    .accessed-title {
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--text-main);
+    }
+
+    .accessed-subtitle {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+    }
+
     .agent-list {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      max-height: 220px;
+      overflow-y: auto;
     }
 
     .agent-item {
@@ -613,6 +822,28 @@ import { AgentProfile } from '../../models/realty.model';
       flex-shrink: 0;
     }
 
+    .avatar-sm-img {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .active-dot {
+      color: #10b981;
+      font-size: 0.75rem;
+      margin-left: auto;
+    }
+
+    .empty-accessed-note {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      padding: 8px 4px;
+      text-align: center;
+      line-height: 1.4;
+    }
+
     .agent-info {
       flex: 1;
       overflow: hidden;
@@ -635,24 +866,38 @@ import { AgentProfile } from '../../models/realty.model';
     }
 
     .agent-meta-text {
-      font-size: 0.68rem;
+      font-size: 0.67rem;
       color: var(--text-dim);
       margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badge-google {
+      background: rgba(66, 133, 244, 0.15);
+      color: #3b82f6;
+    }
+
+    .badge-passcode {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+    }
+
+    .badge-invite {
+      background: rgba(99, 102, 241, 0.15);
+      color: #6366f1;
+    }
+
+    .badge-guest {
+      background: rgba(100, 116, 139, 0.15);
+      color: #64748b;
     }
 
     .dropdown-footer {
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px solid var(--border-subtle);
-    }
-
-    .role-hint-box {
-      font-size: 0.66rem;
-      color: var(--text-dim);
-      background: var(--bg-surface);
-      padding: 6px 8px;
-      border-radius: var(--radius-sm);
-      line-height: 1.4;
     }
   `]
 })
@@ -667,14 +912,70 @@ export class NavbarComponent {
   public openClassifiedScanner = output<void>();
 
   public showAgentMenu = signal<boolean>(false);
-  public teamAgents = CHENNAI_TEAM_AGENTS;
 
   public toggleAgentMenu(): void {
     this.showAgentMenu.update(v => !v);
   }
 
-  public selectAgent(agent: AgentProfile): void {
-    this.realtyService.switchAgent(agent);
+  public async signInWithGoogle(): Promise<void> {
+    const ok = await this.spaceService.loginAndUnlockWithGoogle();
+    if (ok) {
+      this.realtyService.notify('Signed in with Google successfully!', 'success');
+      this.showAgentMenu.set(false);
+    }
+  }
+
+  public async signOutGoogle(): Promise<void> {
+    await this.authService.logout();
+    this.realtyService.notify('Signed out of Google account.', 'info');
     this.showAgentMenu.set(false);
+  }
+
+  public lockAndSwitch(): void {
+    this.spaceService.lockSpace();
+    this.showAgentMenu.set(false);
+  }
+
+  public selectMemberPersona(member: SpaceMember): void {
+    const role: UserRole = member.role === 'owner' ? 'admin' : (member.role === 'guest' ? 'guest' : 'agent');
+    const agentProfile: AgentProfile = {
+      uid: member.id,
+      name: member.name,
+      email: member.email,
+      phone: '',
+      role: role,
+      avatarColor: member.role === 'owner' ? 'linear-gradient(135deg, #4285F4, #34A853)' : (member.role === 'guest' ? 'linear-gradient(135deg, #64748b, #94a3b8)' : 'linear-gradient(135deg, #10b981, #14b8a6)'),
+      photoURL: member.photoURL,
+      joinedVia: member.joinedVia,
+      accessedAt: member.lastActiveAt || member.joinedAt,
+      activeListingsCount: this.realtyService.properties().filter(p => p.addedBy === member.name).length,
+      activeLeadsCount: this.realtyService.leads().filter(l => l.addedBy === member.name).length,
+      closedSalesVolumeLakhs: 0,
+      commissionEarnedLakhs: 0
+    };
+    this.realtyService.switchAgent(agentProfile);
+    this.showAgentMenu.set(false);
+  }
+
+  public copyInviteLink(): void {
+    const link = this.spaceService.getInviteLink();
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(link).then(() => {
+        this.realtyService.notify('Space invite link copied to clipboard!', 'success');
+      }).catch(() => {
+        this.realtyService.notify(`Invite link: ${link}`, 'info');
+      });
+    } else {
+      this.realtyService.notify(`Invite link: ${link}`, 'info');
+    }
+  }
+
+  public formatAccessTime(timestamp?: number): string {
+    if (!timestamp) return 'Recently';
+    const diff = Math.floor((Date.now() - timestamp) / 1000);
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
   }
 }

@@ -503,6 +503,18 @@
                       }
                     </div>
                   </div>
+
+                  <!-- Little Text Audit Stamp -->
+                  <div class="audit-info-row">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    <span>
+                      @if (p.updatedBy && p.updatedAt && p.updatedAt !== p.createdAt) {
+                        Updated by <strong>{{ p.updatedBy }}</strong> • {{ getTimeAgo(p.updatedAt) }}
+                      } @else {
+                        Added by <strong>{{ p.addedBy || p.assignedAgentName || 'Agent' }}</strong> • {{ getTimeAgo(p.addedAt || p.createdAt) }}
+                      }
+                    </span>
+                  </div>
                 </div>
               </div>
             } @empty {
@@ -543,7 +555,10 @@
                   <tr class="table-row">
                     <td>
                       <strong>{{ p.title }}</strong>
-                      <div class="row-subtext">{{ p.ownerName }} • {{ realtyService.canViewOwnerContacts() ? p.ownerPhone : '[Protected]' }}</div>
+                      <div class="row-subtext">
+                        {{ p.ownerName }} • {{ realtyService.canViewOwnerContacts() ? p.ownerPhone : '[Protected]' }}
+                        <span class="table-audit-subtext">• {{ (p.updatedBy && p.updatedAt && p.updatedAt !== p.createdAt) ? ('Updated by ' + p.updatedBy + ' • ' + getTimeAgo(p.updatedAt)) : ('Added by ' + (p.addedBy || p.assignedAgentName || 'Agent') + ' • ' + getTimeAgo(p.addedAt || p.createdAt)) }}</span>
+                      </div>
                     </td>
                     <td>{{ p.propertyType }}</td>
                     <td>{{ p.locality }}</td>
@@ -668,6 +683,18 @@
                         }
                       </div>
 
+                      <!-- Little Text Audit Stamp -->
+                      <div class="audit-info-row">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        <span>
+                          @if (lead.updatedBy && lead.updatedAt && lead.updatedAt !== lead.createdAt) {
+                            Updated by <strong>{{ lead.updatedBy }}</strong> • {{ getTimeAgo(lead.updatedAt) }}
+                          } @else {
+                            Added by <strong>{{ lead.addedBy || lead.assignedAgentName || 'Agent' }}</strong> • {{ getTimeAgo(lead.addedAt || lead.createdAt) }}
+                          }
+                        </span>
+                      </div>
+
                       <!-- Direct Actions -->
                       <div class="lead-card-actions" (click)="$event.stopPropagation()">
                         <button class="btn btn-xs btn-whatsapp" (click)="openWhatsApp(lead.phone, lead.name, 'Buyer')" title="WhatsApp Client">
@@ -710,7 +737,10 @@
                   <tr class="table-row">
                     <td>
                       <strong>{{ lead.name }}</strong>
-                      <div class="row-subtext">{{ lead.phone }} • {{ lead.email }}</div>
+                      <div class="row-subtext">
+                        {{ lead.phone }} • {{ lead.email }}
+                        <span class="table-audit-subtext">• {{ (lead.updatedBy && lead.updatedAt && lead.updatedAt !== lead.createdAt) ? ('Updated by ' + lead.updatedBy + ' • ' + getTimeAgo(lead.updatedAt)) : ('Added by ' + (lead.addedBy || lead.assignedAgentName || 'Agent') + ' • ' + getTimeAgo(lead.addedAt || lead.createdAt)) }}</span>
+                      </div>
                     </td>
                     <td>
                       <span class="badge" [ngClass]="getStageBadgeClass(lead.stage)">{{ lead.stage }}</span>

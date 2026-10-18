@@ -1,6 +1,8 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
+import { AuthService } from './auth.service';
+import { SpaceService } from './space.service';
 import {
   PropertyListing,
   LeadCRM,
@@ -21,44 +23,23 @@ const STORAGE_KEY_LEADS = 'skypearl_realty_leads_v2';
 const STORAGE_KEY_VISITS = 'skypearl_realty_visits_v2';
 const STORAGE_KEY_ACTIVE_AGENT = 'skypearl_active_agent';
 
-export const CHENNAI_TEAM_AGENTS: AgentProfile[] = [
-  {
-    uid: 'agent-rajesh-admin-01',
-    name: 'Rajesh Kumar',
-    email: 'rajesh.kumar@skypearl.in',
-    phone: '+91 98401 22334',
-    role: 'admin',
-    avatarColor: 'linear-gradient(135deg, #f59e0b, #ec4899)',
-    activeListingsCount: 14,
-    activeLeadsCount: 28,
-    closedSalesVolumeLakhs: 850,
-    commissionEarnedLakhs: 17.0
-  },
-  {
-    uid: 'agent-priya-mgr-02',
-    name: 'Priya Sundaram',
-    email: 'priya.s@skypearl.in',
-    phone: '+91 98410 44556',
-    role: 'manager',
-    avatarColor: 'linear-gradient(135deg, #06b6d4, #3b82f6)',
-    activeListingsCount: 11,
-    activeLeadsCount: 22,
-    closedSalesVolumeLakhs: 620,
-    commissionEarnedLakhs: 12.4
-  },
-  {
-    uid: 'agent-karthik-03',
-    name: 'Karthik Raman',
-    email: 'karthik.r@skypearl.in',
-    phone: '+91 98840 88990',
-    role: 'agent',
-    avatarColor: 'linear-gradient(135deg, #10b981, #14b8a6)',
-    activeListingsCount: 9,
-    activeLeadsCount: 18,
-    closedSalesVolumeLakhs: 380,
-    commissionEarnedLakhs: 7.6
-  }
-];
+export const DEFAULT_GUEST_PROFILE: AgentProfile = {
+  uid: 'guest-persona',
+  name: 'Guest User',
+  email: 'guest@skypearl.space',
+  phone: '',
+  role: 'guest',
+  avatarColor: 'linear-gradient(135deg, #64748b, #94a3b8)',
+  joinedVia: 'guest',
+  accessedAt: Date.now(),
+  activeListingsCount: 0,
+  activeLeadsCount: 0,
+  closedSalesVolumeLakhs: 0,
+  commissionEarnedLakhs: 0
+};
+
+// Deprecated mock team reference - kept empty so real access history drives the UI
+export const CHENNAI_TEAM_AGENTS: AgentProfile[] = [];
 
 export const CHENNAI_MARKET_INSIGHTS: LocalityMarketData[] = [
   { locality: 'OMR', avgPricePerSqFtINR: 6450, avgRentalYieldPercent: 4.8, quarterlyGrowthPercent: 3.2, activeListingsCount: 42, highDemandSegment: '2 & 3 BHK Tech Apartments' },
@@ -76,11 +57,13 @@ export const CHENNAI_MARKET_INSIGHTS: LocalityMarketData[] = [
 })
 export class RealtyService {
   public firebaseService = inject(FirebaseService);
+  public authService = inject(AuthService);
+  public spaceService = inject(SpaceService);
 
   public readonly properties = signal<PropertyListing[]>([]);
   public readonly leads = signal<LeadCRM[]>([]);
   public readonly siteVisits = signal<SiteVisit[]>([]);
-  public readonly activeAgent = signal<AgentProfile>(CHENNAI_TEAM_AGENTS[0]);
+  public readonly activeAgent = signal<AgentProfile>(DEFAULT_GUEST_PROFILE);
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Active view section in CRM
@@ -142,6 +125,57 @@ export class RealtyService {
   constructor() {
     this.initData();
     this.setupFirestoreSync();
+
+    // Dynamically react to Google login or Space unlock changes
+    effect(() => {
+      const googleUser = this.authService.currentUser();
+      const isUnlocked = this.spaceService.isUnlocked();
+
+      if (googleUser) {
+        // Authenticated Google User
+        const googleAgent: AgentProfile = {
+          uid: googleUser.uid,
+          name: googleUser.displayName || googleUser.email?.split('@')[0] || 'Google User',
+          email: googleUser.email || 'user@skypearl.in',
+          phone: '',
+          role: 'admin',
+          avatarColor: 'linear-gradient(135deg, #4285F4, #34A853)',
+          photoURL: googleUser.photoURL,
+          joinedVia: 'google',
+          accessedAt: Date.now(),
+          activeListingsCount: this.properties().filter(p => p.addedBy === (googleUser.displayName || googleUser.email)).length,
+          activeLeadsCount: this.leads().filter(l => l.addedBy === (googleUser.displayName || googleUser.email)).length,
+          closedSalesVolumeLakhs: 0,
+          commissionEarnedLakhs: 0
+        };
+        this.activeAgent.set(googleAgent);
+        localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(googleAgent));
+      } else if (isUnlocked) {
+        // Space Unlocked via Passcode or Invite or Guest
+        const current = this.activeAgent();
+        if (current.role === 'guest' || !current.uid || current.uid === 'guest-persona' || current.name.includes('Rajesh') || current.name.includes('Priya') || current.name.includes('Karthik')) {
+          const passcodeAgent: AgentProfile = {
+            uid: 'access-passcode',
+            name: 'Agency Member (Passcode)',
+            email: 'chennai-agent@skypearl.space',
+            phone: '+91 98401 22334',
+            role: 'agent',
+            avatarColor: 'linear-gradient(135deg, #10b981, #14b8a6)',
+            joinedVia: 'passcode',
+            accessedAt: Date.now(),
+            activeListingsCount: this.properties().length,
+            activeLeadsCount: this.leads().length,
+            closedSalesVolumeLakhs: 0,
+            commissionEarnedLakhs: 0
+          };
+          this.activeAgent.set(passcodeAgent);
+          localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(passcodeAgent));
+        }
+      } else {
+        // Guest mode
+        this.activeAgent.set(DEFAULT_GUEST_PROFILE);
+      }
+    }, { allowSignalWrites: true });
   }
 
   private initData(): void {
@@ -203,7 +237,13 @@ export class RealtyService {
 
     if (savedAgent) {
       try {
-        this.activeAgent.set(JSON.parse(savedAgent));
+        const parsed = JSON.parse(savedAgent);
+        // Discard any dummy employee accounts
+        if (parsed.name && !parsed.name.includes('Rajesh') && !parsed.name.includes('Priya') && !parsed.name.includes('Karthik') && parsed.uid !== 'agent-rajesh-admin-01') {
+          this.activeAgent.set(parsed);
+        } else {
+          localStorage.removeItem(STORAGE_KEY_ACTIVE_AGENT);
+        }
       } catch {}
     }
 
@@ -389,10 +429,19 @@ export class RealtyService {
   // Save / Update Property Listing (Seller data)
   public saveProperty(propertyData: Partial<PropertyListing>): boolean {
     const existingId = propertyData.id;
+    const actorName = this.activeAgent().name || 'Agent';
+    const actorEmail = this.activeAgent().email || '';
+    const now = Date.now();
 
     if (existingId) {
       this.properties.update(list => 
-        list.map(p => p.id === existingId ? { ...p, ...propertyData, updatedAt: Date.now() } as PropertyListing : p)
+        list.map(p => p.id === existingId ? {
+          ...p,
+          ...propertyData,
+          updatedBy: actorName,
+          updatedByEmail: actorEmail,
+          updatedAt: now
+        } as PropertyListing : p)
       );
       this.saveData();
       const updated = this.properties().find(p => p.id === existingId);
@@ -411,7 +460,7 @@ export class RealtyService {
     );
 
     const newProp: PropertyListing = {
-      id: 'prop-' + Date.now().toString(36),
+      id: 'prop-' + now.toString(36),
       title: propertyData.title || `${propertyData.bhk || 2} BHK ${propertyData.propertyType || 'Apartment'} in ${propertyData.locality || 'Chennai'}`,
       propertyType: propertyData.propertyType || 'Apartment',
       transactionType: propertyData.transactionType || 'Sale',
@@ -470,9 +519,14 @@ export class RealtyService {
       ownerEmail: propertyData.ownerEmail,
       photos: propertyData.photos && propertyData.photos.length > 0 ? propertyData.photos : [],
       assignedAgentId: this.activeAgent().uid,
-      assignedAgentName: this.activeAgent().name,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      assignedAgentName: actorName,
+      addedBy: actorName,
+      addedByEmail: actorEmail,
+      addedAt: now,
+      updatedBy: actorName,
+      updatedByEmail: actorEmail,
+      createdAt: now,
+      updatedAt: now,
       isDuplicate: dupCheck.isDuplicate,
       duplicateOfId: dupCheck.matchedProperty?.id,
       viewCount: 1
@@ -511,10 +565,19 @@ export class RealtyService {
   // Save / Update Lead (Buyer / Client requirement)
   public saveLead(leadData: Partial<LeadCRM>): boolean {
     const existingId = leadData.id;
+    const actorName = this.activeAgent().name || 'Agent';
+    const actorEmail = this.activeAgent().email || '';
+    const now = Date.now();
 
     if (existingId) {
       this.leads.update(list =>
-        list.map(l => l.id === existingId ? { ...l, ...leadData } as LeadCRM : l)
+        list.map(l => l.id === existingId ? {
+          ...l,
+          ...leadData,
+          updatedBy: actorName,
+          updatedByEmail: actorEmail,
+          updatedAt: now
+        } as LeadCRM : l)
       );
       this.saveData();
       const updated = this.leads().find(l => l.id === existingId);
@@ -533,7 +596,7 @@ export class RealtyService {
       : Math.round(dealVal * 100000 * 0.02);
 
     const newLead: LeadCRM = {
-      id: 'lead-' + Date.now().toString(36),
+      id: 'lead-' + now.toString(36),
       name: leadData.name || 'Prospective Client',
       phone: leadData.phone || '+91 98400 11111',
       altPhone: leadData.altPhone,
@@ -543,7 +606,14 @@ export class RealtyService {
       priority: leadData.priority || 'Medium',
       source: leadData.source || 'Website Form',
       assignedAgentId: this.activeAgent().uid,
-      assignedAgentName: this.activeAgent().name,
+      assignedAgentName: actorName,
+      addedBy: actorName,
+      addedByEmail: actorEmail,
+      addedAt: now,
+      updatedBy: actorName,
+      updatedByEmail: actorEmail,
+      createdAt: now,
+      updatedAt: now,
       preferredLocalities: leadData.preferredLocalities && leadData.preferredLocalities.length > 0 ? leadData.preferredLocalities : ['OMR'],
       preferredPropertyType: leadData.preferredPropertyType || 'Apartment',
       preferredBhk: leadData.preferredBhk || 2,
@@ -576,8 +646,8 @@ export class RealtyService {
       fundingReadiness: leadData.fundingReadiness || 'Funds ready',
       decisionMakerConfirmed: leadData.decisionMakerConfirmed || 'Yes',
       notes: leadData.notes || '',
-      lastContactDate: Date.now(),
-      nextFollowUpDate: leadData.nextFollowUpDate || (Date.now() + 86400000 * 2),
+      lastContactDate: now,
+      nextFollowUpDate: leadData.nextFollowUpDate || (now + 86400000 * 2),
       matchedPropertyIds: [],
       dealValueLakhs: dealVal,
       expectedCommissionINR: commissionINR

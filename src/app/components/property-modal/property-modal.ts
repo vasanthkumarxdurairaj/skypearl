@@ -25,6 +25,14 @@ import {
             <div class="eyebrow-chip">SELLER INTAKE & INVENTORY</div>
             <h2 class="modal-title">{{ editingProperty() ? 'Edit Property Listing' : 'New Seller Listing (Inventory)' }}</h2>
             <p class="modal-subtitle">Comprehensive property specifications, Chennai infrastructure, UDS, and legal clearances</p>
+            @if (editingProperty(); as p) {
+              <div class="modal-audit-chip">
+                <span>Added by <strong>{{ p.addedBy || p.assignedAgentName || 'Agent' }}</strong></span>
+                @if (p.updatedBy && p.updatedBy !== p.addedBy) {
+                  <span> • Last updated by <strong>{{ p.updatedBy }}</strong></span>
+                }
+              </div>
+            }
           </div>
           <button class="btn-icon-close" (click)="close.emit()" title="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">

@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject } from '@angular/core';
+import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { AuthService } from './auth.service';
 import { FirebaseService } from './firebase.service';
 import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -10,6 +10,7 @@ export interface SpaceMember {
   photoURL?: string;
   role: 'owner' | 'agent' | 'guest';
   joinedAt: number;
+  lastActiveAt?: number;
   joinedVia: 'passcode' | 'invite' | 'google' | 'guest';
 }
 
@@ -42,16 +43,7 @@ export class SpaceService {
     name: 'SkyPearl Realty Space (Chennai Central)',
     passcode: DEFAULT_PASSCODE,
     inviteCodes: [...DEFAULT_INVITES],
-    members: [
-      {
-        id: 'member-01',
-        name: 'Rajesh Kumar (Admin)',
-        email: 'rajesh.kumar@skypearl.in',
-        role: 'owner',
-        joinedAt: Date.now() - 86400000 * 30,
-        joinedVia: 'passcode'
-      }
-    ]
+    members: []
   });
 
   public readonly verifiedMember = computed<SpaceMember | null>(() => {
@@ -59,11 +51,12 @@ export class SpaceService {
     if (user) {
       return {
         id: user.uid,
-        name: user.displayName,
-        email: user.email,
+        name: user.displayName || 'Google User',
+        email: user.email || 'user@skypearl.in',
         photoURL: user.photoURL,
-        role: 'agent',
+        role: 'owner',
         joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
         joinedVia: 'google'
       };
     }
@@ -72,14 +65,39 @@ export class SpaceService {
 
   constructor() {
     this.initSpace();
+
+    // Auto-sync real Google sign-ins to space members
+    effect(() => {
+      const user = this.authService.currentUser();
+      if (user) {
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'Google User',
+          email: user.email || 'user@skypearl.in',
+          photoURL: user.photoURL,
+          role: 'owner',
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+          joinedVia: 'google'
+        });
+      }
+    });
   }
 
   private initSpace(): void {
-    // 1. Load saved space settings
+    // 1. Load saved space settings & purge any legacy dummy accounts
     try {
       const savedSettings = localStorage.getItem(STORAGE_KEY_SPACE_SETTINGS);
       if (savedSettings) {
-        this.space.set(JSON.parse(savedSettings));
+        const parsed = JSON.parse(savedSettings);
+        if (parsed.members && Array.isArray(parsed.members)) {
+          parsed.members = parsed.members.filter((m: any) =>
+            m.id !== 'member-01' &&
+            m.email !== 'rajesh.kumar@skypearl.in' &&
+            m.name !== 'Rajesh Kumar (Admin)'
+          );
+        }
+        this.space.set(parsed);
       }
     } catch {}
 
@@ -164,29 +182,66 @@ export class SpaceService {
     this.grantAccess('guest');
   }
 
+  public registerOrUpdateMember(member: SpaceMember): void {
+    this.space.update(s => {
+      const existing = s.members.find(m => m.id === member.id || m.email === member.email);
+      const updatedList = [
+        {
+          ...member,
+          lastActiveAt: Date.now(),
+          joinedAt: existing ? existing.joinedAt : member.joinedAt
+        },
+        ...s.members.filter(m => m.id !== member.id && m.email !== member.email)
+      ];
+      return { ...s, members: updatedList };
+    });
+    this.saveSpace();
+  }
+
+  public removeMember(memberId: string): void {
+    this.space.update(s => ({
+      ...s,
+      members: s.members.filter(m => m.id !== memberId)
+    }));
+    this.saveSpace();
+  }
+
   private grantAccess(via: 'passcode' | 'invite' | 'google' | 'guest'): void {
     this.isUnlocked.set(true);
     this.showAccessModal.set(false);
     localStorage.setItem(STORAGE_KEY_UNLOCKED, 'true');
 
-    // Add member if logged in
     const user = this.authService.currentUser();
-    const newMember: SpaceMember = {
-      id: user ? user.uid : 'guest-' + Date.now().toString(36),
-      name: user ? user.displayName : (via === 'guest' ? 'Guest Agent' : 'Verified Agent'),
-      email: user ? user.email : 'agent@skypearl.in',
+    let name = 'Guest Visitor';
+    let email = 'guest@skypearl.space';
+    let role: 'owner' | 'agent' | 'guest' = 'guest';
+
+    if (user && via === 'google') {
+      name = user.displayName || user.email?.split('@')[0] || 'Google User';
+      email = user.email || 'user@skypearl.in';
+      role = 'owner';
+    } else if (via === 'passcode') {
+      name = 'Agency Member (Passcode)';
+      email = 'chennai-agent@skypearl.space';
+      role = 'agent';
+    } else if (via === 'invite') {
+      name = 'Invited Agent';
+      email = 'invited.agent@skypearl.space';
+      role = 'agent';
+    }
+
+    const member: SpaceMember = {
+      id: user ? user.uid : `access-${via}-${Date.now().toString(36)}`,
+      name,
+      email,
       photoURL: user?.photoURL,
-      role: 'agent',
+      role,
       joinedAt: Date.now(),
+      lastActiveAt: Date.now(),
       joinedVia: via
     };
 
-    this.space.update(s => ({
-      ...s,
-      members: [newMember, ...s.members.filter(m => m.email !== newMember.email)]
-    }));
-
-    this.saveSpace();
+    this.registerOrUpdateMember(member);
   }
 
   public lockSpace(): void {

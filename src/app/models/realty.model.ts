@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'manager' | 'agent';
+export type UserRole = 'admin' | 'manager' | 'agent' | 'guest';
 
 export interface AgentProfile {
   uid: string;
@@ -7,6 +7,9 @@ export interface AgentProfile {
   phone: string;
   role: UserRole;
   avatarColor: string;
+  photoURL?: string;
+  joinedVia?: 'google' | 'passcode' | 'invite' | 'guest';
+  accessedAt?: number;
   activeListingsCount: number;
   activeLeadsCount: number;
   closedSalesVolumeLakhs: number;
@@ -179,6 +182,11 @@ export interface PropertyListing {
   photos: string[];
   assignedAgentId: string;
   assignedAgentName: string;
+  addedBy?: string;
+  addedByEmail?: string;
+  addedAt?: number;
+  updatedBy?: string;
+  updatedByEmail?: string;
   createdAt: number;
   updatedAt: number;
   isDuplicate?: boolean;
@@ -246,6 +254,13 @@ export interface LeadCRM {
   dealValueLakhs?: number;
   expectedCommissionINR?: number;
   collectedCommissionINR?: number;
+  addedBy?: string;
+  addedByEmail?: string;
+  addedAt?: number;
+  updatedBy?: string;
+  updatedByEmail?: string;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 export interface CompatibilityMatch {

@@ -27,6 +27,14 @@ import {
             <div class="eyebrow-chip">BUYER & CLIENT INTAKE</div>
             <h2 class="modal-title">{{ editingLead() ? 'Edit Customer Requirement' : 'New Buyer / Client Requirement' }}</h2>
             <p class="modal-subtitle">Capture exact Chennai buyer preferences, budget brackets, UDS needs, and funding readiness</p>
+            @if (editingLead(); as l) {
+              <div class="modal-audit-chip">
+                <span>Added by <strong>{{ l.addedBy || l.assignedAgentName || 'Agent' }}</strong></span>
+                @if (l.updatedBy && l.updatedBy !== l.addedBy) {
+                  <span> • Last updated by <strong>{{ l.updatedBy }}</strong></span>
+                }
+              </div>
+            }
           </div>
           <button class="btn-icon-close" (click)="close.emit()" title="Close">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
