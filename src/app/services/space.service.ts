@@ -1,31 +1,43 @@
 import { Injectable, signal, computed, inject, effect } from '@angular/core';
 import { AuthService } from './auth.service';
 import { FirebaseService } from './firebase.service';
-import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export interface SpaceMember {
-  id: string;
+  id: string; // Google UID
+  name: string; // Google displayName
+  email: string; // Google email
+  photoURL?: string;
+  role: 'owner' | 'admin' | 'agent';
+  status: 'active' | 'pending';
+  joinedAt: number;
+  lastActiveAt?: number;
+  joinedVia: 'creator' | 'email_invite' | 'invite_code' | 'approved_request';
+  invitedBy?: string;
+}
+
+export interface AccessRequest {
+  uid: string;
   name: string;
   email: string;
   photoURL?: string;
-  role: 'owner' | 'agent' | 'guest';
-  joinedAt: number;
-  lastActiveAt?: number;
-  joinedVia: 'passcode' | 'invite' | 'google' | 'guest';
+  requestedAt: number;
 }
 
 export interface AgencySpace {
   id: string;
   name: string;
-  passcode: string;
+  ownerUid?: string;
+  ownerEmail?: string;
+  ownerName?: string;
+  allowedEmails: string[];
   inviteCodes: string[];
   members: SpaceMember[];
+  pendingRequests: AccessRequest[];
 }
 
-const STORAGE_KEY_UNLOCKED = 'skypearl_space_unlocked';
-const STORAGE_KEY_SPACE_SETTINGS = 'skypearl_space_settings';
-const DEFAULT_PASSCODE = '2025';
-const DEFAULT_INVITES = ['SKYPEARL-CHENNAI', 'AGENT-VIP-2025', 'CHENNAI-HQ'];
+const STORAGE_KEY_SPACE_SETTINGS = 'skypearl_space_settings_v2';
+const DEFAULT_INVITES = ['SKYPEARL-CHENNAI', 'AGENT-VIP-2025'];
 
 @Injectable({
   providedIn: 'root'
@@ -37,94 +49,103 @@ export class SpaceService {
   public readonly isUnlocked = signal<boolean>(false);
   public readonly showAccessModal = signal<boolean>(false);
   public readonly showSpaceSettingsModal = signal<boolean>(false);
+  public readonly pendingRequestSent = signal<boolean>(false);
+  public readonly pendingInviteFromUrl = signal<string | null>(null);
 
   public readonly space = signal<AgencySpace>({
     id: 'space-chennai-hq',
     name: 'SkyPearl Realty Space (Chennai Central)',
-    passcode: DEFAULT_PASSCODE,
+    ownerUid: '',
+    ownerEmail: '',
+    ownerName: '',
+    allowedEmails: [],
     inviteCodes: [...DEFAULT_INVITES],
-    members: []
+    members: [],
+    pendingRequests: []
+  });
+
+  public readonly isOwner = computed<boolean>(() => {
+    const user = this.authService.currentUser();
+    const currentSpace = this.space();
+    if (!user) return false;
+    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) return true;
+    return (
+      (!!user.email && user.email.toLowerCase() === (currentSpace.ownerEmail || '').toLowerCase()) ||
+      (!!user.uid && user.uid === currentSpace.ownerUid)
+    );
   });
 
   public readonly verifiedMember = computed<SpaceMember | null>(() => {
     const user = this.authService.currentUser();
-    if (user) {
+    if (!user) return null;
+    const currentSpace = this.space();
+    const found = currentSpace.members.find(
+      m => m.id === user.uid || (!!m.email && !!user.email && m.email.toLowerCase() === user.email.toLowerCase())
+    );
+    if (found) return found;
+
+    if (this.isOwner()) {
       return {
         id: user.uid,
-        name: user.displayName || 'Google User',
-        email: user.email || 'user@skypearl.in',
+        name: user.displayName || 'Space Owner',
+        email: user.email || 'owner@skypearl.in',
         photoURL: user.photoURL,
         role: 'owner',
+        status: 'active',
         joinedAt: Date.now(),
         lastActiveAt: Date.now(),
-        joinedVia: 'google'
+        joinedVia: 'creator'
       };
     }
     return null;
   });
 
+  public readonly currentRole = computed<'owner' | 'admin' | 'agent' | null>(() => {
+    if (this.isOwner()) return 'owner';
+    const m = this.verifiedMember();
+    return m ? m.role : null;
+  });
+
   constructor() {
     this.initSpace();
 
-    // Auto-sync real Google sign-ins to space members
+    // React to Google Authentication changes
     effect(() => {
       const user = this.authService.currentUser();
-      if (user) {
-        this.registerOrUpdateMember({
-          id: user.uid,
-          name: user.displayName || user.email?.split('@')[0] || 'Google User',
-          email: user.email || 'user@skypearl.in',
-          photoURL: user.photoURL,
-          role: 'owner',
-          joinedAt: Date.now(),
-          lastActiveAt: Date.now(),
-          joinedVia: 'google'
-        });
-      }
-    });
+      this.evaluateAccessForUser(user);
+    }, { allowSignalWrites: true });
   }
 
   private initSpace(): void {
-    // 1. Load saved space settings & purge any legacy dummy accounts
-    try {
-      const savedSettings = localStorage.getItem(STORAGE_KEY_SPACE_SETTINGS);
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        if (parsed.members && Array.isArray(parsed.members)) {
-          parsed.members = parsed.members.filter((m: any) =>
-            m.id !== 'member-01' &&
-            m.email !== 'rajesh.kumar@skypearl.in' &&
-            m.name !== 'Rajesh Kumar (Admin)'
-          );
-        }
-        this.space.set(parsed);
-      }
-    } catch {}
-
-    // 2. Check URL for automatic invite access (?invite=... or ?code=...)
+    // 1. Check URL for automatic invite access (?invite=... or ?code=...)
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const inviteParam = params.get('invite') || params.get('code');
       if (inviteParam) {
-        if (this.unlockWithInviteCode(inviteParam) || this.unlockWithPasscode(inviteParam)) {
-          // clean url without refresh
-          window.history.replaceState({}, document.title, window.location.pathname);
-          return;
-        }
+        this.pendingInviteFromUrl.set(inviteParam.trim().toUpperCase());
       }
     }
 
-    // 3. Check unlocked state from session/storage
-    const wasUnlocked = localStorage.getItem(STORAGE_KEY_UNLOCKED) === 'true';
-    if (wasUnlocked) {
-      this.isUnlocked.set(true);
-    } else {
-      // First visit: Show Space Access Gate
-      this.isUnlocked.set(false);
-      this.showAccessModal.set(true);
-    }
+    // 2. Load saved space settings from local storage
+    try {
+      const savedSettings = localStorage.getItem(STORAGE_KEY_SPACE_SETTINGS);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        this.space.set({
+          id: parsed.id || 'space-chennai-hq',
+          name: parsed.name || 'SkyPearl Realty Space (Chennai Central)',
+          ownerUid: parsed.ownerUid || '',
+          ownerEmail: parsed.ownerEmail || '',
+          ownerName: parsed.ownerName || '',
+          allowedEmails: Array.isArray(parsed.allowedEmails) ? parsed.allowedEmails : [],
+          inviteCodes: Array.isArray(parsed.inviteCodes) && parsed.inviteCodes.length > 0 ? parsed.inviteCodes : [...DEFAULT_INVITES],
+          members: Array.isArray(parsed.members) ? parsed.members.filter((m: any) => m.id !== 'member-01' && m.email !== 'rajesh.kumar@skypearl.in') : [],
+          pendingRequests: Array.isArray(parsed.pendingRequests) ? parsed.pendingRequests : []
+        });
+      }
+    } catch {}
 
-    // 4. If Firestore connected, sync space settings in real-time
+    // 3. Setup real-time Firestore sync for team collaboration
     this.setupFirestoreSpaceSync();
   }
 
@@ -136,8 +157,22 @@ export class SpaceService {
       onSnapshot(spaceDocRef, snap => {
         if (snap.exists()) {
           const remoteData = snap.data() as AgencySpace;
-          this.space.set(remoteData);
-          localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(remoteData));
+          if (remoteData) {
+            this.space.update(curr => ({
+              ...curr,
+              name: remoteData.name || curr.name,
+              ownerUid: remoteData.ownerUid || curr.ownerUid,
+              ownerEmail: remoteData.ownerEmail || curr.ownerEmail,
+              ownerName: remoteData.ownerName || curr.ownerName,
+              allowedEmails: Array.isArray(remoteData.allowedEmails) ? remoteData.allowedEmails : curr.allowedEmails,
+              inviteCodes: Array.isArray(remoteData.inviteCodes) && remoteData.inviteCodes.length > 0 ? remoteData.inviteCodes : curr.inviteCodes,
+              members: Array.isArray(remoteData.members) ? remoteData.members : curr.members,
+              pendingRequests: Array.isArray(remoteData.pendingRequests) ? remoteData.pendingRequests : curr.pendingRequests
+            }));
+            localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
+            // Re-evaluate current user access against latest remote team data
+            this.evaluateAccessForUser(this.authService.currentUser());
+          }
         } else {
           // Push initial space data to cloud
           setDoc(spaceDocRef, this.space(), { merge: true }).catch(() => {});
@@ -146,15 +181,133 @@ export class SpaceService {
     } catch {}
   }
 
-  public unlockWithPasscode(inputPasscode: string): boolean {
-    const trimmed = inputPasscode.trim();
-    if (!trimmed) return false;
+  public evaluateAccessForUser(user: any): void {
+    if (!user) {
+      // No Google login = No access to any data
+      this.isUnlocked.set(false);
+      this.showAccessModal.set(true);
+      return;
+    }
 
-    if (trimmed.toUpperCase() === this.space().passcode.toUpperCase() || trimmed === DEFAULT_PASSCODE) {
-      this.grantAccess('passcode');
+    const currentSpace = this.space();
+    const userEmail = (user.email || '').toLowerCase();
+
+    // 1. First user who creates or logs in when no owner exists becomes Space Creator / Owner
+    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) {
+      const ownerMember: SpaceMember = {
+        id: user.uid,
+        name: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+        email: user.email,
+        photoURL: user.photoURL,
+        role: 'owner',
+        status: 'active',
+        joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
+        joinedVia: 'creator'
+      };
+
+      this.space.update(s => ({
+        ...s,
+        ownerUid: user.uid,
+        ownerEmail: user.email,
+        ownerName: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+        members: [ownerMember, ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)]
+      }));
+      this.saveSpace();
+      this.isUnlocked.set(true);
+      this.showAccessModal.set(false);
+      return;
+    }
+
+    // 2. Is this user the Space Owner / Creator?
+    if (
+      (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
+      (currentSpace.ownerUid && currentSpace.ownerUid === user.uid)
+    ) {
+      this.registerOrUpdateMember({
+        id: user.uid,
+        name: user.displayName || currentSpace.ownerName || 'Space Owner',
+        email: user.email,
+        photoURL: user.photoURL,
+        role: 'owner',
+        status: 'active',
+        joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
+        joinedVia: 'creator'
+      });
+      this.isUnlocked.set(true);
+      this.showAccessModal.set(false);
+      return;
+    }
+
+    // 3. Check if user opened with an invite link (?invite=CODE)
+    const pendingCode = this.pendingInviteFromUrl();
+    if (pendingCode && this.space().inviteCodes.some(c => c.toUpperCase() === pendingCode.toUpperCase())) {
+      this.registerOrUpdateMember({
+        id: user.uid,
+        name: user.displayName || userEmail.split('@')[0],
+        email: user.email,
+        photoURL: user.photoURL,
+        role: 'agent',
+        status: 'active',
+        joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
+        joinedVia: 'invite_code',
+        invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+      });
+      this.pendingInviteFromUrl.set(null);
+      this.isUnlocked.set(true);
+      this.showAccessModal.set(false);
+      return;
+    }
+
+    // 4. Was this email pre-invited by the creator?
+    const isPreInvited = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
+    if (isPreInvited) {
+      this.registerOrUpdateMember({
+        id: user.uid,
+        name: user.displayName || userEmail.split('@')[0],
+        email: user.email,
+        photoURL: user.photoURL,
+        role: 'agent',
+        status: 'active',
+        joinedAt: Date.now(),
+        lastActiveAt: Date.now(),
+        joinedVia: 'email_invite',
+        invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+      });
+      this.isUnlocked.set(true);
+      this.showAccessModal.set(false);
+      return;
+    }
+
+    // 5. Is user already an approved active member?
+    const existingMember = currentSpace.members.find(
+      m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
+    );
+    if (existingMember) {
+      this.updateMemberLastActive(user.uid);
+      this.isUnlocked.set(true);
+      this.showAccessModal.set(false);
+      return;
+    }
+
+    // 6. User is signed in with Google, but NOT invited / NOT approved yet!
+    this.isUnlocked.set(false);
+    this.showAccessModal.set(true);
+  }
+
+  public async loginWithGoogle(): Promise<boolean> {
+    const success = await this.authService.loginWithGoogle();
+    if (success) {
+      this.evaluateAccessForUser(this.authService.currentUser());
       return true;
     }
     return false;
+  }
+
+  public async loginAndUnlockWithGoogle(): Promise<boolean> {
+    return this.loginWithGoogle();
   }
 
   public unlockWithInviteCode(inputCode: string): boolean {
@@ -163,94 +316,139 @@ export class SpaceService {
 
     const matched = this.space().inviteCodes.some(c => c.toUpperCase() === cleanCode);
     if (matched) {
-      this.grantAccess('invite');
-      return true;
-    }
-    return false;
-  }
-
-  public async loginAndUnlockWithGoogle(): Promise<boolean> {
-    const ok = await this.authService.loginWithGoogle();
-    if (ok) {
-      this.grantAccess('google');
-      return true;
-    }
-    return false;
-  }
-
-  public unlockAsGuest(): void {
-    this.grantAccess('guest');
-  }
-
-  public registerOrUpdateMember(member: SpaceMember): void {
-    this.space.update(s => {
-      const existing = s.members.find(m => m.id === member.id || m.email === member.email);
-      const updatedList = [
-        {
-          ...member,
+      const user = this.authService.currentUser();
+      if (user) {
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'Team Member',
+          email: user.email || '',
+          photoURL: user.photoURL,
+          role: 'agent',
+          status: 'active',
+          joinedAt: Date.now(),
           lastActiveAt: Date.now(),
-          joinedAt: existing ? existing.joinedAt : member.joinedAt
-        },
-        ...s.members.filter(m => m.id !== member.id && m.email !== member.email)
-      ];
-      return { ...s, members: updatedList };
-    });
-    this.saveSpace();
+          joinedVia: 'invite_code',
+          invitedBy: this.space().ownerName || this.space().ownerEmail
+        });
+        this.isUnlocked.set(true);
+        this.showAccessModal.set(false);
+        return true;
+      }
+    }
+    return false;
   }
 
-  public removeMember(memberId: string): void {
+  public requestAccessFromOwner(): void {
+    const user = this.authService.currentUser();
+    if (!user) return;
+
+    const newReq: AccessRequest = {
+      uid: user.uid,
+      name: user.displayName || user.email?.split('@')[0] || 'Agent Requester',
+      email: user.email || '',
+      photoURL: user.photoURL,
+      requestedAt: Date.now()
+    };
+
     this.space.update(s => ({
       ...s,
-      members: s.members.filter(m => m.id !== memberId)
+      pendingRequests: [
+        newReq,
+        ...s.pendingRequests.filter(r => r.uid !== user.uid && r.email.toLowerCase() !== (user.email || '').toLowerCase())
+      ]
+    }));
+    this.saveSpace();
+    this.pendingRequestSent.set(true);
+  }
+
+  public approveAccessRequest(req: AccessRequest, role: 'admin' | 'agent' = 'agent'): void {
+    if (!this.isOwner()) return;
+
+    const newMember: SpaceMember = {
+      id: req.uid,
+      name: req.name,
+      email: req.email,
+      photoURL: req.photoURL,
+      role,
+      status: 'active',
+      joinedAt: Date.now(),
+      lastActiveAt: Date.now(),
+      joinedVia: 'approved_request',
+      invitedBy: this.space().ownerName || this.space().ownerEmail
+    };
+
+    this.space.update(s => ({
+      ...s,
+      members: [newMember, ...s.members.filter(m => m.id !== req.uid && m.email.toLowerCase() !== req.email.toLowerCase())],
+      pendingRequests: s.pendingRequests.filter(r => r.uid !== req.uid && r.email.toLowerCase() !== req.email.toLowerCase()),
+      allowedEmails: s.allowedEmails.includes(req.email.toLowerCase()) ? s.allowedEmails : [...s.allowedEmails, req.email.toLowerCase()]
     }));
     this.saveSpace();
   }
 
-  private grantAccess(via: 'passcode' | 'invite' | 'google' | 'guest'): void {
-    this.isUnlocked.set(true);
-    this.showAccessModal.set(false);
-    localStorage.setItem(STORAGE_KEY_UNLOCKED, 'true');
-
-    const user = this.authService.currentUser();
-    let name = 'Guest Visitor';
-    let email = 'guest@skypearl.space';
-    let role: 'owner' | 'agent' | 'guest' = 'guest';
-
-    if (user && via === 'google') {
-      name = user.displayName || user.email?.split('@')[0] || 'Google User';
-      email = user.email || 'user@skypearl.in';
-      role = 'owner';
-    } else if (via === 'passcode') {
-      name = 'Agency Member (Passcode)';
-      email = 'chennai-agent@skypearl.space';
-      role = 'agent';
-    } else if (via === 'invite') {
-      name = 'Invited Agent';
-      email = 'invited.agent@skypearl.space';
-      role = 'agent';
-    }
-
-    const member: SpaceMember = {
-      id: user ? user.uid : `access-${via}-${Date.now().toString(36)}`,
-      name,
-      email,
-      photoURL: user?.photoURL,
-      role,
-      joinedAt: Date.now(),
-      lastActiveAt: Date.now(),
-      joinedVia: via
-    };
-
-    this.registerOrUpdateMember(member);
+  public declineAccessRequest(reqUid: string): void {
+    if (!this.isOwner()) return;
+    this.space.update(s => ({
+      ...s,
+      pendingRequests: s.pendingRequests.filter(r => r.uid !== reqUid)
+    }));
+    this.saveSpace();
   }
 
-  public lockSpace(): void {
-    this.isUnlocked.set(false);
-    localStorage.removeItem(STORAGE_KEY_UNLOCKED);
-    this.showAccessModal.set(true);
+  public grantEmailAccess(email: string, role: 'admin' | 'agent' = 'agent'): boolean {
+    if (!this.isOwner()) return false;
+    const cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) return false;
+
+    this.space.update(s => {
+      const alreadyInList = s.allowedEmails.some(e => e.toLowerCase() === cleanEmail);
+      const updatedAllowed = alreadyInList ? s.allowedEmails : [...s.allowedEmails, cleanEmail];
+      return {
+        ...s,
+        allowedEmails: updatedAllowed
+      };
+    });
+    this.saveSpace();
+    return true;
+  }
+
+  public revokeEmailAccess(email: string): void {
+    if (!this.isOwner()) return;
+    const cleanEmail = email.trim().toLowerCase();
+    this.space.update(s => ({
+      ...s,
+      allowedEmails: s.allowedEmails.filter(e => e.toLowerCase() !== cleanEmail),
+      members: s.members.filter(m => m.email.toLowerCase() !== cleanEmail || m.role === 'owner')
+    }));
+    this.saveSpace();
+  }
+
+  public revokeMemberAccess(memberId: string): void {
+    if (!this.isOwner()) return;
+    this.space.update(s => {
+      const target = s.members.find(m => m.id === memberId);
+      const filteredMembers = s.members.filter(m => m.id !== memberId || m.role === 'owner');
+      const filteredEmails = target ? s.allowedEmails.filter(e => e.toLowerCase() !== target.email.toLowerCase()) : s.allowedEmails;
+      return {
+        ...s,
+        members: filteredMembers,
+        allowedEmails: filteredEmails
+      };
+    });
+    this.saveSpace();
+  }
+
+  public updateMemberRole(memberId: string, role: 'admin' | 'agent'): void {
+    if (!this.isOwner()) return;
+    this.space.update(s => ({
+      ...s,
+      members: s.members.map(m => (m.id === memberId && m.role !== 'owner' ? { ...m, role } : m))
+    }));
+    this.saveSpace();
   }
 
   public generateNewInviteCode(): string {
+    if (!this.isOwner()) return '';
     const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
     const newCode = `SKYPEARL-${rand}`;
     this.space.update(s => ({
@@ -262,19 +460,12 @@ export class SpaceService {
   }
 
   public removeInviteCode(code: string): void {
+    if (!this.isOwner()) return;
     this.space.update(s => ({
       ...s,
       inviteCodes: s.inviteCodes.filter(c => c !== code)
     }));
     this.saveSpace();
-  }
-
-  public updatePasscode(newPasscode: string): void {
-    const trimmed = newPasscode.trim();
-    if (trimmed) {
-      this.space.update(s => ({ ...s, passcode: trimmed }));
-      this.saveSpace();
-    }
   }
 
   public getInviteLink(code?: string): string {
@@ -283,6 +474,36 @@ export class SpaceService {
       return `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(selectedCode)}`;
     }
     return `https://skypearl.netlify.app?invite=${encodeURIComponent(selectedCode)}`;
+  }
+
+  public lockSpace(): void {
+    this.authService.logout();
+    this.isUnlocked.set(false);
+    this.showAccessModal.set(true);
+  }
+
+  private registerOrUpdateMember(member: SpaceMember): void {
+    this.space.update(s => {
+      const existing = s.members.find(m => m.id === member.id || m.email?.toLowerCase() === member.email?.toLowerCase());
+      const updatedList = [
+        {
+          ...member,
+          lastActiveAt: Date.now(),
+          joinedAt: existing ? existing.joinedAt : member.joinedAt
+        },
+        ...s.members.filter(m => m.id !== member.id && m.email?.toLowerCase() !== member.email?.toLowerCase())
+      ];
+      return { ...s, members: updatedList };
+    });
+    this.saveSpace();
+  }
+
+  private updateMemberLastActive(uid: string): void {
+    this.space.update(s => ({
+      ...s,
+      members: s.members.map(m => (m.id === uid ? { ...m, lastActiveAt: Date.now() } : m))
+    }));
+    this.saveSpace();
   }
 
   private saveSpace(): void {

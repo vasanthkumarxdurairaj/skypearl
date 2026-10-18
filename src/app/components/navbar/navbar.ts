@@ -65,7 +65,7 @@ import { AgentProfile, UserRole } from '../../models/realty.model';
             </div>
           </div>
         } @else {
-          <button class="btn btn-google-nav btn-sm" (click)="spaceService.loginAndUnlockWithGoogle()" title="Sign in with Google">
+          <button class="btn btn-google-nav btn-sm" (click)="spaceService.loginWithGoogle()" title="Sign in with Google">
             <svg width="14" height="14" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -146,14 +146,12 @@ import { AgentProfile, UserRole } from '../../models/realty.model';
             <div class="agent-details">
               <span class="agent-name">{{ realtyService.activeAgent().name }}</span>
               <span class="agent-role-tag" [ngClass]="'role-' + realtyService.activeAgent().role">
-                @if (realtyService.activeAgent().joinedVia === 'google') {
-                  GOOGLE AUTH
-                } @else if (realtyService.activeAgent().joinedVia === 'passcode') {
-                  PASSCODE VERIFIED
-                } @else if (realtyService.activeAgent().joinedVia === 'invite') {
-                  INVITED MEMBER
+                @if (realtyService.activeAgent().role === 'owner') {
+                  👑 CREATOR & OWNER
+                } @else if (realtyService.activeAgent().role === 'admin') {
+                  ADMIN
                 } @else {
-                  GUEST USER
+                  AGENT
                 }
               </span>
             </div>
@@ -184,30 +182,21 @@ import { AgentProfile, UserRole } from '../../models/realty.model';
                     <div class="current-email">{{ realtyService.activeAgent().email }}</div>
                     <div class="current-tag-row">
                       <span class="badge" [ngClass]="'badge-' + realtyService.activeAgent().role">{{ realtyService.activeAgent().role | uppercase }}</span>
-                      <span class="access-method-chip">Via {{ (realtyService.activeAgent().joinedVia || 'session') | uppercase }}</span>
+                      <span class="access-method-chip">Via {{ (realtyService.activeAgent().joinedVia || 'google') | uppercase }}</span>
                     </div>
                   </div>
                 </div>
 
                 <!-- Account Actions -->
                 <div class="user-action-buttons">
-                  @if (!authService.currentUser()) {
-                    <button class="btn btn-xs btn-google-action" (click)="signInWithGoogle()">
-                      <svg width="12" height="12" viewBox="0 0 24 24">
-                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-                      </svg>
-                      <span>Sign in with Google</span>
-                    </button>
-                  } @else {
-                    <button class="btn btn-xs btn-outline" (click)="signOutGoogle()">
-                      <span>Sign out of Google</span>
-                    </button>
-                  }
+                  <button class="btn btn-xs btn-gold-action" (click)="openSpaceSettings()">
+                    ⚙️ Manage Team & Invites
+                  </button>
+                  <button class="btn btn-xs btn-outline" (click)="signOutGoogle()">
+                    <span>Sign out of Google</span>
+                  </button>
                   <button class="btn btn-xs btn-outline" (click)="lockAndSwitch()">
-                    <span>Lock / Switch Access</span>
+                    <span>Lock Space</span>
                   </button>
                 </div>
               </div>
@@ -215,35 +204,34 @@ import { AgentProfile, UserRole } from '../../models/realty.model';
               <!-- People Who Accessed This Space Section -->
               <div class="accessed-header">
                 <span class="accessed-title">PEOPLE WHO ACCESSED ({{ spaceService.space().members.length }})</span>
-                <span class="accessed-subtitle">Real authenticated accounts and sessions</span>
+                <span class="accessed-subtitle">Real authenticated accounts tracking identity</span>
               </div>
 
               <div class="agent-list">
                 @for (member of spaceService.space().members; track member.id) {
-                  <button 
+                  <div 
                     class="agent-item" 
-                    [class.active]="realtyService.activeAgent().uid === member.id || realtyService.activeAgent().email === member.email"
-                    (click)="selectMemberPersona(member)">
+                    [class.active]="realtyService.activeAgent().uid === member.id || realtyService.activeAgent().email === member.email">
                     @if (member.photoURL) {
                       <img [src]="member.photoURL" [alt]="member.name" class="avatar-sm-img" />
                     } @else {
-                      <div class="avatar-sm" [style.background]="member.role === 'owner' ? 'linear-gradient(135deg, #4285F4, #34A853)' : (member.role === 'guest' ? 'linear-gradient(135deg, #64748b, #94a3b8)' : 'linear-gradient(135deg, #10b981, #14b8a6)')">
+                      <div class="avatar-sm" [style.background]="member.role === 'owner' ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'linear-gradient(135deg, #4285F4, #34A853)'">
                         {{ member.name.charAt(0) }}
                       </div>
                     }
                     <div class="agent-info">
                       <div class="agent-title-row">
                         <span class="agent-name-text">{{ member.name }}</span>
-                        <span class="badge" [ngClass]="'badge-' + member.joinedVia">{{ member.joinedVia | uppercase }}</span>
+                        <span class="badge" [ngClass]="'badge-' + member.role">{{ member.role | uppercase }}</span>
                       </div>
                       <div class="agent-meta-text">
-                        {{ member.email }} • Accessed {{ formatAccessTime(member.lastActiveAt || member.joinedAt) }}
+                        {{ member.email }} • {{ formatJoinedVia(member.joinedVia) }} • {{ formatAccessTime(member.lastActiveAt || member.joinedAt) }}
                       </div>
                     </div>
                     @if (realtyService.activeAgent().uid === member.id || realtyService.activeAgent().email === member.email) {
-                      <span class="active-dot" title="Active on this device">●</span>
+                      <span class="active-dot" title="You (Active on this device)">●</span>
                     }
-                  </button>
+                  </div>
                 } @empty {
                   <div class="empty-accessed-note">
                     <span>Only your current session has accessed this space so far. Share invite code to collaborate with your team.</span>
@@ -1000,7 +988,7 @@ export class NavbarComponent {
   }
 
   public async signInWithGoogle(): Promise<void> {
-    const ok = await this.spaceService.loginAndUnlockWithGoogle();
+    const ok = await this.spaceService.loginWithGoogle();
     if (ok) {
       this.realtyService.notify('Signed in with Google successfully!', 'success');
       this.showAgentMenu.set(false);
@@ -1018,25 +1006,19 @@ export class NavbarComponent {
     this.showAgentMenu.set(false);
   }
 
-  public selectMemberPersona(member: SpaceMember): void {
-    const role: UserRole = member.role === 'owner' ? 'admin' : (member.role === 'guest' ? 'guest' : 'agent');
-    const agentProfile: AgentProfile = {
-      uid: member.id,
-      name: member.name,
-      email: member.email,
-      phone: '',
-      role: role,
-      avatarColor: member.role === 'owner' ? 'linear-gradient(135deg, #4285F4, #34A853)' : (member.role === 'guest' ? 'linear-gradient(135deg, #64748b, #94a3b8)' : 'linear-gradient(135deg, #10b981, #14b8a6)'),
-      photoURL: member.photoURL,
-      joinedVia: member.joinedVia,
-      accessedAt: member.lastActiveAt || member.joinedAt,
-      activeListingsCount: this.realtyService.properties().filter(p => p.addedBy === member.name).length,
-      activeLeadsCount: this.realtyService.leads().filter(l => l.addedBy === member.name).length,
-      closedSalesVolumeLakhs: 0,
-      commissionEarnedLakhs: 0
-    };
-    this.realtyService.switchAgent(agentProfile);
+  public openSpaceSettings(): void {
+    this.spaceService.showSpaceSettingsModal.set(true);
     this.showAgentMenu.set(false);
+  }
+
+  public formatJoinedVia(via: string): string {
+    switch (via) {
+      case 'creator': return '👑 Creator';
+      case 'email_invite': return '✉️ Invited Email';
+      case 'invite_code': return '🎫 Invite Code';
+      case 'approved_request': return '✓ Approved';
+      default: return via || 'Google';
+    }
   }
 
   public copyInviteLink(): void {

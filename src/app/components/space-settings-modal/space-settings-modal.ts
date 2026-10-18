@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SpaceService } from '../../services/space.service';
+import { SpaceService, AccessRequest, SpaceMember } from '../../services/space.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -18,88 +18,212 @@ import { AuthService } from '../../services/auth.service';
               <img src="logo.png" alt="SkyPearl Build Real Estate" class="space-logo-img" />
             </div>
             <div>
-              <h3 class="modal-title">Agency Space & Invites</h3>
+              <h3 class="modal-title">Agency Space & Team Access</h3>
               <p class="modal-subtitle">{{ spaceService.space().name }}</p>
             </div>
           </div>
           <button class="btn-close" (click)="spaceService.showSpaceSettingsModal.set(false)">✕</button>
         </div>
 
-        <!-- Google User Banner (if logged in) -->
-        <div class="user-status-card">
-          <div class="user-avatar-wrap">
-            @if (authService.currentUser()?.photoURL) {
-              <img [src]="authService.currentUser()?.photoURL" class="user-photo" alt="Google Avatar" />
-            } @else {
-              <div class="avatar-fallback">
-                {{ (authService.currentUser()?.displayName || 'G').charAt(0) }}
-              </div>
-            }
-          </div>
-          <div class="user-info">
-            <div class="user-name">
-              {{ authService.currentUser()?.displayName || 'Guest Agent Persona' }}
-              @if (authService.currentUser()) {
-                <span class="badge-google">Google Verified</span>
+        <div class="modal-scroll-body">
+          <!-- Space Owner & Current User Status Card -->
+          <div class="user-status-card">
+            <div class="user-avatar-wrap">
+              @if (authService.currentUser()?.photoURL) {
+                <img [src]="authService.currentUser()?.photoURL" class="user-photo" alt="Google Avatar" />
+              } @else {
+                <div class="avatar-fallback">
+                  {{ (authService.currentUser()?.displayName || 'G').charAt(0) }}
+                </div>
               }
             </div>
-            <div class="user-email">{{ authService.currentUser()?.email || 'agent@skypearl.in' }}</div>
-          </div>
-          @if (authService.currentUser()) {
-            <button class="btn btn-xs btn-outline-danger" (click)="logout()">Sign Out</button>
-          } @else {
-            <button class="btn btn-xs btn-primary" (click)="signInWithGoogle()">Sign in with Google</button>
-          }
-        </div>
-
-        <!-- Shareable Direct Invite Link -->
-        <div class="section-card">
-          <div class="section-header">
-            <span class="section-title">One-Click Shareable Invite Link</span>
-            <span class="badge-pill">Direct Bypass</span>
-          </div>
-          <p class="section-desc">Send this link to agents or clients. Opening it automatically unlocks the space.</p>
-          <div class="copy-input-row">
-            <input type="text" class="form-input mono" [value]="inviteLink()" readonly />
-            <button class="btn btn-gold btn-sm" (click)="copyInviteLink()">
-              {{ copied() ? '✓ Copied!' : 'Copy Link' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Active Invite Codes (Self-Invite) -->
-        <div class="section-card">
-          <div class="section-header">
-            <span class="section-title">Active Space Invite Codes</span>
-            <button class="btn btn-xs btn-secondary" (click)="generateNewCode()">+ New Code</button>
-          </div>
-          <div class="tags-cloud">
-            @for (code of spaceService.space().inviteCodes; track code) {
-              <div class="invite-tag">
-                <span class="tag-code">{{ code }}</span>
-                <button class="btn-copy-tag" (click)="copyText(code)" title="Copy Code">📋</button>
-                @if (spaceService.space().inviteCodes.length > 1) {
-                  <button class="btn-del-tag" (click)="spaceService.removeInviteCode(code)" title="Revoke Code">✕</button>
+            <div class="user-info">
+              <div class="user-name">
+                {{ authService.currentUser()?.displayName || 'Authenticated Google User' }}
+                @if (spaceService.isOwner()) {
+                  <span class="badge-owner-crown">👑 Creator & Owner</span>
+                } @else {
+                  <span class="badge-role">{{ (spaceService.currentRole() || 'agent') | uppercase }}</span>
                 }
               </div>
-            }
+              <div class="user-email">{{ authService.currentUser()?.email }}</div>
+            </div>
+            <button class="btn btn-xs btn-outline-danger" (click)="logout()">Sign Out</button>
           </div>
-        </div>
 
-        <!-- Space Passcode Manager -->
-        <div class="section-card">
-          <div class="section-header">
-            <span class="section-title">Agency Space Passcode</span>
+          <!-- Space Ownership Info (if viewing user is not owner) -->
+          @if (!spaceService.isOwner()) {
+            <div class="owner-info-notice">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+              <span>
+                Space Creator: <strong>{{ spaceService.space().ownerName || 'Agency Owner' }}</strong> ({{ spaceService.space().ownerEmail }}). Only the creator can invite new members and manage access permissions.
+              </span>
+            </div>
+          }
+
+          <!-- PENDING ACCESS REQUESTS SECTION (Only visible to Owner) -->
+          @if (spaceService.isOwner() && spaceService.space().pendingRequests.length > 0) {
+            <div class="section-card highlight-card">
+              <div class="section-header">
+                <span class="section-title">
+                  🔔 Pending Access Requests ({{ spaceService.space().pendingRequests.length }})
+                </span>
+                <span class="badge-pill warn">Action Required</span>
+              </div>
+              <p class="section-desc">Google users requesting access to view your listings and client leads:</p>
+              
+              <div class="requests-list">
+                @for (req of spaceService.space().pendingRequests; track req.uid) {
+                  <div class="request-item">
+                    <div class="request-user">
+                      @if (req.photoURL) {
+                        <img [src]="req.photoURL" [alt]="req.name" class="avatar-sm-img" />
+                      } @else {
+                        <div class="avatar-sm-initial">{{ req.name.charAt(0) }}</div>
+                      }
+                      <div class="request-meta">
+                        <span class="req-name">{{ req.name }}</span>
+                        <span class="req-email">{{ req.email }}</span>
+                        <span class="req-time">Requested {{ formatTimeAgo(req.requestedAt) }}</span>
+                      </div>
+                    </div>
+
+                    <div class="request-actions">
+                      <button class="btn btn-xs btn-gold" (click)="spaceService.approveAccessRequest(req, 'agent')">
+                        ✓ Grant Access
+                      </button>
+                      <button class="btn btn-xs btn-outline-danger" (click)="spaceService.declineAccessRequest(req.uid)">
+                        ✕ Decline
+                      </button>
+                    </div>
+                  </div>
+                }
+              </div>
+            </div>
+          }
+
+          <!-- DIRECT EMAIL INVITATION FORM (Owner Only) -->
+          @if (spaceService.isOwner()) {
+            <div class="section-card">
+              <div class="section-header">
+                <span class="section-title">Give Access by Google Email</span>
+                <span class="badge-pill">Direct Whitelist</span>
+              </div>
+              <p class="section-desc">Enter the Google email of a team agent. They will receive immediate access upon signing in.</p>
+              
+              <div class="invite-email-row">
+                <input 
+                  type="email" 
+                  class="form-input flex-1" 
+                  placeholder="agent.name@gmail.com" 
+                  [(ngModel)]="newInviteEmail" 
+                  (keyup.enter)="addEmailInvite()" />
+                <button class="btn btn-gold btn-sm" (click)="addEmailInvite()">
+                  + Give Access
+                </button>
+              </div>
+
+              @if (spaceService.space().allowedEmails.length > 0) {
+                <div class="allowed-emails-wrap">
+                  <span class="sub-label">Pre-Authorized Google Accounts:</span>
+                  <div class="email-tags-list">
+                    @for (email of spaceService.space().allowedEmails; track email) {
+                      <div class="email-tag">
+                        <span>{{ email }}</span>
+                        <button class="btn-del-tag" (click)="spaceService.revokeEmailAccess(email)" title="Revoke Access">✕</button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- SHAREABLE DIRECT INVITE LINK -->
+          <div class="section-card">
+            <div class="section-header">
+              <span class="section-title">One-Click Shareable Invite Link</span>
+              <span class="badge-pill">Link Access</span>
+            </div>
+            <p class="section-desc">Send this link to agents. Anyone opening it and logging in with Google will be admitted into the space.</p>
+            <div class="copy-input-row">
+              <input type="text" class="form-input mono" [value]="inviteLink()" readonly />
+              <button class="btn btn-gold btn-sm" (click)="copyInviteLink()">
+                {{ copied() ? '✓ Copied!' : 'Copy Link' }}
+              </button>
+            </div>
           </div>
-          <div class="passcode-edit-row">
-            <input 
-              type="text" 
-              class="form-input" 
-              [(ngModel)]="editablePasscode" 
-              placeholder="Set agency passcode" />
-            <button class="btn btn-secondary btn-sm" (click)="savePasscode()">Save Passcode</button>
+
+          <!-- ACTIVE INVITE CODES (Self-Invite) -->
+          <div class="section-card">
+            <div class="section-header">
+              <span class="section-title">Active Space Invite Codes</span>
+              @if (spaceService.isOwner()) {
+                <button class="btn btn-xs btn-secondary" (click)="generateNewCode()">+ New Code</button>
+              }
+            </div>
+            <div class="tags-cloud">
+              @for (code of spaceService.space().inviteCodes; track code) {
+                <div class="invite-tag">
+                  <span class="tag-code">{{ code }}</span>
+                  <button class="btn-copy-tag" (click)="copyText(code)" title="Copy Code">📋</button>
+                  @if (spaceService.isOwner() && spaceService.space().inviteCodes.length > 1) {
+                    <button class="btn-del-tag" (click)="spaceService.removeInviteCode(code)" title="Revoke Code">✕</button>
+                  }
+                </div>
+              }
+            </div>
           </div>
-          <p class="section-desc">Current passcode: <strong>{{ spaceService.space().passcode }}</strong></p>
+
+          <!-- PEOPLE WHO ACCESSED THIS SPACE (Active Members Directory) -->
+          <div class="section-card">
+            <div class="section-header">
+              <span class="section-title">People Who Accessed ({{ spaceService.space().members.length }})</span>
+              <span class="badge-pill">Live Directory</span>
+            </div>
+            <p class="section-desc">Real Google accounts tracking identity on every property and lead record:</p>
+
+            <div class="members-directory-list">
+              @for (member of spaceService.space().members; track member.id) {
+                <div class="member-dir-item">
+                  <div class="member-left">
+                    @if (member.photoURL) {
+                      <img [src]="member.photoURL" [alt]="member.name" class="avatar-sm-img" />
+                    } @else {
+                      <div class="avatar-sm-initial" [style.background]="member.role === 'owner' ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'linear-gradient(135deg, #4285F4, #34A853)'">
+                        {{ member.name.charAt(0) }}
+                      </div>
+                    }
+                    <div class="member-meta">
+                      <div class="member-name-row">
+                        <span class="member-name">{{ member.name }}</span>
+                        <span class="badge" [ngClass]="'badge-' + member.role">{{ member.role | uppercase }}</span>
+                        <span class="joined-via-badge">{{ formatJoinedVia(member.joinedVia) }}</span>
+                      </div>
+                      <span class="member-email">{{ member.email }}</span>
+                      <span class="member-activity">Last active: {{ formatTimeAgo(member.lastActiveAt || member.joinedAt) }}</span>
+                    </div>
+                  </div>
+
+                  @if (spaceService.isOwner() && member.role !== 'owner') {
+                    <div class="member-right-actions">
+                      <button class="btn btn-xs btn-outline-danger" (click)="spaceService.revokeMemberAccess(member.id)" title="Revoke Access">
+                        Revoke
+                      </button>
+                    </div>
+                  }
+                </div>
+              } @empty {
+                <div class="empty-members-note">
+                  No other accounts have accessed this space yet. Share the invite link above with your team.
+                </div>
+              }
+            </div>
+          </div>
         </div>
 
         <!-- Footer Actions -->
@@ -109,7 +233,7 @@ import { AuthService } from '../../services/auth.service';
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
-            <span>Lock Space</span>
+            <span>Lock Space & Sign Out</span>
           </button>
           <button class="btn btn-secondary btn-sm" (click)="spaceService.showSpaceSettingsModal.set(false)">
             Close
@@ -123,34 +247,40 @@ import { AuthService } from '../../services/auth.service';
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: rgba(10, 15, 26, 0.7);
-      backdrop-filter: blur(8px);
+      background: rgba(10, 15, 26, 0.78);
+      backdrop-filter: blur(10px);
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 16px;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .modal-card {
       width: 100%;
-      max-width: 520px;
+      max-width: 580px;
+      max-height: 90vh;
       background: var(--bg-card);
       border: 1px solid var(--border-active);
       border-radius: var(--radius-xl);
       padding: 24px;
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.45);
+      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 40px rgba(203, 168, 107, 0.12);
       color: var(--text-main);
       display: flex;
       flex-direction: column;
-      gap: 16px;
     }
 
     .modal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      padding-bottom: 16px;
       border-bottom: 1px solid var(--border-subtle);
-      padding-bottom: 14px;
     }
 
     .header-left {
@@ -160,173 +290,326 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .space-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: #000000;
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      background: radial-gradient(circle, #2a2215, #11141c);
+      border: 1px solid rgba(203, 168, 107, 0.3);
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgba(203, 168, 107, 0.45);
-      box-shadow: 0 4px 14px rgba(203, 168, 107, 0.2);
       overflow: hidden;
-      padding: 3px;
-      flex-shrink: 0;
     }
 
     .space-logo-img {
-      width: 100%;
-      height: 100%;
+      width: 30px;
+      height: 30px;
       object-fit: contain;
-      display: block;
     }
 
     .modal-title {
       font-size: 1.15rem;
-      font-weight: 800;
+      font-weight: 700;
+      margin: 0;
     }
 
     .modal-subtitle {
-      font-size: 0.76rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
-      font-weight: 600;
+      margin: 2px 0 0;
     }
 
     .btn-close {
       background: transparent;
       border: none;
-      font-size: 1.2rem;
       color: var(--text-muted);
+      font-size: 1.1rem;
       cursor: pointer;
       padding: 4px;
+    }
+
+    .btn-close:hover {
+      color: var(--text-main);
+    }
+
+    .modal-scroll-body {
+      overflow-y: auto;
+      padding-right: 4px;
+      margin: 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
     }
 
     .user-status-card {
       display: flex;
       align-items: center;
       gap: 12px;
-      background: var(--bg-surface);
+      background: var(--bg-hover);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 12px;
+      border-radius: 12px;
+      padding: 12px 14px;
     }
 
     .user-avatar-wrap {
-      width: 42px;
-      height: 42px;
-      border-radius: 50%;
-      overflow: hidden;
       flex-shrink: 0;
     }
 
     .user-photo {
-      width: 100%;
-      height: 100%;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid #cba86b;
       object-fit: cover;
     }
 
     .avatar-fallback {
-      width: 100%;
-      height: 100%;
-      background: linear-gradient(135deg, #cba86b, #b28b4c);
-      color: #101b2a;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4285F4, #34A853);
+      color: white;
+      font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 800;
-      font-size: 1.1rem;
     }
 
     .user-info {
       flex: 1;
-      min-width: 0;
     }
 
     .user-name {
-      font-weight: 700;
+      font-weight: 600;
       font-size: 0.88rem;
       display: flex;
       align-items: center;
       gap: 8px;
     }
 
-    .badge-google {
-      background: rgba(66, 133, 244, 0.15);
-      color: #4285F4;
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: var(--radius-full);
+    .badge-owner-crown {
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(203, 168, 107, 0.2);
+      color: #e5c378;
+      border: 1px solid rgba(203, 168, 107, 0.4);
+    }
+
+    .badge-role {
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(59, 130, 246, 0.15);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.3);
     }
 
     .user-email {
-      font-size: 0.74rem;
+      font-size: 0.75rem;
       color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    }
+
+    .owner-info-notice {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(59, 130, 246, 0.08);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+
+    .owner-info-notice strong {
+      color: var(--text-main);
     }
 
     .section-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .section-card.highlight-card {
+      border-color: rgba(245, 158, 11, 0.4);
+      background: rgba(245, 158, 11, 0.04);
     }
 
     .section-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      margin-bottom: 6px;
     }
 
     .section-title {
-      font-size: 0.8rem;
-      font-weight: 700;
-      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+
+    .badge-pill {
+      font-size: 0.68rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(203, 168, 107, 0.15);
+      color: #cba86b;
+      font-weight: 500;
+    }
+
+    .badge-pill.warn {
+      background: rgba(245, 158, 11, 0.18);
+      color: #f59e0b;
+    }
+
+    .section-desc {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      margin: 0 0 12px;
+    }
+
+    /* Requests */
+    .requests-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .request-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      gap: 12px;
+    }
+
+    .request-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .avatar-sm-img {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    .avatar-sm-initial {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4285F4, #34A853);
+      color: white;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .request-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .req-name {
+      font-weight: 600;
+      font-size: 0.82rem;
+    }
+
+    .req-email {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .req-time {
+      font-size: 0.68rem;
+      color: #cba86b;
+    }
+
+    .request-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    /* Invite Email Form */
+    .invite-email-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .allowed-emails-wrap {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .sub-label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-bottom: 6px;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
 
-    .section-desc {
-      font-size: 0.74rem;
+    .email-tags-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .email-tag {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 3px 8px;
+      font-size: 0.75rem;
+    }
+
+    .btn-del-tag {
+      background: transparent;
+      border: none;
       color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.75rem;
     }
 
-    .section-desc strong {
-      color: var(--gold);
+    .btn-del-tag:hover {
+      color: #ef4444;
     }
 
-    .badge-pill {
-      background: var(--gold-surface);
-      color: var(--gold);
-      border: 1px solid var(--gold-border);
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 2px 7px;
-      border-radius: var(--radius-full);
-    }
-
-    .copy-input-row, .passcode-edit-row {
+    /* Links & Codes */
+    .copy-input-row {
       display: flex;
       gap: 8px;
     }
 
     .form-input {
-      flex: 1;
-      background: var(--bg-input);
+      background: var(--bg-card);
       border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-sm);
+      border-radius: 8px;
       padding: 8px 12px;
-      font-size: 0.82rem;
       color: var(--text-main);
+      font-size: 0.82rem;
+      outline: none;
     }
 
     .form-input.mono {
-      font-family: var(--font-mono);
+      font-family: monospace;
       font-size: 0.75rem;
     }
 
@@ -334,66 +617,132 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
-      margin-top: 4px;
     }
 
     .invite-tag {
-      display: inline-flex;
+      display: flex;
       align-items: center;
       gap: 6px;
       background: var(--bg-card);
-      border: 1px solid var(--border-subtle);
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      font-family: var(--font-mono);
-      font-size: 0.76rem;
-      font-weight: 700;
-      color: var(--gold);
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-family: monospace;
+      font-weight: 600;
+      font-size: 0.8rem;
     }
 
-    .btn-copy-tag, .btn-del-tag {
+    .tag-code {
+      color: #e5c378;
+    }
+
+    .btn-copy-tag {
       background: transparent;
       border: none;
       cursor: pointer;
-      font-size: 0.7rem;
-      padding: 1px;
-      color: var(--text-dim);
+      font-size: 0.8rem;
+      padding: 0;
     }
 
-    .btn-del-tag:hover {
-      color: #e11d48;
+    /* Members Directory */
+    .members-directory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .member-dir-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-hover);
+      border: 1px solid var(--border-subtle);
+      border-radius: 10px;
+      padding: 10px 12px;
+      gap: 12px;
+    }
+
+    .member-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .member-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .member-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .member-name {
+      font-weight: 600;
+      font-size: 0.84rem;
+    }
+
+    .badge-owner {
+      background: rgba(203, 168, 107, 0.2);
+      color: #e5c378;
+      border: 1px solid rgba(203, 168, 107, 0.4);
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .badge-admin {
+      background: rgba(59, 130, 246, 0.2);
+      color: #60a5fa;
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .badge-agent {
+      background: rgba(16, 185, 129, 0.2);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      font-size: 0.65rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .joined-via-badge {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    .member-email {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+
+    .member-activity {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+    }
+
+    .empty-members-note {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 12px;
     }
 
     .modal-footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-top: 1px solid var(--border-subtle);
       padding-top: 14px;
-      margin-top: 4px;
-    }
-
-    .btn-danger {
-      background: #e11d48;
-      color: #ffffff;
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 7px 12px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-    }
-
-    .btn-outline-danger {
-      background: transparent;
-      border: 1px solid rgba(225, 29, 72, 0.4);
-      color: #e11d48;
-      border-radius: var(--radius-sm);
-      padding: 4px 8px;
-      font-weight: 700;
-      cursor: pointer;
+      border-top: 1px solid var(--border-subtle);
     }
   `]
 })
@@ -401,7 +750,7 @@ export class SpaceSettingsModalComponent {
   public spaceService = inject(SpaceService);
   public authService = inject(AuthService);
 
-  public editablePasscode = this.spaceService.space().passcode;
+  public newInviteEmail = '';
   public copied = signal<boolean>(false);
 
   public inviteLink(): string {
@@ -418,24 +767,46 @@ export class SpaceSettingsModalComponent {
     navigator.clipboard.writeText(text);
   }
 
+  public addEmailInvite(): void {
+    if (this.newInviteEmail.trim()) {
+      this.spaceService.grantEmailAccess(this.newInviteEmail.trim());
+      this.newInviteEmail = '';
+    }
+  }
+
   public generateNewCode(): void {
     this.spaceService.generateNewInviteCode();
   }
 
-  public savePasscode(): void {
-    this.spaceService.updatePasscode(this.editablePasscode);
-  }
-
-  public async signInWithGoogle(): Promise<void> {
-    await this.spaceService.loginAndUnlockWithGoogle();
-  }
-
   public async logout(): Promise<void> {
     await this.authService.logout();
+    this.spaceService.showSpaceSettingsModal.set(false);
   }
 
   public lockSpace(): void {
     this.spaceService.showSpaceSettingsModal.set(false);
     this.spaceService.lockSpace();
+  }
+
+  public formatJoinedVia(via: string): string {
+    switch (via) {
+      case 'creator': return '👑 Creator';
+      case 'email_invite': return '✉️ Invited Email';
+      case 'invite_code': return '🎫 Invite Code';
+      case 'approved_request': return '✓ Approved Request';
+      default: return via;
+    }
+  }
+
+  public formatTimeAgo(timestamp: number): string {
+    if (!timestamp) return 'Recently';
+    const diffMs = Date.now() - timestamp;
+    const mins = Math.floor(diffMs / 60000);
+    if (mins < 2) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
   }
 }

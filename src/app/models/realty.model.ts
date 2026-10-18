@@ -1,4 +1,4 @@
-export type UserRole = 'admin' | 'manager' | 'agent' | 'guest';
+export type UserRole = 'owner' | 'admin' | 'manager' | 'agent';
 
 export interface AgentProfile {
   uid: string;
@@ -8,7 +8,7 @@ export interface AgentProfile {
   role: UserRole;
   avatarColor: string;
   photoURL?: string;
-  joinedVia?: 'google' | 'passcode' | 'invite' | 'guest';
+  joinedVia?: 'google' | 'invite' | 'creator';
   accessedAt?: number;
   activeListingsCount: number;
   activeLeadsCount: number;

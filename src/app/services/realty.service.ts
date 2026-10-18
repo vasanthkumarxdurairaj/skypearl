@@ -23,14 +23,14 @@ const STORAGE_KEY_LEADS = 'skypearl_realty_leads_v2';
 const STORAGE_KEY_VISITS = 'skypearl_realty_visits_v2';
 const STORAGE_KEY_ACTIVE_AGENT = 'skypearl_active_agent';
 
-export const DEFAULT_GUEST_PROFILE: AgentProfile = {
-  uid: 'guest-persona',
-  name: 'Guest User',
-  email: 'guest@skypearl.space',
+export const UNAUTHENTICATED_AGENT_PROFILE: AgentProfile = {
+  uid: 'auth-required',
+  name: 'Sign In Required',
+  email: '',
   phone: '',
-  role: 'guest',
-  avatarColor: 'linear-gradient(135deg, #64748b, #94a3b8)',
-  joinedVia: 'guest',
+  role: 'agent',
+  avatarColor: 'linear-gradient(135deg, #475569, #334155)',
+  joinedVia: 'google',
   accessedAt: Date.now(),
   activeListingsCount: 0,
   activeLeadsCount: 0,
@@ -63,7 +63,7 @@ export class RealtyService {
   public readonly properties = signal<PropertyListing[]>([]);
   public readonly leads = signal<LeadCRM[]>([]);
   public readonly siteVisits = signal<SiteVisit[]>([]);
-  public readonly activeAgent = signal<AgentProfile>(DEFAULT_GUEST_PROFILE);
+  public readonly activeAgent = signal<AgentProfile>(UNAUTHENTICATED_AGENT_PROFILE);
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Active view section in CRM
@@ -130,18 +130,21 @@ export class RealtyService {
     effect(() => {
       const googleUser = this.authService.currentUser();
       const isUnlocked = this.spaceService.isUnlocked();
+      const verified = this.spaceService.verifiedMember();
+      const isOwner = this.spaceService.isOwner();
 
-      if (googleUser) {
-        // Authenticated Google User
+      if (googleUser && isUnlocked) {
+        // Authenticated & Approved Google User
+        const role = isOwner ? 'owner' : (verified?.role || 'agent');
         const googleAgent: AgentProfile = {
           uid: googleUser.uid,
-          name: googleUser.displayName || googleUser.email?.split('@')[0] || 'Google User',
-          email: googleUser.email || 'user@skypearl.in',
+          name: googleUser.displayName || googleUser.email?.split('@')[0] || 'Team Agent',
+          email: googleUser.email || '',
           phone: '',
-          role: 'admin',
-          avatarColor: 'linear-gradient(135deg, #4285F4, #34A853)',
+          role,
+          avatarColor: isOwner ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'linear-gradient(135deg, #4285F4, #34A853)',
           photoURL: googleUser.photoURL,
-          joinedVia: 'google',
+          joinedVia: isOwner ? 'creator' : 'google',
           accessedAt: Date.now(),
           activeListingsCount: this.properties().filter(p => p.addedBy === (googleUser.displayName || googleUser.email)).length,
           activeLeadsCount: this.leads().filter(l => l.addedBy === (googleUser.displayName || googleUser.email)).length,
@@ -150,30 +153,8 @@ export class RealtyService {
         };
         this.activeAgent.set(googleAgent);
         localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(googleAgent));
-      } else if (isUnlocked) {
-        // Space Unlocked via Passcode or Invite or Guest
-        const current = this.activeAgent();
-        if (current.role === 'guest' || !current.uid || current.uid === 'guest-persona' || current.name.includes('Rajesh') || current.name.includes('Priya') || current.name.includes('Karthik')) {
-          const passcodeAgent: AgentProfile = {
-            uid: 'access-passcode',
-            name: 'Agency Member (Passcode)',
-            email: 'chennai-agent@skypearl.space',
-            phone: '+91 98401 22334',
-            role: 'agent',
-            avatarColor: 'linear-gradient(135deg, #10b981, #14b8a6)',
-            joinedVia: 'passcode',
-            accessedAt: Date.now(),
-            activeListingsCount: this.properties().length,
-            activeLeadsCount: this.leads().length,
-            closedSalesVolumeLakhs: 0,
-            commissionEarnedLakhs: 0
-          };
-          this.activeAgent.set(passcodeAgent);
-          localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(passcodeAgent));
-        }
       } else {
-        // Guest mode
-        this.activeAgent.set(DEFAULT_GUEST_PROFILE);
+        this.activeAgent.set(UNAUTHENTICATED_AGENT_PROFILE);
       }
     }, { allowSignalWrites: true });
   }

@@ -179,15 +179,4 @@ export class AuthService {
     this.currentUser.set(null);
     localStorage.removeItem('skypearl_demo_user');
   }
-
-  public switchDemoUser(persona: DemoUserPersona): void {
-    const user: AppUser = {
-      uid: persona.uid,
-      email: persona.email,
-      displayName: persona.displayName,
-      photoURL: undefined
-    };
-    this.currentUser.set(user);
-    localStorage.setItem('skypearl_demo_user', JSON.stringify(user));
-  }
 }

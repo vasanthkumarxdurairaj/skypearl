@@ -14,7 +14,8 @@
   </div>
 }
 
-<div class="app-layout">
+@if (spaceService.isUnlocked()) {
+  <div class="app-layout">
   <!-- Top Navbar -->
   <app-navbar 
     (openPropertyModal)="openAddProperty()"
@@ -1114,6 +1115,7 @@
     }
   </div>
 </div>
+}
 
 <!-- Modals -->
 @if (showPropertyModal()) {
