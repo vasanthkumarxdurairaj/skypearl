@@ -73,7 +73,8 @@ export type ChennaiLocality =
   | 'Vadapalani'
   | 'Valasaravakkam'
   | 'Velachery'
-  | 'West Mambalam';
+  | 'West Mambalam'
+  | (string & {});
 
 export const CHENNAI_LOCALITIES: ChennaiLocality[] = [
   'Adyar',
@@ -294,4 +295,22 @@ export interface LocalityMarketData {
   quarterlyGrowthPercent: number;
   activeListingsCount: number;
   highDemandSegment: string;
+}
+
+export interface AppUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  isAnonymous?: boolean;
+}
+
+export interface FirebaseConfigOptions {
+  apiKey: string;
+  authDomain: string;
+  projectId: string;
+  storageBucket: string;
+  messagingSenderId: string;
+  appId: string;
+  measurementId?: string;
 }

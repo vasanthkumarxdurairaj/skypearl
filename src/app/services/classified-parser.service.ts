@@ -36,8 +36,6 @@ export interface ParsedClassified {
   notes: string;
 }
 
-export const SAMPLE_HINDU_CLASSIFIEDS: Array<{ name: string; type: 'seller' | 'buyer'; text: string }> = [];
-
 @Injectable({
   providedIn: 'root'
 })

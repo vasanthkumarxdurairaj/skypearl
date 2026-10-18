@@ -86,7 +86,9 @@ export class App {
   public selectedMatchPropertyId = signal<string>('All');
   public selectedMatchThreshold = signal<number>(0);
 
-  public localities = CHENNAI_LOCALITIES;
+  get localities() {
+    return this.realtyService.localities();
+  }
   public marketInsights = CHENNAI_MARKET_INSIGHTS;
   public leadStages: LeadStage[] = [
     'New', 

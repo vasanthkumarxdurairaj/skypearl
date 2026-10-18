@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject, effect } from '@angular/core';
+import { Injectable, signal, computed, inject, effect, untracked } from '@angular/core';
 import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 import { AuthService } from './auth.service';
@@ -22,6 +22,7 @@ const STORAGE_KEY_PROPERTIES = 'skypearl_realty_properties_v2';
 const STORAGE_KEY_LEADS = 'skypearl_realty_leads_v2';
 const STORAGE_KEY_VISITS = 'skypearl_realty_visits_v2';
 const STORAGE_KEY_ACTIVE_AGENT = 'skypearl_active_agent';
+const STORAGE_KEY_CUSTOM_LOCALITIES = 'skypearl_custom_localities';
 
 export const UNAUTHENTICATED_AGENT_PROFILE: AgentProfile = {
   uid: 'auth-required',
@@ -37,9 +38,6 @@ export const UNAUTHENTICATED_AGENT_PROFILE: AgentProfile = {
   closedSalesVolumeLakhs: 0,
   commissionEarnedLakhs: 0
 };
-
-// Deprecated mock team reference - kept empty so real access history drives the UI
-export const CHENNAI_TEAM_AGENTS: AgentProfile[] = [];
 
 export const CHENNAI_MARKET_INSIGHTS: LocalityMarketData[] = [
   { locality: 'OMR', avgPricePerSqFtINR: 6450, avgRentalYieldPercent: 4.8, quarterlyGrowthPercent: 3.2, activeListingsCount: 42, highDemandSegment: '2 & 3 BHK Tech Apartments' },
@@ -60,6 +58,7 @@ export class RealtyService {
   public authService = inject(AuthService);
   public spaceService = inject(SpaceService);
 
+  public readonly localities = signal<string[]>([...CHENNAI_LOCALITIES]);
   public readonly properties = signal<PropertyListing[]>([]);
   public readonly leads = signal<LeadCRM[]>([]);
   public readonly siteVisits = signal<SiteVisit[]>([]);
@@ -130,33 +129,42 @@ export class RealtyService {
     effect(() => {
       const googleUser = this.authService.currentUser();
       const isUnlocked = this.spaceService.isUnlocked();
-      const verified = this.spaceService.verifiedMember();
-      const isOwner = this.spaceService.isOwner();
 
-      if (googleUser && isUnlocked) {
-        // Authenticated & Approved Google User
-        const role = isOwner ? 'owner' : (verified?.role || 'agent');
-        const googleAgent: AgentProfile = {
-          uid: googleUser.uid,
-          name: googleUser.displayName || googleUser.email?.split('@')[0] || 'Team Agent',
-          email: googleUser.email || '',
-          phone: '',
-          role,
-          avatarColor: isOwner ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'linear-gradient(135deg, #4285F4, #34A853)',
-          photoURL: googleUser.photoURL,
-          joinedVia: isOwner ? 'creator' : 'google',
-          accessedAt: Date.now(),
-          activeListingsCount: this.properties().filter(p => p.addedBy === (googleUser.displayName || googleUser.email)).length,
-          activeLeadsCount: this.leads().filter(l => l.addedBy === (googleUser.displayName || googleUser.email)).length,
-          closedSalesVolumeLakhs: 0,
-          commissionEarnedLakhs: 0
-        };
-        this.activeAgent.set(googleAgent);
-        localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(googleAgent));
-      } else {
-        this.activeAgent.set(UNAUTHENTICATED_AGENT_PROFILE);
-      }
-    }, { allowSignalWrites: true });
+      untracked(() => {
+        if (googleUser && isUnlocked) {
+          const verified = this.spaceService.verifiedMember();
+          const isOwner = this.spaceService.isOwner();
+          const role = isOwner ? 'owner' : (verified?.role || 'agent');
+
+          const curr = this.activeAgent();
+          if (curr.uid === googleUser.uid && curr.role === role) {
+            return; // Already set, prevent re-renders and re-saving
+          }
+
+          const googleAgent: AgentProfile = {
+            uid: googleUser.uid,
+            name: googleUser.displayName || googleUser.email?.split('@')[0] || 'Team Agent',
+            email: googleUser.email || '',
+            phone: '',
+            role,
+            avatarColor: isOwner ? 'linear-gradient(135deg, #d4af37, #b8860b)' : 'linear-gradient(135deg, #4285F4, #34A853)',
+            photoURL: googleUser.photoURL,
+            joinedVia: isOwner ? 'creator' : 'google',
+            accessedAt: Date.now(),
+            activeListingsCount: this.properties().filter(p => p.addedBy === (googleUser.displayName || googleUser.email)).length,
+            activeLeadsCount: this.leads().filter(l => l.addedBy === (googleUser.displayName || googleUser.email)).length,
+            closedSalesVolumeLakhs: 0,
+            commissionEarnedLakhs: 0
+          };
+          this.activeAgent.set(googleAgent);
+          localStorage.setItem(STORAGE_KEY_ACTIVE_AGENT, JSON.stringify(googleAgent));
+        } else {
+          if (this.activeAgent().uid !== UNAUTHENTICATED_AGENT_PROFILE.uid) {
+            this.activeAgent.set(UNAUTHENTICATED_AGENT_PROFILE);
+          }
+        }
+      });
+    });
   }
 
   private initData(): void {
@@ -168,63 +176,6 @@ export class RealtyService {
       document.documentElement.setAttribute('data-theme', savedTheme);
     }
 
-    // Auto-migration: Purge any previously stored mock seed data from localStorage
-    const MIGRATION_CLEAN_KEY = 'skypearl_purged_mock_v5';
-    if (typeof localStorage !== 'undefined' && localStorage.getItem(MIGRATION_CLEAN_KEY) !== 'true') {
-      const dummyPropPrefixes = ['prop-omr-01', 'prop-ecr-02', 'prop-adyar-03', 'prop-annanagar-04', 'prop-besant-05', 'prop-velachery-06', 'prop-porur-07'];
-      const dummyLeadIds = ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05'];
-      const dummyVisitIds = ['visit-01', 'visit-02'];
-
-      const rawP = localStorage.getItem(STORAGE_KEY_PROPERTIES);
-      if (rawP) {
-        try {
-          const list = JSON.parse(rawP);
-          const cleaned = list.filter((p: any) => 
-            !dummyPropPrefixes.includes(p.id) && 
-            !p.id.startsWith('prop-omr-') && 
-            !p.id.startsWith('prop-ecr-') && 
-            !p.id.startsWith('prop-adyar-') && 
-            !p.id.startsWith('prop-annanagar-') && 
-            !p.id.startsWith('prop-besant-') && 
-            !p.id.startsWith('prop-velachery-') && 
-            !p.id.startsWith('prop-porur-') &&
-            p.ownerPhone !== '+91 98400 00000'
-          );
-          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(cleaned));
-        } catch {
-          localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
-        }
-      }
-
-      const rawL = localStorage.getItem(STORAGE_KEY_LEADS);
-      if (rawL) {
-        try {
-          const list = JSON.parse(rawL);
-          const cleaned = list.filter((l: any) => 
-            !dummyLeadIds.includes(l.id) && 
-            l.email !== 'client@example.com' && 
-            l.phone !== '+91 98400 11111'
-          );
-          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(cleaned));
-        } catch {
-          localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
-        }
-      }
-
-      const rawV = localStorage.getItem(STORAGE_KEY_VISITS);
-      if (rawV) {
-        try {
-          const list = JSON.parse(rawV);
-          const cleaned = list.filter((v: any) => !dummyVisitIds.includes(v.id));
-          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(cleaned));
-        } catch {
-          localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
-        }
-      }
-
-      localStorage.setItem(MIGRATION_CLEAN_KEY, 'true');
-    }
-
     const savedProps = localStorage.getItem(STORAGE_KEY_PROPERTIES);
     const savedLeads = localStorage.getItem(STORAGE_KEY_LEADS);
     const savedVisits = localStorage.getItem(STORAGE_KEY_VISITS);
@@ -233,32 +184,48 @@ export class RealtyService {
     if (savedAgent) {
       try {
         const parsed = JSON.parse(savedAgent);
-        // Discard any dummy employee accounts
-        if (parsed.name && !parsed.name.includes('Rajesh') && !parsed.name.includes('Priya') && !parsed.name.includes('Karthik') && parsed.uid !== 'agent-rajesh-admin-01') {
+        if (parsed?.uid && parsed?.name && parsed.uid !== 'auth-required') {
           this.activeAgent.set(parsed);
         } else {
           localStorage.removeItem(STORAGE_KEY_ACTIVE_AGENT);
         }
-      } catch {}
+      } catch {
+        localStorage.removeItem(STORAGE_KEY_ACTIVE_AGENT);
+      }
     }
 
     try {
-      this.properties.set(savedProps ? JSON.parse(savedProps) : []);
+      const parsedProps = savedProps ? JSON.parse(savedProps) : [];
+      this.properties.set(Array.isArray(parsedProps) ? parsedProps.filter((p: any) => !this.isLegacyMockId(p?.id || '')) : []);
     } catch {
       this.properties.set([]);
     }
 
     try {
-      this.leads.set(savedLeads ? JSON.parse(savedLeads) : []);
+      const parsedLeads = savedLeads ? JSON.parse(savedLeads) : [];
+      this.leads.set(Array.isArray(parsedLeads) ? parsedLeads.filter((l: any) => !this.isLegacyMockId(l?.id || '')) : []);
     } catch {
       this.leads.set([]);
     }
 
     try {
-      this.siteVisits.set(savedVisits ? JSON.parse(savedVisits) : []);
+      const parsedVisits = savedVisits ? JSON.parse(savedVisits) : [];
+      this.siteVisits.set(Array.isArray(parsedVisits) ? parsedVisits.filter((v: any) => !this.isLegacyMockId(v?.id || '')) : []);
     } catch {
       this.siteVisits.set([]);
     }
+
+    // Load custom team localities from local storage
+    try {
+      const savedLocs = localStorage.getItem(STORAGE_KEY_CUSTOM_LOCALITIES);
+      if (savedLocs) {
+        const parsed = JSON.parse(savedLocs);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const merged = Array.from(new Set([...CHENNAI_LOCALITIES, ...parsed])).sort((a, b) => a.localeCompare(b));
+          this.localities.set(merged);
+        }
+      }
+    } catch {}
 
     this.saveData();
   }
@@ -274,18 +241,10 @@ export class RealtyService {
     return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
   }
 
-  private isDummyListing(id: string): boolean {
+  private isLegacyMockId(id: string): boolean {
     return id.startsWith('prop-omr-') || id.startsWith('prop-ecr-') || id.startsWith('prop-adyar-') || 
            id.startsWith('prop-annanagar-') || id.startsWith('prop-besant-') || id.startsWith('prop-velachery-') || 
-           id.startsWith('prop-porur-');
-  }
-
-  private isDummyLead(id: string): boolean {
-    return ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05'].includes(id);
-  }
-
-  private isDummyVisit(id: string): boolean {
-    return ['visit-01', 'visit-02'].includes(id);
+           id.startsWith('prop-porur-') || ['lead-01', 'lead-02', 'lead-03', 'lead-04', 'lead-05', 'visit-01', 'visit-02'].includes(id);
   }
 
   private setupFirestoreSync(): void {
@@ -300,8 +259,7 @@ export class RealtyService {
           const remoteProps: PropertyListing[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as PropertyListing;
-            if (this.isDummyListing(docSnap.id) || this.isDummyListing(data?.id || '')) {
-              // Automatically delete legacy dummy doc from Firestore
+            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
               deleteDoc(doc(db, 'properties', docSnap.id)).catch(() => {});
             } else {
               remoteProps.push(data);
@@ -328,7 +286,7 @@ export class RealtyService {
           const remoteLeads: LeadCRM[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as LeadCRM;
-            if (this.isDummyLead(docSnap.id) || this.isDummyLead(data?.id || '')) {
+            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
               deleteDoc(doc(db, 'leads', docSnap.id)).catch(() => {});
             } else {
               remoteLeads.push(data);
@@ -355,7 +313,7 @@ export class RealtyService {
           const remoteVisits: SiteVisit[] = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as SiteVisit;
-            if (this.isDummyVisit(docSnap.id) || this.isDummyVisit(data?.id || '')) {
+            if (this.isLegacyMockId(docSnap.id) || this.isLegacyMockId(data?.id || '')) {
               deleteDoc(doc(db, 'siteVisits', docSnap.id)).catch(() => {});
             } else {
               remoteVisits.push(data);
@@ -373,6 +331,60 @@ export class RealtyService {
     } catch (e) {
       console.warn('Firestore visits setup error:', e);
     }
+
+    // 4. Team Custom Locations Sync Listener
+    try {
+      const locDocRef = doc(db, 'settings', 'agencyLocations');
+      onSnapshot(locDocRef, snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && Array.isArray(data['list']) && data['list'].length > 0) {
+            const merged = Array.from(new Set([...CHENNAI_LOCALITIES, ...data['list']])).sort((a, b) => a.localeCompare(b));
+            this.localities.set(merged);
+            localStorage.setItem(STORAGE_KEY_CUSTOM_LOCALITIES, JSON.stringify(data['list']));
+          }
+        }
+      }, err => {
+        console.warn('Firestore locations sync notice:', err);
+      });
+    } catch (e) {
+      console.warn('Firestore locations setup error:', e);
+    }
+  }
+
+  // Add new location and sync to team
+  public addLocation(name: string): boolean {
+    const trimmed = (name || '').trim();
+    if (!trimmed || trimmed.length < 2) {
+      this.notify('Please enter a valid location name.', 'error');
+      return false;
+    }
+
+    const existing = this.localities().find(l => l.toLowerCase() === trimmed.toLowerCase());
+    if (existing) {
+      this.notify(`"${existing}" is already in the locations list.`, 'info');
+      return true;
+    }
+
+    const updated = Array.from(new Set([...this.localities(), trimmed])).sort((a, b) => a.localeCompare(b));
+    this.localities.set(updated);
+
+    const customOnly = updated.filter(l => !CHENNAI_LOCALITIES.includes(l as any));
+    localStorage.setItem(STORAGE_KEY_CUSTOM_LOCALITIES, JSON.stringify(customOnly));
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      const db = this.firebaseService.firestore;
+      setDoc(doc(db, 'settings', 'agencyLocations'), {
+        list: customOnly,
+        updatedAt: Date.now(),
+        updatedBy: this.activeAgent().name
+      }, { merge: true }).catch(err => {
+        console.warn('Cloud location sync error:', err);
+      });
+    }
+
+    this.notify(`Location "${trimmed}" added and shared with team!`, 'success');
+    return true;
   }
 
   // Clear all data (Clean Slate utility)

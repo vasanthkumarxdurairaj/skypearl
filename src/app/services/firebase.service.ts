@@ -2,7 +2,7 @@ import { Injectable, signal } from '@angular/core';
 import { initializeApp, FirebaseApp, getApps } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
-import { FirebaseConfigOptions } from '../models/workspace.model';
+import { FirebaseConfigOptions } from '../models/realty.model';
 import { environment } from '../../environments/environment';
 
 const STORAGE_KEY_FIREBASE_CONFIG = 'skypearl_firebase_config';

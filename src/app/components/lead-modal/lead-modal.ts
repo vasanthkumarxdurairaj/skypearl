@@ -194,7 +194,29 @@ import {
 
               <!-- Chennai Localities Multi-Select -->
               <div class="form-group mt-2">
-                <label class="form-label">Preferred Chennai Corridors & Localities (Multi-Select) *</label>
+                <div class="label-with-action">
+                  <label class="form-label">Preferred Chennai Corridors & Localities (Multi-Select) *</label>
+                  <button type="button" class="btn-link-action" (click)="toggleNewLocalityInput()">
+                    {{ showNewLocalityInput() ? '✕ Cancel' : '+ Add New Area' }}
+                  </button>
+                </div>
+
+                @if (showNewLocalityInput()) {
+                  <div class="inline-add-location-box">
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      placeholder="Enter new locality / area (e.g. Urapakkam, Guduvanchery)" 
+                      [(ngModel)]="newCustomLocalityName"
+                      (keydown.enter)="saveCustomLocality($event)"
+                      autofocus />
+                    <div class="inline-add-actions">
+                      <button type="button" class="btn btn-xs btn-primary" (click)="saveCustomLocality()">Save & Select</button>
+                      <button type="button" class="btn btn-xs btn-secondary" (click)="toggleNewLocalityInput()">Cancel</button>
+                    </div>
+                  </div>
+                }
+
                 <div class="localities-chip-grid">
                   @for (loc of localities; track loc) {
                     <button 
@@ -208,6 +230,12 @@ import {
                       }
                     </button>
                   }
+                  <button 
+                    type="button" 
+                    class="locality-chip chip-add-new" 
+                    (click)="toggleNewLocalityInput()">
+                    <span>➕ Add New Area...</span>
+                  </button>
                 </div>
               </div>
 
@@ -851,6 +879,62 @@ import {
       border-color: var(--border-hover);
     }
 
+    .locality-chip.chip-add-new {
+      background: rgba(203, 168, 107, 0.08);
+      border: 1px dashed var(--gold);
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .locality-chip.chip-add-new:hover {
+      background: rgba(203, 168, 107, 0.18);
+      transform: translateY(-1px);
+    }
+    .label-with-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .label-with-action .form-label {
+      margin-bottom: 0;
+    }
+    .btn-link-action {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: opacity 0.15s;
+    }
+    .btn-link-action:hover {
+      opacity: 0.8;
+    }
+    .inline-add-location-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--gold);
+      border-radius: 9px;
+      margin-bottom: 10px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .inline-add-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn-xs {
+      padding: 4px 9px;
+      font-size: 11px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
     @media (max-width: 640px) {
       .modal-backdrop {
         padding: 6px;
@@ -969,7 +1053,31 @@ export class LeadModalComponent {
   public loanReadiness = 'Bank loan possible (verify)';
   public notes = '';
 
-  public localities = CHENNAI_LOCALITIES;
+  public showNewLocalityInput = signal<boolean>(false);
+  public newCustomLocalityName = '';
+
+  get localities() {
+    return this.realtyService.localities();
+  }
+
+  public toggleNewLocalityInput(): void {
+    this.showNewLocalityInput.update(v => !v);
+    this.newCustomLocalityName = '';
+  }
+
+  public saveCustomLocality(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+    const trimmed = this.newCustomLocalityName.trim();
+    if (!trimmed) return;
+    this.realtyService.addLocation(trimmed);
+    if (!this.preferredLocalities.includes(trimmed)) {
+      this.preferredLocalities.push(trimmed);
+    }
+    this.showNewLocalityInput.set(false);
+    this.newCustomLocalityName = '';
+  }
 
   public availableAmenities = [
     'Lift',

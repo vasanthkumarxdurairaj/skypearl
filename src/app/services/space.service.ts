@@ -1,4 +1,4 @@
-import { Injectable, signal, computed, inject, effect } from '@angular/core';
+import { Injectable, signal, computed, inject, effect, untracked } from '@angular/core';
 import { AuthService } from './auth.service';
 import { FirebaseService } from './firebase.service';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
@@ -112,8 +112,10 @@ export class SpaceService {
     // React to Google Authentication changes
     effect(() => {
       const user = this.authService.currentUser();
-      this.evaluateAccessForUser(user);
-    }, { allowSignalWrites: true });
+      untracked(() => {
+        this.evaluateAccessForUser(user);
+      });
+    });
   }
 
   private initSpace(): void {
@@ -139,7 +141,7 @@ export class SpaceService {
           ownerName: parsed.ownerName || '',
           allowedEmails: Array.isArray(parsed.allowedEmails) ? parsed.allowedEmails : [],
           inviteCodes: Array.isArray(parsed.inviteCodes) && parsed.inviteCodes.length > 0 ? parsed.inviteCodes : [...DEFAULT_INVITES],
-          members: Array.isArray(parsed.members) ? parsed.members.filter((m: any) => m.id !== 'member-01' && m.email !== 'rajesh.kumar@skypearl.in') : [],
+          members: Array.isArray(parsed.members) ? parsed.members : [],
           pendingRequests: Array.isArray(parsed.pendingRequests) ? parsed.pendingRequests : []
         });
       }
@@ -184,8 +186,8 @@ export class SpaceService {
   public evaluateAccessForUser(user: any): void {
     if (!user) {
       // No Google login = No access to any data
-      this.isUnlocked.set(false);
-      this.showAccessModal.set(true);
+      if (this.isUnlocked()) this.isUnlocked.set(false);
+      if (!this.showAccessModal()) this.showAccessModal.set(true);
       return;
     }
 
@@ -214,8 +216,8 @@ export class SpaceService {
         members: [ownerMember, ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)]
       }));
       this.saveSpace();
-      this.isUnlocked.set(true);
-      this.showAccessModal.set(false);
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
@@ -224,25 +226,28 @@ export class SpaceService {
       (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
       (currentSpace.ownerUid && currentSpace.ownerUid === user.uid)
     ) {
-      this.registerOrUpdateMember({
-        id: user.uid,
-        name: user.displayName || currentSpace.ownerName || 'Space Owner',
-        email: user.email,
-        photoURL: user.photoURL,
-        role: 'owner',
-        status: 'active',
-        joinedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        joinedVia: 'creator'
-      });
-      this.isUnlocked.set(true);
-      this.showAccessModal.set(false);
+      const isAlreadyRegisteredOwner = currentSpace.members.some(m => m.id === user.uid && m.role === 'owner');
+      if (!isAlreadyRegisteredOwner) {
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || currentSpace.ownerName || 'Space Owner',
+          email: user.email,
+          photoURL: user.photoURL,
+          role: 'owner',
+          status: 'active',
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+          joinedVia: 'creator'
+        });
+      }
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
     // 3. Check if user opened with an invite link (?invite=CODE)
     const pendingCode = this.pendingInviteFromUrl();
-    if (pendingCode && this.space().inviteCodes.some(c => c.toUpperCase() === pendingCode.toUpperCase())) {
+    if (pendingCode && currentSpace.inviteCodes.some(c => c.toUpperCase() === pendingCode.toUpperCase())) {
       this.registerOrUpdateMember({
         id: user.uid,
         name: user.displayName || userEmail.split('@')[0],
@@ -256,8 +261,8 @@ export class SpaceService {
         invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
       });
       this.pendingInviteFromUrl.set(null);
-      this.isUnlocked.set(true);
-      this.showAccessModal.set(false);
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
@@ -276,8 +281,8 @@ export class SpaceService {
         joinedVia: 'email_invite',
         invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
       });
-      this.isUnlocked.set(true);
-      this.showAccessModal.set(false);
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
@@ -287,14 +292,14 @@ export class SpaceService {
     );
     if (existingMember) {
       this.updateMemberLastActive(user.uid);
-      this.isUnlocked.set(true);
-      this.showAccessModal.set(false);
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
     // 6. User is signed in with Google, but NOT invited / NOT approved yet!
-    this.isUnlocked.set(false);
-    this.showAccessModal.set(true);
+    if (this.isUnlocked()) this.isUnlocked.set(false);
+    if (!this.showAccessModal()) this.showAccessModal.set(true);
   }
 
   public async loginWithGoogle(): Promise<boolean> {
@@ -308,6 +313,10 @@ export class SpaceService {
 
   public async loginAndUnlockWithGoogle(): Promise<boolean> {
     return this.loginWithGoogle();
+  }
+
+  public async loginWithGoogleRedirect(): Promise<void> {
+    await this.authService.loginWithGoogleRedirect();
   }
 
   public unlockWithInviteCode(inputCode: string): boolean {
@@ -483,8 +492,13 @@ export class SpaceService {
   }
 
   private registerOrUpdateMember(member: SpaceMember): void {
+    let changed = false;
     this.space.update(s => {
       const existing = s.members.find(m => m.id === member.id || m.email?.toLowerCase() === member.email?.toLowerCase());
+      if (existing && existing.role === member.role && existing.status === member.status && existing.name === member.name) {
+        return s; // No change, avoid re-saving
+      }
+      changed = true;
       const updatedList = [
         {
           ...member,
@@ -495,10 +509,17 @@ export class SpaceService {
       ];
       return { ...s, members: updatedList };
     });
-    this.saveSpace();
+    if (changed) {
+      this.saveSpace();
+    }
   }
 
   private updateMemberLastActive(uid: string): void {
+    const target = this.space().members.find(m => m.id === uid);
+    // Throttle to at most once per 10 minutes to prevent continuous writes
+    if (target && target.lastActiveAt && (Date.now() - target.lastActiveAt < 600000)) {
+      return;
+    }
     this.space.update(s => ({
       ...s,
       members: s.members.map(m => (m.id === uid ? { ...m, lastActiveAt: Date.now() } : m))

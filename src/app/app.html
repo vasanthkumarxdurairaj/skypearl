@@ -362,7 +362,7 @@
 
           <div class="filter-group">
             <select class="toolbar-select" [ngModel]="selectedLocality()" (ngModelChange)="selectedLocality.set($event)">
-              <option value="All">All 38 Localities</option>
+              <option value="All">All Localities ({{ localities.length }})</option>
               @for (loc of localities; track loc) {
                 <option [value]="loc">{{ loc }}</option>
               }

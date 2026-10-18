@@ -284,12 +284,35 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
 
                 <div class="form-row">
                   <div class="form-group flex-1">
-                    <label class="form-label">Chennai Locality *</label>
-                    <select class="form-control" [(ngModel)]="data.locality">
-                      @for (loc of localities; track loc) {
-                        <option [value]="loc">{{ loc }}</option>
-                      }
-                    </select>
+                    <div class="label-with-action">
+                      <label class="form-label">Chennai Locality *</label>
+                      <button type="button" class="btn-link-action" (click)="toggleNewLocalityInput()">
+                        {{ showNewLocalityInput() ? '✕ Cancel' : '+ Add New' }}
+                      </button>
+                    </div>
+
+                    @if (!showNewLocalityInput()) {
+                      <select class="form-control" [(ngModel)]="data.locality" (change)="onLocalityChange($event)">
+                        @for (loc of localities; track loc) {
+                          <option [value]="loc">{{ loc }}</option>
+                        }
+                        <option value="__ADD_NEW__">➕ Add New Location...</option>
+                      </select>
+                    } @else {
+                      <div class="inline-add-location-box">
+                        <input 
+                          type="text" 
+                          class="form-control" 
+                          placeholder="Enter locality / corridor name" 
+                          [(ngModel)]="newCustomLocalityName"
+                          (keydown.enter)="saveCustomLocality($event)"
+                          autofocus />
+                        <div class="inline-add-actions">
+                          <button type="button" class="btn btn-xs btn-primary" (click)="saveCustomLocality()">Save & Select</button>
+                          <button type="button" class="btn btn-xs btn-secondary" (click)="toggleNewLocalityInput()">Cancel</button>
+                        </div>
+                      </div>
+                    }
                   </div>
 
                   <div class="form-group flex-1">
@@ -639,46 +662,6 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       line-height: 1.5;
     }
 
-    /* Samples */
-    .samples-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 14px;
-    }
-    .sample-card {
-      border-radius: 12px;
-      padding: 16px;
-      border: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-    }
-    .sample-card-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .sample-type-badge {
-      font-size: 10px;
-      font-weight: 800;
-      padding: 2px 7px;
-      border-radius: 4px;
-    }
-    .badge-seller { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-    .badge-buyer { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-    .sample-name { font-size: 13px; }
-    .sample-snippet {
-      font-size: 11px;
-      color: var(--text-muted);
-      line-height: 1.4;
-      display: -webkit-box;
-      -webkit-line-clamp: 4;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-      margin-bottom: 12px;
-    }
-
     /* Scanning Progress */
     .scanning-progress-panel {
       border-radius: 14px;
@@ -918,6 +901,51 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       gap: 10px;
     }
 
+    .label-with-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .label-with-action .form-label {
+      margin-bottom: 0;
+    }
+    .btn-link-action {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: opacity 0.15s;
+    }
+    .btn-link-action:hover {
+      opacity: 0.8;
+    }
+    .inline-add-location-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--gold);
+      border-radius: 9px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .inline-add-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn-xs {
+      padding: 4px 9px;
+      font-size: 11px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
     @media (max-width: 640px) {
       .modal-backdrop {
         padding: 6px;
@@ -982,7 +1010,41 @@ export class ClassifiedScannerModalComponent implements OnDestroy {
   public parsedData = signal<ParsedClassified | null>(null);
   public showRawText = signal<boolean>(false);
 
-  public localities = CHENNAI_LOCALITIES;
+  public showNewLocalityInput = signal<boolean>(false);
+  public newCustomLocalityName = '';
+
+  get localities() {
+    return this.realtyService.localities();
+  }
+
+  public toggleNewLocalityInput(): void {
+    this.showNewLocalityInput.update(v => !v);
+    this.newCustomLocalityName = '';
+  }
+
+  public onLocalityChange(event: Event): void {
+    const cur = this.parsedData();
+    if (cur && cur.locality === '__ADD_NEW__') {
+      this.showNewLocalityInput.set(true);
+      this.newCustomLocalityName = '';
+      cur.locality = this.localities[0] || 'OMR';
+    }
+  }
+
+  public saveCustomLocality(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+    const trimmed = this.newCustomLocalityName.trim();
+    if (!trimmed) return;
+    this.realtyService.addLocation(trimmed);
+    const cur = this.parsedData();
+    if (cur) {
+      cur.locality = trimmed;
+    }
+    this.showNewLocalityInput.set(false);
+    this.newCustomLocalityName = '';
+  }
 
   private stream: MediaStream | null = null;
   private facingMode: 'environment' | 'user' = 'environment';

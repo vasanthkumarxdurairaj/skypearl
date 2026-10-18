@@ -184,12 +184,35 @@ import {
 
               <div class="form-row">
                 <div class="form-group flex-1">
-                  <label class="form-label">Chennai Locality (38 Micro-Markets) *</label>
-                  <select class="form-control" [(ngModel)]="locality" (change)="checkDuplicate()">
-                    @for (loc of localities; track loc) {
-                      <option [value]="loc">{{ loc }}</option>
-                    }
-                  </select>
+                  <div class="label-with-action">
+                    <label class="form-label">Chennai Locality ({{ localities.length }} Micro-Markets) *</label>
+                    <button type="button" class="btn-link-action" (click)="toggleNewLocalityInput()">
+                      {{ showNewLocalityInput() ? '✕ Cancel' : '+ Add New' }}
+                    </button>
+                  </div>
+
+                  @if (!showNewLocalityInput()) {
+                    <select class="form-control" [(ngModel)]="locality" (change)="onLocalityChange($event)">
+                      @for (loc of localities; track loc) {
+                        <option [value]="loc">{{ loc }}</option>
+                      }
+                      <option value="__ADD_NEW__">➕ Add New Location...</option>
+                    </select>
+                  } @else {
+                    <div class="inline-add-location-box">
+                      <input 
+                        type="text" 
+                        class="form-control" 
+                        placeholder="Enter new locality / corridor (e.g. Kelambakkam)" 
+                        [(ngModel)]="newCustomLocalityName"
+                        (keydown.enter)="saveCustomLocality($event)"
+                        autofocus />
+                      <div class="inline-add-actions">
+                        <button type="button" class="btn btn-xs btn-primary" (click)="saveCustomLocality()">Save & Select</button>
+                        <button type="button" class="btn btn-xs btn-secondary" (click)="toggleNewLocalityInput()">Cancel</button>
+                      </div>
+                    </div>
+                  }
                 </div>
 
                 <div class="form-group flex-2">
@@ -1393,6 +1416,51 @@ import {
       border-color: var(--border-hover);
     }
 
+    .label-with-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    .label-with-action .form-label {
+      margin-bottom: 0;
+    }
+    .btn-link-action {
+      background: none;
+      border: none;
+      padding: 0;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: opacity 0.15s;
+    }
+    .btn-link-action:hover {
+      opacity: 0.8;
+    }
+    .inline-add-location-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 10px;
+      background: var(--bg-surface);
+      border: 1px dashed var(--gold);
+      border-radius: 9px;
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    .inline-add-actions {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .btn-xs {
+      padding: 4px 9px;
+      font-size: 11px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
     @media (max-width: 640px) {
       .modal-backdrop {
         padding: 6px;
@@ -1535,7 +1603,40 @@ export class PropertyModalComponent {
   public photos: string[] = [];
   public newPhotoUrl = '';
 
-  public localities = CHENNAI_LOCALITIES;
+  public showNewLocalityInput = signal<boolean>(false);
+  public newCustomLocalityName = '';
+
+  get localities() {
+    return this.realtyService.localities();
+  }
+
+  public toggleNewLocalityInput(): void {
+    this.showNewLocalityInput.update(v => !v);
+    this.newCustomLocalityName = '';
+  }
+
+  public onLocalityChange(event: Event): void {
+    if (this.locality === '__ADD_NEW__') {
+      this.showNewLocalityInput.set(true);
+      this.newCustomLocalityName = '';
+      this.locality = this.localities[0] || 'OMR';
+      return;
+    }
+    this.checkDuplicate();
+  }
+
+  public saveCustomLocality(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+    }
+    const trimmed = this.newCustomLocalityName.trim();
+    if (!trimmed) return;
+    this.realtyService.addLocation(trimmed);
+    this.locality = trimmed;
+    this.showNewLocalityInput.set(false);
+    this.newCustomLocalityName = '';
+    this.checkDuplicate();
+  }
 
   public availableAmenities = [
     'Lift',

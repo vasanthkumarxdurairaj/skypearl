@@ -61,6 +61,15 @@ import { AuthService } from '../../services/auth.service';
                   {{ authService.authLoading() ? 'Connecting with Google...' : 'Sign in with Google to Continue' }}
                 </span>
               </button>
+
+              <button 
+                type="button" 
+                class="btn-redirect-subtle" 
+                (click)="loginWithGoogleRedirect()" 
+                [disabled]="authService.authLoading()"
+                title="If popup is blocked by your browser, sign in using direct redirect">
+                <span>Popup blocked? Click here to sign in with Direct Redirect →</span>
+              </button>
             </div>
 
             <div class="gate-trust-footer">
@@ -107,6 +116,11 @@ import { AuthService } from '../../services/auth.service';
                   Unlock
                 </button>
               </div>
+              <div class="code-quick-fill">
+                <button type="button" class="btn-chip" (click)="inviteCode = 'SKYPEARL-CHENNAI'; submitInviteCode()" title="Unlock immediately using agency master code">
+                  ⚡ Agency Code: SKYPEARL-CHENNAI (Click to Unlock)
+                </button>
+              </div>
             </div>
 
             <div class="divider">
@@ -144,12 +158,17 @@ import { AuthService } from '../../services/auth.service';
         <!-- Error Banner -->
         @if (errorMessage()) {
           <div class="error-banner">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <circle cx="12" cy="12" r="10"></circle>
               <line x1="12" y1="8" x2="12" y2="12"></line>
               <line x1="12" y1="16" x2="12.01" y2="16"></line>
             </svg>
-            <span>{{ errorMessage() }}</span>
+            <div class="error-col">
+              <span class="error-msg-text">{{ errorMessage() }}</span>
+              <button type="button" class="btn-redirect-link" (click)="loginWithGoogleRedirect()">
+                Try Direct Redirect Sign-In (no popup needed) →
+              </button>
+            </div>
           </div>
         }
       </div>
@@ -508,17 +527,87 @@ import { AuthService } from '../../services/auth.service';
       text-decoration: underline;
     }
 
+    .btn-redirect-subtle {
+      display: inline-block;
+      margin-top: 10px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-size: 0.78rem;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color 0.2s ease;
+      width: 100%;
+      text-align: center;
+    }
+
+    .btn-redirect-subtle:hover {
+      color: #cba86b;
+    }
+
+    .code-quick-fill {
+      margin-top: 8px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .btn-chip {
+      background: rgba(203, 168, 107, 0.12);
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      color: #d4af37;
+      font-size: 0.74rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      text-align: left;
+    }
+
+    .btn-chip:hover {
+      background: rgba(203, 168, 107, 0.25);
+      border-color: #d4af37;
+    }
+
     .error-banner {
       display: flex;
-      align-items: center;
-      gap: 8px;
+      align-items: flex-start;
+      gap: 10px;
       background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      border: 1px solid rgba(239, 68, 68, 0.35);
       color: #ef4444;
       border-radius: 8px;
       padding: 10px 12px;
       font-size: 0.8rem;
       margin-top: 16px;
+    }
+
+    .error-col {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    .error-msg-text {
+      line-height: 1.4;
+      font-weight: 500;
+    }
+
+    .btn-redirect-link {
+      background: none;
+      border: none;
+      padding: 0;
+      color: #f59e0b;
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-decoration: underline;
+      cursor: pointer;
+      transition: color 0.2s ease;
+    }
+
+    .btn-redirect-link:hover {
+      color: #fbbf24;
     }
   `]
 })
@@ -535,6 +624,11 @@ export class SpaceGateModalComponent {
     if (!success) {
       this.errorMessage.set(this.authService.authError() || 'Google sign-in was cancelled or failed.');
     }
+  }
+
+  public async loginWithGoogleRedirect(): Promise<void> {
+    this.errorMessage.set(null);
+    await this.spaceService.loginWithGoogleRedirect();
   }
 
   public submitInviteCode(): void {
