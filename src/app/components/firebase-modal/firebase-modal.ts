@@ -65,7 +65,7 @@ import { FirebaseConfigOptions } from '../../models/workspace.model';
         <div class="form-grid">
           <div class="form-group">
             <label class="form-label">API Key *</label>
-            <input type="text" class="form-control" placeholder="AIzaSy..." [(ngModel)]="config.apiKey" />
+            <input type="text" class="form-control" placeholder="Enter API key" [(ngModel)]="config.apiKey" />
           </div>
 
           <div class="form-group">

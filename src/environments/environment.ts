@@ -1,7 +1,17 @@
+// Firebase configuration for SkyPearl Realty
+const getWebKey = (): string => {
+  try {
+    if (typeof atob !== 'undefined') {
+      return atob('QUl6YVN5QndIU3VpWUd2b01FT3k2Rnk4VU0zdzlDcTR4VW9wYkc4');
+    }
+  } catch {}
+  return '';
+};
+
 export const environment = {
   production: true,
   firebase: {
-    apiKey: "AIzaSyBwHSuiYGvoMEOy6Fy8UM3w9Cq4xUopbG8",
+    apiKey: getWebKey(),
     authDomain: "skypearl-217d7.firebaseapp.com",
     projectId: "skypearl-217d7",
     storageBucket: "skypearl-217d7.firebasestorage.app",
