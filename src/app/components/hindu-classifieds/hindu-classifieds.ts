@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, output } from '@angular/core';
+import { Component, inject, signal, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HinduClassifiedsService, HinduClassifiedItem } from '../../services/hindu-classifieds.service';
@@ -21,7 +21,9 @@ export class HinduClassifiedsComponent {
   public openScannerModal = output<void>();
   public viewProperty = output<string>();
 
-  // Live Scrap URL Tool
+  // User-Friendly Feed Source & Scraping
+  public activeSource = signal<'property-plus' | 'chennai-corridors' | 'custom'>('property-plus');
+  public showCustomLinkBar = signal<boolean>(false);
   public customScrapUrl = signal<string>('https://www.thehindu.com/real-estate/feeder/default.rss');
   public isScrapingUrl = signal<boolean>(false);
 
@@ -59,16 +61,25 @@ export class HinduClassifiedsComponent {
     'Shop'
   ];
 
-  public presetScrapUrls = [
-    { label: 'The Hindu: Real Estate & Property Plus Official Feed', url: 'https://www.thehindu.com/real-estate/feeder/default.rss' },
-    { label: 'The Hindu: Chennai City Corridors Live Feed', url: 'https://www.thehindu.com/news/cities/chennai/feeder/default.rss' },
-    { label: 'The Hindu: Real Estate Web Portal (chennai)', url: 'https://www.thehindu.com/real-estate/' }
-  ];
+  public selectFeedSource(source: 'property-plus' | 'chennai-corridors' | 'custom'): void {
+    this.activeSource.set(source);
+    if (source === 'property-plus') {
+      this.showCustomLinkBar.set(false);
+      this.customScrapUrl.set('https://www.thehindu.com/real-estate/feeder/default.rss');
+      this.classifiedsService.fetchLiveWebFeeds('https://www.thehindu.com/real-estate/feeder/default.rss');
+    } else if (source === 'chennai-corridors') {
+      this.showCustomLinkBar.set(false);
+      this.customScrapUrl.set('https://www.thehindu.com/news/cities/chennai/feeder/default.rss');
+      this.classifiedsService.fetchLiveWebFeeds('https://www.thehindu.com/news/cities/chennai/feeder/default.rss');
+    } else {
+      this.showCustomLinkBar.set(true);
+    }
+  }
 
   public async onScrapeLiveUrl(): Promise<void> {
     const url = this.customScrapUrl().trim();
     if (!url) {
-      this.realtyService.notify('Please enter a valid URL to scrape.', 'info');
+      this.realtyService.notify('Please enter a valid website link to fetch.', 'info');
       return;
     }
 
@@ -82,11 +93,6 @@ export class HinduClassifiedsComponent {
     } finally {
       this.isScrapingUrl.set(false);
     }
-  }
-
-  public setPresetUrl(url: string): void {
-    this.customScrapUrl.set(url);
-    this.onScrapeLiveUrl();
   }
 
   public autoParseInput(): void {

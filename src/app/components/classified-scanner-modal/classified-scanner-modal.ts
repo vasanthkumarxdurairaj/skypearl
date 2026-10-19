@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ClassifiedParserService, ParsedClassified } from '../../services/classified-parser.service';
 import { RealtyService } from '../../services/realty.service';
-import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, LeadSource } from '../../models/realty.model';
+import { LeadSource } from '../../models/realty.model';
 
 @Component({
   selector: 'app-classified-scanner-modal',
@@ -1302,7 +1302,7 @@ export class ClassifiedScannerModalComponent implements OnInit, OnDestroy {
     this.newCustomLocalityName = '';
   }
 
-  public onLocalityChange(event: Event): void {
+  public onLocalityChange(_event?: Event): void {
     const cur = this.parsedData();
     if (cur && cur.locality === '__ADD_NEW__') {
       this.showNewLocalityInput.set(true);
@@ -1576,7 +1576,7 @@ export class ClassifiedScannerModalComponent implements OnInit, OnDestroy {
   }
 
   public regeneratePitch(data: ParsedClassified): void {
-    const { title, pitch } = this.parserService.generateParaphrase({
+    const { pitch } = this.parserService.generateParaphrase({
       detectedType: data.detectedType,
       propertyType: data.propertyType,
       transactionType: data.transactionType,

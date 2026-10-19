@@ -1,8 +1,7 @@
-import { Component, inject, output, signal } from '@angular/core';
+import { Component, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RealtyService } from '../../services/realty.service';
-import { SiteVisit } from '../../models/realty.model';
 
 @Component({
   selector: 'app-visit-modal',

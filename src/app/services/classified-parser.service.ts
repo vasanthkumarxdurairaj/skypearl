@@ -1,11 +1,8 @@
 import { Injectable } from '@angular/core';
 import { 
-  CHENNAI_LOCALITIES, 
   ChennaiLocality, 
   PropertyType, 
-  TransactionType, 
-  PropertyListing, 
-  LeadCRM 
+  TransactionType 
 } from '../models/realty.model';
 
 export interface ParsedClassified {

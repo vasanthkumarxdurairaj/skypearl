@@ -20,8 +20,7 @@
   <app-navbar 
     (openPropertyModal)="openAddProperty()"
     (openLeadModal)="openAddLead()"
-    (openVisitModal)="showVisitModal.set(true)"
-    (openClassifiedScanner)="showClassifiedScannerModal.set(true)" />
+    (openVisitModal)="showVisitModal.set(true)" />
 
   <div class="main-body">
     <!-- Sidebar Navigation -->
@@ -107,21 +106,6 @@
             <span class="tab-badge">{{ realtyService.siteVisits().length }}</span>
           </button>
 
-          <button 
-            class="nav-tab" 
-            [class.active]="realtyService.activeView() === 'hindu-classifieds'"
-            (click)="setView('hindu-classifieds')"
-            title="The Hindu Classifieds"
-            aria-label="The Hindu Classifieds">
-            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
-              <path d="M18 14h-8"/>
-              <path d="M15 18h-5"/>
-              <path d="M10 6h8v4h-8V6Z"/>
-            </svg>
-            <span class="tab-label">Hindu Classifieds</span>
-            <span class="tab-badge highlight">Live</span>
-          </button>
         </div>
       </div>
 
@@ -186,10 +170,7 @@
             </div>
 
             <div class="banner-actions">
-              <button class="btn btn-gold" (click)="showClassifiedScannerModal.set(true)" title="Capture or upload newspaper classified ad (The Hindu)">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                <span>Scan Hindu Classifieds</span>
-              </button>
+
               <button class="btn btn-primary" (click)="openAddProperty()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                 <span>Add Property (Seller)</span>
@@ -331,10 +312,7 @@
             <p class="view-desc">Verified apartments, independent houses, villas and plots with complete UDS, water, and legal attributes</p>
           </div>
           <div class="header-action-group">
-            <button class="btn btn-gold" (click)="showClassifiedScannerModal.set(true)" title="Scan seller classified from The Hindu">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-              <span>Scan Newspaper Ad</span>
-            </button>
+
             <button class="btn btn-primary" (click)="openAddProperty()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span>Add Property Listing</span>
@@ -638,10 +616,7 @@
             <p class="view-desc">Track buyer preferences across Chennai corridors with budget, UDS targets, and follow-ups</p>
           </div>
           <div class="header-action-group">
-            <button class="btn btn-primary" (click)="showClassifiedScannerModal.set(true)" title="Scan buyer wanted ad from The Hindu">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-              <span>Scan Buyer Ad</span>
-            </button>
+
             <button class="btn btn-gold" (click)="openAddLead()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
               <span>Add Buyer Requirement</span>
@@ -1056,14 +1031,7 @@
         </div>
       }
 
-      <!-- ============================================== -->
-      <!-- VIEW 6: THE HINDU CHENNAI CLASSIFIEDS          -->
-      <!-- ============================================== -->
-      @if (realtyService.activeView() === 'hindu-classifieds') {
-        <app-hindu-classifieds 
-          (openScannerModal)="showClassifiedScannerModal.set(true)"
-          (viewProperty)="viewClassifiedProperty($event)" />
-      }
+
     </main>
 
     <!-- SMART PROPERTY-BUYER MATCHING DRAWER -->
@@ -1157,10 +1125,7 @@
   <app-space-settings-modal />
 }
 
-<!-- The Hindu Newspaper Classifieds Scanner Modal -->
-@if (showClassifiedScannerModal()) {
-  <app-classified-scanner-modal (close)="showClassifiedScannerModal.set(false)" />
-}
+
 
 <!-- Follow-Up Email Composer Modal -->
 @if (showFollowUpEmailModal() && activeEmailLead(); as emailLead) {

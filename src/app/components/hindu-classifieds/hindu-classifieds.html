@@ -11,11 +11,11 @@
             <path d="M15 18h-5"/>
             <path d="M10 6h8v4h-8V6Z"/>
           </svg>
-          <span>THE HINDU • REAL ESTATE & CLASSIFIEDS</span>
+          <span>THE HINDU • CHENNAI PROPERTY RADAR</span>
         </div>
-        <h1 class="masthead-title">Chennai Real Estate Feed & Classifieds</h1>
+        <h1 class="masthead-title">Chennai Newspaper Classifieds</h1>
         <p class="masthead-tagline">
-          Pure live data scraped and ingested from The Hindu's official feeds & web scrap URLs. Zero dummy data. 1-click import to SkyPearl verified inventory.
+          Fresh property ads & buyer mandates published in Chennai editions of The Hindu. Direct owner listings, contact details, and 1-click import into your SkyPearl inventory.
         </p>
       </div>
 
@@ -27,16 +27,16 @@
             @if (classifiedsService.isCloudConnected()) {
               Firebase Cloud Connected
             } @else {
-              Offline-First Mode
+              Local Storage Mode
             }
           </span>
         </div>
 
         <button 
-          class="btn btn-secondary btn-sm" 
-          (click)="classifiedsService.fetchLiveWebFeeds()" 
+          class="btn btn-primary btn-sm btn-refresh-feed" 
+          (click)="classifiedsService.fetchLiveWebFeeds(customScrapUrl())" 
           [disabled]="classifiedsService.isRefreshing()"
-          title="Fetch latest updates from The Hindu live feed">
+          title="Sync latest Chennai property ads from The Hindu">
           <svg 
             width="14" 
             height="14" 
@@ -49,101 +49,160 @@
             <polyline points="1 20 1 14 7 14"></polyline>
             <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
           </svg>
-          <span>{{ classifiedsService.isRefreshing() ? 'Scraping Live...' : 'Fetch Live Feed' }}</span>
+          <span>{{ classifiedsService.isRefreshing() ? 'Refreshing Ads...' : 'Refresh Live Ads' }}</span>
         </button>
 
-        <button class="btn btn-gold btn-sm" (click)="showAddModal.set(true)">
+        <button class="btn btn-gold btn-sm" (click)="showAddModal.set(true)" title="Paste a classified ad text from the newspaper">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
           </svg>
-          <span>+ Post Ad Clipping</span>
+          <span>+ Paste Newspaper Ad</span>
         </button>
 
-        <button class="btn btn-primary btn-sm" (click)="openScannerModal.emit()" title="Scan newspaper ad using camera OCR">
+        <button class="btn btn-secondary btn-sm" (click)="openScannerModal.emit()" title="Take a photo of a print newspaper with camera OCR">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
             <circle cx="12" cy="13" r="4"></circle>
           </svg>
-          <span>Camera Scanner</span>
+          <span>Scan Print Paper</span>
         </button>
       </div>
     </div>
 
-    <!-- Live Scraper Bar -->
-    <div class="url-scraper-bar">
-      <div class="scraper-header-row">
-        <div class="scraper-label">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
-          <span>LIVE WEB SCRAPER / API INGESTION URL:</span>
-        </div>
-        <div class="scraper-preset-chips">
-          @for (preset of presetScrapUrls; track preset.url) {
-            <button 
-              type="button" 
-              class="preset-chip" 
-              [class.active]="customScrapUrl() === preset.url"
-              (click)="setPresetUrl(preset.url)">
-              {{ preset.label }}
-            </button>
-          }
-        </div>
+    <!-- User-Friendly Source Selector -->
+    <div class="source-selector-bar">
+      <div class="source-bar-header">
+        <span class="source-bar-title">FEED PUBLICATION CHANNEL:</span>
+        <span class="source-bar-hint">Select publication source or paste any web link</span>
       </div>
 
-      <div class="scraper-input-group">
-        <input 
-          type="url" 
-          class="form-control scraper-input" 
-          placeholder="Paste any live scrap URL (The Hindu Real Estate XML / web link)"
-          [ngModel]="customScrapUrl()"
-          (ngModelChange)="customScrapUrl.set($event)" />
-
+      <div class="source-cards-grid">
         <button 
-          class="btn btn-gold btn-sm scraper-btn" 
-          (click)="onScrapeLiveUrl()" 
-          [disabled]="isScrapingUrl() || classifiedsService.isRefreshing()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" [class.spin-active]="isScrapingUrl()">
-            <circle cx="12" cy="12" r="10"></circle>
-            <line x1="22" y1="12" x2="18" y2="12"></line>
-            <line x1="6" y1="12" x2="2" y2="12"></line>
-            <line x1="12" y1="6" x2="12" y2="2"></line>
-            <line x1="12" y1="22" x2="12" y2="18"></line>
-          </svg>
-          <span>{{ isScrapingUrl() ? 'Scraping Live...' : 'Scrape URL & Ingest' }}</span>
+          type="button" 
+          class="source-card" 
+          [class.active]="activeSource() === 'property-plus'"
+          (click)="selectFeedSource('property-plus')">
+          <div class="source-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+              <path d="M18 14h-8"/>
+              <path d="M15 18h-5"/>
+            </svg>
+          </div>
+          <div class="source-card-info">
+            <div class="source-card-name">The Hindu Property Plus</div>
+            <div class="source-card-desc">Direct Chennai Seller Ads, Flats & Plots</div>
+          </div>
+          @if (activeSource() === 'property-plus') {
+            <span class="active-source-badge">Active</span>
+          }
         </button>
 
-        @if (classifiedsService.totalCount() > 0) {
-          <button 
-            class="btn btn-secondary btn-sm" 
-            (click)="classifiedsService.clearAllClassifieds()"
-            title="Purge loaded list to re-scrape completely fresh">
-            <span>Clear Feed</span>
-          </button>
-        }
+        <button 
+          type="button" 
+          class="source-card" 
+          [class.active]="activeSource() === 'chennai-corridors'"
+          (click)="selectFeedSource('chennai-corridors')">
+          <div class="source-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+              <line x1="9" y1="22" x2="9" y2="22.01"></line>
+              <line x1="15" y1="22" x2="15" y2="22.01"></line>
+              <line x1="12" y1="18" x2="12" y2="18.01"></line>
+              <line x1="12" y1="14" x2="12" y2="14.01"></line>
+              <line x1="12" y1="10" x2="12" y2="10.01"></line>
+              <line x1="12" y1="6" x2="12" y2="6.01"></line>
+            </svg>
+          </div>
+          <div class="source-card-info">
+            <div class="source-card-name">Chennai City Corridors</div>
+            <div class="source-card-desc">OMR, ECR & Anna Nagar Development Feed</div>
+          </div>
+          @if (activeSource() === 'chennai-corridors') {
+            <span class="active-source-badge">Active</span>
+          }
+        </button>
+
+        <button 
+          type="button" 
+          class="source-card" 
+          [class.active]="activeSource() === 'custom'"
+          (click)="selectFeedSource('custom')">
+          <div class="source-card-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+            </svg>
+          </div>
+          <div class="source-card-info">
+            <div class="source-card-name">Custom Web Link / Article</div>
+            <div class="source-card-desc">Extract property details from any URL</div>
+          </div>
+          @if (activeSource() === 'custom') {
+            <span class="active-source-badge">Active</span>
+          }
+        </button>
       </div>
+
+      <!-- Expandable Custom Link Bar if user chooses custom -->
+      @if (showCustomLinkBar()) {
+        <div class="custom-link-box">
+          <div class="custom-link-input-wrap">
+            <input 
+              type="url" 
+              class="form-control custom-link-input" 
+              placeholder="Paste article or newspaper page link (e.g. https://www.thehindu.com/real-estate/...)"
+              [ngModel]="customScrapUrl()"
+              (ngModelChange)="customScrapUrl.set($event)" />
+
+            <button 
+              class="btn btn-gold btn-sm" 
+              (click)="onScrapeLiveUrl()" 
+              [disabled]="isScrapingUrl() || classifiedsService.isRefreshing()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" [class.spin-active]="isScrapingUrl()">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="22" y1="12" x2="18" y2="12"></line>
+                <line x1="6" y1="12" x2="2" y2="12"></line>
+                <line x1="12" y1="6" x2="12" y2="2"></line>
+                <line x1="12" y1="22" x2="12" y2="18"></line>
+              </svg>
+              <span>{{ isScrapingUrl() ? 'Extracting...' : 'Fetch from Link' }}</span>
+            </button>
+          </div>
+        </div>
+      }
     </div>
 
     <!-- Quick Stats Bar -->
     <div class="stats-row">
       <div class="stat-pill">
         <span class="stat-num">{{ classifiedsService.totalCount() }}</span>
-        <span class="stat-label">Live Ingested Ads</span>
+        <span class="stat-label">Total Active Ads</span>
       </div>
       <div class="stat-pill">
         <span class="stat-num gold-text">{{ classifiedsService.sellerCount() }}</span>
-        <span class="stat-label">Seller Listings</span>
+        <span class="stat-label">Properties For Sale</span>
       </div>
       <div class="stat-pill">
         <span class="stat-num cyan-text">{{ classifiedsService.buyerCount() }}</span>
-        <span class="stat-label">Buyer Mandates</span>
+        <span class="stat-label">Buyer Requirements</span>
       </div>
       <div class="stat-pill">
         <span class="stat-num emerald-text">{{ classifiedsService.importedCount() }}</span>
-        <span class="stat-label">Added to SkyPearl</span>
+        <span class="stat-label">Added to Inventory</span>
       </div>
       <div class="stat-pill ml-auto no-dummy-badge">
-        <span class="stat-label gold-text">✓ PURE LIVE DATA • NO DUMMIES</span>
+        <span class="stat-label gold-text">✓ VERIFIED CHENNAI ADS</span>
       </div>
+      @if (classifiedsService.totalCount() > 0) {
+        <button 
+          class="btn-clear-feed" 
+          (click)="classifiedsService.clearAllClassifieds()"
+          title="Clear the current classifieds list">
+          Clear List
+        </button>
+      }
     </div>
   </header>
 
@@ -406,22 +465,22 @@
             <path d="M10 6h8v4h-8V6Z"/>
           </svg>
         </div>
-        <h3>No Dummy Data Active</h3>
-        <p>All hardcoded demo data has been purged. Click below to stream live real estate items directly from The Hindu's official feeds or paste a scrap URL.</p>
+        <h3>No Classifieds Loaded Yet</h3>
+        <p>Get fresh property classifieds published in Chennai editions of The Hindu. Click below to load today's verified ads or paste an ad clipping.</p>
         <div class="d-flex gap-2 justify-content-center mt-3 flex-wrap">
           <button 
             class="btn btn-gold" 
-            (click)="classifiedsService.fetchLiveWebFeeds()" 
+            (click)="classifiedsService.fetchLiveWebFeeds(customScrapUrl())" 
             [disabled]="classifiedsService.isRefreshing()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" [class.spin-active]="classifiedsService.isRefreshing()">
               <polyline points="23 4 23 10 17 10"></polyline>
               <polyline points="1 20 1 14 7 14"></polyline>
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
             </svg>
-            <span>Fetch Pure Live Feed Now</span>
+            <span>Load Today's Chennai Ads</span>
           </button>
           <button class="btn btn-secondary" (click)="showAddModal.set(true)">
-            <span>+ Paste Newspaper Clipping</span>
+            <span>+ Paste Newspaper Ad</span>
           </button>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { SpaceService, AccessRequest, SpaceMember } from '../../services/space.service';
+import { SpaceService } from '../../services/space.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({

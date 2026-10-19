@@ -7,22 +7,15 @@ import { LeadModalComponent } from './components/lead-modal/lead-modal';
 import { VisitModalComponent } from './components/visit-modal/visit-modal';
 import { SpaceGateModalComponent } from './components/space-gate-modal/space-gate-modal';
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
-import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
 import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
-import { HinduClassifiedsComponent } from './components/hindu-classifieds/hindu-classifieds';
 import { RealtyService } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
   PropertyListing, 
   LeadCRM, 
   SiteVisit, 
-  CHENNAI_LOCALITIES, 
   ChennaiLocality, 
-  PropertyType, 
-  TransactionType, 
-  ListingStatus, 
-  LeadStage,
-  CompatibilityMatch
+  LeadStage
 } from './models/realty.model';
 
 @Component({
@@ -37,9 +30,7 @@ import {
     VisitModalComponent,
     SpaceGateModalComponent,
     SpaceSettingsModalComponent,
-    ClassifiedScannerModalComponent,
-    FollowUpEmailModalComponent,
-    HinduClassifiedsComponent
+    FollowUpEmailModalComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -81,7 +72,6 @@ export class App {
     return this.showPropertyModal() ||
       this.showLeadModal() ||
       this.showVisitModal() ||
-      this.showClassifiedScannerModal() ||
       this.showFollowUpEmailModal() ||
       this.spaceService.showSpaceSettingsModal();
   });
@@ -223,7 +213,7 @@ export class App {
   });
 
   // Navigation View Selection
-  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'hindu-classifieds'): void {
+  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'): void {
     this.realtyService.activeView.set(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }

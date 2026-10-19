@@ -1,7 +1,7 @@
 import { Component, Input, Output, EventEmitter, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { LeadCRM, PropertyListing } from '../../models/realty.model';
+import { LeadCRM } from '../../models/realty.model';
 import { EmailFollowupService, FollowUpTemplateType, EmailAutomationSettings } from '../../services/email-followup.service';
 import { RealtyService } from '../../services/realty.service';
 

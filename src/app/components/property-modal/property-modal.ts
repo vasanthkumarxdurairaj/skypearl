@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { RealtyService } from '../../services/realty.service';
 import { 
   PropertyListing, 
-  CHENNAI_LOCALITIES, 
   ChennaiLocality, 
   PropertyType, 
   TransactionType, 
@@ -1666,7 +1665,7 @@ export class PropertyModalComponent {
     this.newCustomLocalityName = '';
   }
 
-  public onLocalityChange(event: Event): void {
+  public onLocalityChange(_event?: Event): void {
     if (this.locality === '__ADD_NEW__') {
       this.showNewLocalityInput.set(true);
       this.newCustomLocalityName = '';

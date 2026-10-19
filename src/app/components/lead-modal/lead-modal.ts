@@ -8,7 +8,6 @@ import {
   LeadStage, 
   LeadPriority, 
   LeadSource, 
-  CHENNAI_LOCALITIES, 
   ChennaiLocality, 
   PropertyType,
   FurnishingStatus 

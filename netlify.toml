@@ -16,6 +16,12 @@
   force = true
 
 [[redirects]]
+  from = "/api/scrape-proxy"
+  to = "/.netlify/functions/scrape-proxy"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

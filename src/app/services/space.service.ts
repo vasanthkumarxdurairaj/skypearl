@@ -357,7 +357,7 @@ export class SpaceService {
     this.saveSpace();
   }
 
-  public grantEmailAccess(email: string, role: 'admin' | 'agent' = 'agent'): boolean {
+  public grantEmailAccess(email: string, _role: 'admin' | 'agent' = 'agent'): boolean {
     if (!this.isOwner()) return false;
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) return false;

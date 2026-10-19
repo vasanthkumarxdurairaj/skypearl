@@ -10,9 +10,6 @@ import {
   AgentProfile,
   ChennaiLocality,
   CHENNAI_LOCALITIES,
-  PropertyType,
-  TransactionType,
-  ListingStatus,
   LeadStage,
   CompatibilityMatch
 } from '../models/realty.model';
@@ -58,7 +55,7 @@ export class RealtyService {
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Active view section in CRM
-  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'hindu-classifieds'>('dashboard');
+  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'>('dashboard');
 
   // Theme Management (White/Light Theme & Dark Theme)
   public readonly currentTheme = signal<'light' | 'dark'>('light');
@@ -296,7 +293,7 @@ export class RealtyService {
   }
 
   private cleanForFirestore(obj: any): any {
-    return JSON.parse(JSON.stringify(obj, (key, value) => (value === undefined ? null : value)));
+    return JSON.parse(JSON.stringify(obj, (_key, value) => (value === undefined ? null : value)));
   }
 
   private isLegacyMockId(id: string): boolean {
