@@ -9,6 +9,7 @@ import { SpaceGateModalComponent } from './components/space-gate-modal/space-gat
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
 import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
+import { HinduClassifiedsComponent } from './components/hindu-classifieds/hindu-classifieds';
 import { RealtyService } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
@@ -37,7 +38,8 @@ import {
     SpaceGateModalComponent,
     SpaceSettingsModalComponent,
     ClassifiedScannerModalComponent,
-    FollowUpEmailModalComponent
+    FollowUpEmailModalComponent,
+    HinduClassifiedsComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -221,7 +223,7 @@ export class App {
   });
 
   // Navigation View Selection
-  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'): void {
+  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'hindu-classifieds'): void {
     this.realtyService.activeView.set(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -370,5 +372,14 @@ export class App {
     if (days < 30) return `${days}d ago`;
     const months = Math.floor(days / 30);
     return `${months}mo ago`;
+  }
+
+  public viewClassifiedProperty(propId: string): void {
+    const prop = this.realtyService.properties().find(p => p.id === propId);
+    this.realtyService.activeView.set('properties');
+    if (prop) {
+      this.propertySearchQuery.set(propId);
+      this.openEditProperty(prop);
+    }
   }
 }

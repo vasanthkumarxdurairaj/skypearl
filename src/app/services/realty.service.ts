@@ -58,7 +58,7 @@ export class RealtyService {
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Active view section in CRM
-  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'>('dashboard');
+  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'hindu-classifieds'>('dashboard');
 
   // Theme Management (White/Light Theme & Dark Theme)
   public readonly currentTheme = signal<'light' | 'dark'>('light');

@@ -10,6 +10,12 @@
   NETLIFY_DRAWER = "false"
 
 [[redirects]]
+  from = "/api/hindu-feed/*"
+  to = "https://www.thehindu.com/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

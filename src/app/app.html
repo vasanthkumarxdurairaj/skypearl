@@ -106,6 +106,22 @@
             <span class="tab-label">Site Visits</span>
             <span class="tab-badge">{{ realtyService.siteVisits().length }}</span>
           </button>
+
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'hindu-classifieds'"
+            (click)="setView('hindu-classifieds')"
+            title="The Hindu Classifieds"
+            aria-label="The Hindu Classifieds">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+              <path d="M18 14h-8"/>
+              <path d="M15 18h-5"/>
+              <path d="M10 6h8v4h-8V6Z"/>
+            </svg>
+            <span class="tab-label">Hindu Classifieds</span>
+            <span class="tab-badge highlight">Live</span>
+          </button>
         </div>
       </div>
 
@@ -1038,6 +1054,15 @@
             </tbody>
           </table>
         </div>
+      }
+
+      <!-- ============================================== -->
+      <!-- VIEW 6: THE HINDU CHENNAI CLASSIFIEDS          -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'hindu-classifieds') {
+        <app-hindu-classifieds 
+          (openScannerModal)="showClassifiedScannerModal.set(true)"
+          (viewProperty)="viewClassifiedProperty($event)" />
       }
     </main>
 
