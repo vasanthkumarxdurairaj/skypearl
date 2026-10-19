@@ -260,7 +260,10 @@
                       <span class="badge badge-gold">{{ p.approvalStatus || 'Verified' }}</span>
                       <span class="badge badge-water">{{ p.waterSource || 'Metro water' }}</span>
                       @if (p.photos && p.photos.length > 0) {
-                        <span class="badge badge-gold">📷 {{ p.photos.length }}</span>
+                        <span class="badge badge-gold">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                          <span>{{ p.photos.length }}</span>
+                        </span>
                       }
                     </div>
                   </div>
@@ -283,7 +286,7 @@
           <!-- Top Compatibility Connections -->
           <div class="glass-panel feed-panel">
             <div class="feed-header">
-              <h3 class="feed-title">Strongest Buyer ↔ Property Connections</h3>
+              <h3 class="feed-title">Strongest Buyer & Property Connections</h3>
               <button class="btn-text-link" (click)="setView('connections')">Explore All Matches →</button>
             </div>
             <div class="feed-list">
@@ -292,7 +295,9 @@
                   <div class="feed-item-info">
                     <div class="match-client-row">
                       <strong class="text-sky">{{ m.buyer.name }}</strong>
-                      <span class="match-arrow">↔</span>
+                      <span class="match-arrow">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"></polyline><line x1="4" y1="20" x2="21" y2="3"></line></svg>
+                      </span>
                       <strong>{{ m.property.title }}</strong>
                     </div>
                     <div class="item-meta">
@@ -428,7 +433,8 @@
                   <span class="transaction-pill">{{ p.transactionType }}</span>
                   @if (p.photos && p.photos.length > 0) {
                     <span class="photo-count-pill" (click)="openAddPhotos(p)" title="Manage {{ p.photos.length }} photo(s)">
-                      📷 {{ p.photos.length }}
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                      <span>{{ p.photos.length }}</span>
                     </span>
                   }
                 </div>
@@ -493,7 +499,8 @@
                         </button>
                       }
                       <button class="btn btn-xs btn-outline" (click)="openAddPhotos(p)" title="Upload or manage photos">
-                        <span>📷 Photos ({{ p.photos.length || 0 }})</span>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                        <span>Photos ({{ p.photos.length || 0 }})</span>
                       </button>
                       <button class="btn btn-xs btn-outline" (click)="openEditProperty(p)" title="Edit">
                         <span>Edit</span>
@@ -674,7 +681,10 @@
                             {{ lead.priority }}
                           </span>
                           @if (isLeadFollowUpDue(lead)) {
-                            <span class="lead-due-chip" title="Follow-up due today or overdue">⚡ Due</span>
+                            <span class="lead-due-chip" title="Follow-up due today or overdue">
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                              <span>Due</span>
+                            </span>
                           }
                         </div>
                         <span class="lead-budget">

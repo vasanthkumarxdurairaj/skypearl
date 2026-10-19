@@ -603,25 +603,26 @@ export class ClassifiedParserService {
         : '  • Clear title with standard residential amenities';
 
       const pitch = 
-`🌟 PREMIUM REAL ESTATE LISTING — ${params.locality.toUpperCase()}${params.subLocation ? ' (' + params.subLocation + ')' : ''}
+`[SKYPEARL REALTY — PROPERTY LISTING]
+LOCATION: ${params.locality.toUpperCase()}${params.subLocation ? ' (' + params.subLocation + ')' : ''}
 
-🏡 Property Overview:
+PROPERTY OVERVIEW:
 Spacious ${params.bhk ? params.bhk + ' BHK ' : ''}${params.propertyType} situated in the prime residential corridor of ${locWithSub}. Offers ${params.builtUpAreaSqFt.toLocaleString('en-IN')} Sq.Ft of super built-up area${params.udsSqFt ? ' with ' + params.udsSqFt + ' Sq.Ft high UDS' : ''}${params.facing ? ' (' + params.facing + '-facing, 100% Vaastu compliant)' : ''}.
 
-💎 Clearances & Amenities:
+CLEARANCES & AMENITIES:
   • Legal Approval: ${params.approvalStatus || 'CMDA Approved & Marketable Title'}
 ${featuresList}
 
-💰 Financials & Commercials:
+FINANCIALS & COMMERCIALS:
   • Asking Price: ${params.priceDisplay} (${params.priceType})
   • Transaction Mode: Outright ${params.transactionType}
 
-📞 Contact for Inspection & Negotiations:
+INSPECTION & CONTACT:
   • Point of Contact: ${params.contactName}
   • Direct Phone: ${params.contactPhone}
-  • Verified Source: The Hindu Classifieds (${new Date().toLocaleDateString('en-IN')})
+  • Source: The Hindu Classifieds (${new Date().toLocaleDateString('en-IN')})
 
-📝 Original Classified Text:
+ORIGINAL CLASSIFIED TEXT:
 "${params.cleanText}"`;
 
       return { title, pitch };
@@ -631,26 +632,27 @@ ${featuresList}
 
       // Buyer Pitch
       const pitch = 
-`🎯 VERIFIED BUYER REQUIREMENT — ${params.locality.toUpperCase()}${params.subLocation ? ' (' + params.subLocation + ')' : ''}
+`[SKYPEARL REALTY — VERIFIED BUYER MANDATE]
+LOCATION: ${params.locality.toUpperCase()}${params.subLocation ? ' (' + params.subLocation + ')' : ''}
 
-👤 Client Requirement:
+CLIENT REQUIREMENT:
 Active buyer seeking a ${params.bhk ? params.bhk + ' BHK ' : ''}${params.propertyType} in ${locWithSub}.
 
-📐 Specifications & Criteria:
+SPECIFICATIONS & CRITERIA:
   • Built-up Area Required: ~${params.builtUpAreaSqFt.toLocaleString('en-IN')} Sq.Ft or above
   • Preferred Facing: ${params.facing || 'East / North facing preferred'}
   • Condition: Ready to occupy or well-maintained resale with clear legal documentation
 
-💼 Budget & Funding:
+BUDGET & FUNDING:
   • Maximum Budget: Up to ${params.priceDisplay}
   • Financing: Pre-approved bank loan / ready funds for immediate token
 
-📞 Direct Buyer Contact:
+DIRECT BUYER CONTACT:
   • Contact Person: ${params.contactName}
   • Mobile Number: ${params.contactPhone}
   • Source: The Hindu Classifieds (${new Date().toLocaleDateString('en-IN')})
 
-📝 Original Classified Text:
+ORIGINAL CLASSIFIED TEXT:
 "${params.cleanText}"`;
 
       return { title, pitch };

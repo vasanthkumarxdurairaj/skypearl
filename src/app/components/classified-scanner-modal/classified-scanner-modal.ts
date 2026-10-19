@@ -92,7 +92,10 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                       <div class="reticle-corner tr"></div>
                       <div class="reticle-corner bl"></div>
                       <div class="reticle-corner br"></div>
-                      <div class="reticle-guide-text">📰 Hold camera steady over newspaper classified ad</div>
+                      <div class="reticle-guide-text">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+                        <span>Align camera over newspaper classified advertisement</span>
+                      </div>
                     </div>
 
                     <!-- Shutter Flash Overlay -->
@@ -193,7 +196,9 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 @if (selectedImageThumbnail()) {
                   <img [src]="selectedImageThumbnail()" alt="Processing clipping" class="scanning-img-preview" />
                 } @else {
-                  <div class="scanning-placeholder-icon">📰</div>
+                  <div class="scanning-placeholder-icon">
+                    <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="1.8"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M10 6h8v4h-8V6Z"/></svg>
+                  </div>
                 }
               </div>
               <h4 class="mt-3">Analyzing Classified Newsprint...</h4>
@@ -218,9 +223,9 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                 <div class="detection-main">
                   <div class="detection-icon">
                     @if (data.detectedType === 'seller') {
-                      <span>🏠</span>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     } @else {
-                      <span>👤</span>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
                     }
                   </div>
                   <div>
@@ -257,7 +262,10 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
               <div class="paraphrase-card glass-panel">
                 <div class="paraphrase-header">
                   <div class="paraphrase-title-group">
-                    <span class="paraphrase-badge">✨ SMART REAL ESTATE PARAPHRASE</span>
+                    <span class="paraphrase-badge">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                      <span>EXECUTIVE REAL ESTATE PITCH</span>
+                    </span>
                     <span class="paraphrase-sub">Client-ready narrative description & WhatsApp marketing pitch</span>
                   </div>
                   <div class="paraphrase-actions">
@@ -271,7 +279,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                         <span>Copied!</span>
                       } @else {
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                        <span>📋 Copy Pitch</span>
+                        <span>Copy Pitch</span>
                       }
                     </button>
                     <button 
@@ -292,7 +300,8 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                     [(ngModel)]="data.paraphrasedPitch"
                     placeholder="Professional listing pitch will appear here..."></textarea>
                   <div class="paraphrase-footer-tip">
-                    💡 This pitch is automatically stored in listing notes and ready to send to clients on WhatsApp.
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    <span>This pitch is automatically formatted for WhatsApp and client communication.</span>
                   </div>
                 </div>
               </div>
@@ -362,7 +371,7 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                         @for (loc of localities; track loc) {
                           <option [value]="loc">{{ loc }}</option>
                         }
-                        <option value="__ADD_NEW__">➕ Add New Location...</option>
+                        <option value="__ADD_NEW__">+ Add New Location...</option>
                       </select>
                     } @else {
                       <div class="inline-add-location-box">
@@ -466,7 +475,10 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
                         <span class="feature-chip">✓ {{ feat }}</span>
                       }
                       @if (data.approvalStatus) {
-                        <span class="feature-chip chip-gold">🏛 {{ data.approvalStatus }}</span>
+                        <span class="feature-chip chip-gold">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                          <span>{{ data.approvalStatus }}</span>
+                        </span>
                       }
                     </div>
                   </div>

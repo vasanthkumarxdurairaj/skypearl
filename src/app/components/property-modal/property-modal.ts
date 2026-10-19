@@ -196,7 +196,7 @@ import {
                       @for (loc of localities; track loc) {
                         <option [value]="loc">{{ loc }}</option>
                       }
-                      <option value="__ADD_NEW__">➕ Add New Location...</option>
+                      <option value="__ADD_NEW__">+ Add New Location...</option>
                     </select>
                   } @else {
                     <div class="inline-add-location-box">
@@ -516,7 +516,9 @@ import {
               <!-- Photos Shortcut in Tab 4 -->
               <div class="photos-shortcut-card glass-panel mt-4 p-3">
                 <div class="shortcut-info">
-                  <div class="shortcut-icon">📷</div>
+                  <div class="shortcut-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                  </div>
                   <div>
                     <h5 class="shortcut-title">Property Showcase Gallery</h5>
                     <p class="shortcut-desc">
@@ -550,7 +552,8 @@ import {
                     [class.btn-gold]="photoUploadMode() === 'device'" 
                     [class.btn-secondary]="photoUploadMode() !== 'device'"
                     (click)="photoUploadMode.set('device')">
-                    📁 Upload from Device
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    <span>Upload from Device</span>
                   </button>
                   <button 
                     type="button" 
@@ -558,7 +561,8 @@ import {
                     [class.btn-gold]="photoUploadMode() === 'url'" 
                     [class.btn-secondary]="photoUploadMode() !== 'url'"
                     (click)="photoUploadMode.set('url')">
-                    🔗 Paste Image URL
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>Paste Image URL</span>
                   </button>
                 </div>
               </div>

@@ -41,7 +41,10 @@ import { AuthService } from '../../services/auth.service';
               <div class="user-name">
                 <span class="user-display-name">{{ authService.currentUser()?.displayName || 'Authenticated Google User' }}</span>
                 @if (spaceService.isOwner()) {
-                  <span class="badge-owner-crown">👑 Creator & Owner</span>
+                  <span class="badge-owner-crown">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <span>Creator & Owner</span>
+                  </span>
                 } @else {
                   <span class="badge-role">{{ (spaceService.currentRole() || 'agent') | uppercase }}</span>
                 }
@@ -70,7 +73,8 @@ import { AuthService } from '../../services/auth.service';
             <div class="section-card highlight-card">
               <div class="section-header">
                 <span class="section-title">
-                  🔔 Pending Access Requests ({{ spaceService.space().pendingRequests.length }})
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                  <span>Pending Access Requests ({{ spaceService.space().pendingRequests.length }})</span>
                 </span>
                 <span class="badge-pill warn">Owner Approval Required</span>
               </div>
@@ -209,7 +213,7 @@ import { AuthService } from '../../services/auth.service';
                       </div>
                     } @else {
                       <span class="member-activity">
-                        {{ member.role === 'owner' ? '👑 Owner' : 'Active Member' }}
+                        {{ member.role === 'owner' ? 'Owner' : 'Active Member' }}
                       </span>
                     }
                   </div>
@@ -884,9 +888,9 @@ export class SpaceSettingsModalComponent {
 
   public formatJoinedVia(via: string): string {
     switch (via) {
-      case 'creator': return '👑 Creator';
-      case 'email_invite': return '✉️ Authorized Email';
-      case 'approved_request': return '✓ Owner Approved';
+      case 'creator': return 'Creator & Owner';
+      case 'email_invite': return 'Authorized Email';
+      case 'approved_request': return 'Owner Approved';
       default: return via || 'Google';
     }
   }
