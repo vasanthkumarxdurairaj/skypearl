@@ -19,6 +19,30 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
     rel="stylesheet">
+  <style>
+    #nl-badge-frame,
+    #nl-badge-container,
+    [id*="nl-badge"],
+    [class*="nl-badge"],
+    iframe[title*="Netlify"],
+    iframe[src*="netlify"],
+    iframe[id*="netlify"],
+    [data-netlify-drawer],
+    [class*="netlify-drawer"],
+    #netlify-badge,
+    .netlify-badge,
+    netlify-drawer {
+      display: none !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      width: 0 !important;
+      height: 0 !important;
+      position: absolute !important;
+      left: -9999px !important;
+      z-index: -9999 !important;
+    }
+  </style>
   <script>
     (function () {
       try {

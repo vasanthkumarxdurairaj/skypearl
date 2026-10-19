@@ -579,6 +579,11 @@ textarea.form-control {
    =================================================================== */
 iframe[src*="netlify"],
 iframe[id*="netlify"],
+#nl-badge-frame,
+#nl-badge-container,
+[id*="nl-badge"],
+[class*="nl-badge"],
+iframe[title="Powered by Netlify"],
 [data-netlify-drawer],
 [class*="netlify-drawer"],
 #netlify-badge,
@@ -593,5 +598,6 @@ netlify-drawer {
   height: 0 !important;
   position: absolute !important;
   left: -9999px !important;
+  z-index: -9999 !important;
 }
 
