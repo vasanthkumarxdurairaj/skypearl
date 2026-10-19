@@ -334,11 +334,21 @@
           <div class="search-box">
             <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input 
-              type="text" 
+              type="search" 
+              name="skypearl_property_search_filter"
+              id="skypearl_property_search_filter"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              [readonly]="isAnyModalOpen()"
               class="toolbar-search" 
               placeholder="Search properties, areas, owners, approvals..." 
               [ngModel]="propertySearchQuery()"
               (ngModelChange)="propertySearchQuery.set($event)" />
+            @if (propertySearchQuery()) {
+              <button type="button" class="btn-clear-search" (click)="clearPropertySearch()" title="Clear property search">✕</button>
+            }
           </div>
 
           <div class="filter-group">
@@ -385,6 +395,18 @@
             </div>
           </div>
         </div>
+
+        @if (propertySearchQuery()) {
+          <div class="active-filter-banner glass-panel">
+            <div class="active-filter-info">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Search filter active: <strong>"{{ propertySearchQuery() }}"</strong> ({{ filteredProperties().length }} matching)</span>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline" (click)="clearPropertySearch()">
+              Clear Search Filter
+            </button>
+          </div>
+        }
 
         <!-- Property Grid View -->
         @if (propertyViewMode() === 'grid') {
@@ -509,9 +531,15 @@
                     <polyline points="9 22 9 12 15 12 15 22"></polyline>
                   </svg>
                 </div>
-                <h3>Clean Inventory Slate</h3>
-                <p class="text-muted">No properties found. Add your first Chennai property with direct photo uploads and complete specifications.</p>
-                <button class="btn btn-primary mt-3" (click)="openAddProperty()">+ Add New Property Listing</button>
+                @if (propertySearchQuery()) {
+                  <h3>No Properties Match "{{ propertySearchQuery() }}"</h3>
+                  <p class="text-muted">A search filter is active. Clear the search bar to show all properties.</p>
+                  <button class="btn btn-secondary mt-3" (click)="clearPropertySearch()">✕ Clear Search Filter</button>
+                } @else {
+                  <h3>Clean Inventory Slate</h3>
+                  <p class="text-muted">No properties found. Add your first Chennai property with direct photo uploads and complete specifications.</p>
+                  <button class="btn btn-primary mt-3" (click)="openAddProperty()">+ Add New Property Listing</button>
+                }
               </div>
             }
           </div>
@@ -563,6 +591,19 @@
                       </div>
                     </td>
                   </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="9" class="text-center p-4">
+                      <div class="column-empty">
+                        @if (propertySearchQuery()) {
+                          No properties match "{{ propertySearchQuery() }}".
+                          <button class="btn btn-xs btn-outline ml-2" (click)="clearPropertySearch()">Clear Search</button>
+                        } @else {
+                          No properties in inventory.
+                        }
+                      </div>
+                    </td>
+                  </tr>
                 }
               </tbody>
             </table>
@@ -600,11 +641,21 @@
           <div class="search-box">
             <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
             <input 
-              type="text" 
+              type="search" 
+              name="skypearl_lead_search_filter"
+              id="skypearl_lead_search_filter"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              [readonly]="isAnyModalOpen()"
               class="toolbar-search" 
               placeholder="Search clients, phone, localities, requirements..." 
               [ngModel]="leadSearchQuery()"
               (ngModelChange)="leadSearchQuery.set($event)" />
+            @if (leadSearchQuery()) {
+              <button type="button" class="btn-clear-search" (click)="clearLeadSearch()" title="Clear client search">✕</button>
+            }
           </div>
 
           <div class="filter-group">
@@ -636,8 +687,30 @@
           </div>
         </div>
 
+        @if (leadSearchQuery()) {
+          <div class="active-filter-banner glass-panel">
+            <div class="active-filter-info">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span>Search filter active: <strong>"{{ leadSearchQuery() }}"</strong> ({{ filteredLeads().length }} matching)</span>
+            </div>
+            <button type="button" class="btn btn-xs btn-outline" (click)="clearLeadSearch()">
+              Clear Search Filter
+            </button>
+          </div>
+        }
+
         <!-- Kanban Pipeline View -->
         @if (leadViewMode() === 'kanban') {
+          @if (filteredLeads().length === 0 && leadSearchQuery()) {
+            <div class="empty-state-card glass-panel text-center p-5 mb-4">
+              <div class="empty-icon-circle mb-3">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </div>
+              <h3>No Leads Match "{{ leadSearchQuery() }}"</h3>
+              <p class="text-muted">A search filter is currently active. Clear the search bar to show all {{ realtyService.leads().length }} customer requirements.</p>
+              <button class="btn btn-secondary mt-3" (click)="clearLeadSearch()">✕ Clear Search Filter</button>
+            </div>
+          }
           <div class="kanban-board">
             @for (stage of leadStages; track stage) {
               <div class="kanban-column glass-panel">
@@ -776,6 +849,19 @@
                         <button class="btn btn-xs btn-gold" (click)="openMatchingDrawer(lead)">Matches</button>
                         <button class="btn btn-xs btn-outline" (click)="openEditLead(lead)">Edit</button>
                         <button class="btn btn-xs btn-danger-icon" (click)="deleteLead(lead)">✕</button>
+                      </div>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="7" class="text-center p-4">
+                      <div class="column-empty">
+                        @if (leadSearchQuery()) {
+                          No clients match "{{ leadSearchQuery() }}".
+                          <button class="btn btn-xs btn-outline ml-2" (click)="clearLeadSearch()">Clear Search</button>
+                        } @else {
+                          No client requirements in CRM. Click "+ Add Buyer Requirement" to add your first client.
+                        }
                       </div>
                     </td>
                   </tr>

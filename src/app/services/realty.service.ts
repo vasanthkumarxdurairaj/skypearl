@@ -22,6 +22,9 @@ const STORAGE_KEY_LEADS = 'skypearl_realty_leads_v2';
 const STORAGE_KEY_VISITS = 'skypearl_realty_visits_v2';
 const STORAGE_KEY_ACTIVE_AGENT = 'skypearl_active_agent';
 const STORAGE_KEY_CUSTOM_LOCALITIES = 'skypearl_custom_localities';
+const STORAGE_KEY_DELETED_PROPERTIES = 'skypearl_deleted_properties';
+const STORAGE_KEY_DELETED_LEADS = 'skypearl_deleted_leads';
+const STORAGE_KEY_DELETED_VISITS = 'skypearl_deleted_visits';
 
 export const UNAUTHENTICATED_AGENT_PROFILE: AgentProfile = {
   uid: 'auth-required',
@@ -156,6 +159,57 @@ export class RealtyService {
     });
   }
 
+  private getDeletedPropertyIds(): Set<string> {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DELETED_PROPERTIES);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  private addDeletedPropertyId(id: string): void {
+    const set = this.getDeletedPropertyIds();
+    set.add(id);
+    try {
+      localStorage.setItem(STORAGE_KEY_DELETED_PROPERTIES, JSON.stringify(Array.from(set)));
+    } catch {}
+  }
+
+  private getDeletedLeadIds(): Set<string> {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DELETED_LEADS);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  private addDeletedLeadId(id: string): void {
+    const set = this.getDeletedLeadIds();
+    set.add(id);
+    try {
+      localStorage.setItem(STORAGE_KEY_DELETED_LEADS, JSON.stringify(Array.from(set)));
+    } catch {}
+  }
+
+  private getDeletedVisitIds(): Set<string> {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_DELETED_VISITS);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  }
+
+  private addDeletedVisitId(id: string): void {
+    const set = this.getDeletedVisitIds();
+    set.add(id);
+    try {
+      localStorage.setItem(STORAGE_KEY_DELETED_VISITS, JSON.stringify(Array.from(set)));
+    } catch {}
+  }
+
   private initData(): void {
     const savedTheme = (localStorage.getItem('skypearl_theme') as 'light' | 'dark') || 'light';
     this.currentTheme.set(savedTheme);
@@ -183,23 +237,38 @@ export class RealtyService {
       }
     }
 
+    const deletedProps = this.getDeletedPropertyIds();
     try {
       const parsedProps = savedProps ? JSON.parse(savedProps) : [];
-      this.properties.set(Array.isArray(parsedProps) ? parsedProps.filter((p: any) => !this.isLegacyMockId(p?.id || '')) : []);
+      this.properties.set(
+        Array.isArray(parsedProps)
+          ? parsedProps.filter((p: any) => p?.id && !this.isLegacyMockId(p.id) && !deletedProps.has(p.id))
+          : []
+      );
     } catch {
       this.properties.set([]);
     }
 
+    const deletedLeads = this.getDeletedLeadIds();
     try {
       const parsedLeads = savedLeads ? JSON.parse(savedLeads) : [];
-      this.leads.set(Array.isArray(parsedLeads) ? parsedLeads.filter((l: any) => !this.isLegacyMockId(l?.id || '')) : []);
+      this.leads.set(
+        Array.isArray(parsedLeads)
+          ? parsedLeads.filter((l: any) => l?.id && !this.isLegacyMockId(l.id) && !deletedLeads.has(l.id))
+          : []
+      );
     } catch {
       this.leads.set([]);
     }
 
+    const deletedVisits = this.getDeletedVisitIds();
     try {
       const parsedVisits = savedVisits ? JSON.parse(savedVisits) : [];
-      this.siteVisits.set(Array.isArray(parsedVisits) ? parsedVisits.filter((v: any) => !this.isLegacyMockId(v?.id || '')) : []);
+      this.siteVisits.set(
+        Array.isArray(parsedVisits)
+          ? parsedVisits.filter((v: any) => v?.id && !this.isLegacyMockId(v.id) && !deletedVisits.has(v.id))
+          : []
+      );
     } catch {
       this.siteVisits.set([]);
     }
@@ -244,26 +313,55 @@ export class RealtyService {
     try {
       const propCol = collection(db, 'properties');
       onSnapshot(propCol, snapshot => {
+        const deletedIds = this.getDeletedPropertyIds();
+        const currentLocal = this.properties();
+
         if (!snapshot.empty) {
           const remoteProps: PropertyListing[] = [];
+          const remoteIdSet = new Set<string>();
+
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as PropertyListing;
-            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
+            const propId = docSnap.id || data?.id || '';
+            if (propId && !this.isLegacyMockId(propId) && !deletedIds.has(propId)) {
               remoteProps.push(data);
+              remoteIdSet.add(propId);
             }
           });
-          this.properties.set(remoteProps);
+
+          // Merge: remote properties + any local properties that are not in remote and not deleted
+          const localOnly = currentLocal.filter(p => p?.id && !remoteIdSet.has(p.id) && !deletedIds.has(p.id));
+          const merged = [...remoteProps, ...localOnly];
+
+          this.properties.set(merged);
           try {
-            localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(remoteProps));
+            localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(merged));
           } catch {}
+
+          // If there are local properties not yet on remote, sync them to Firestore
+          if (localOnly.length > 0 && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+            localOnly.forEach(p => {
+              setDoc(doc(db, 'properties', p.id), this.cleanForFirestore(p), { merge: true }).catch(() => {});
+            });
+          }
         } else {
-          this.properties.set([]);
-          try {
-            localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify([]));
-          } catch {}
+          // CRITICAL FIX: Remote collection is empty or offline snapshot. NEVER wipe local data!
+          // Keep current local properties intact.
+          if (currentLocal.length > 0) {
+            try {
+              localStorage.setItem(STORAGE_KEY_PROPERTIES, JSON.stringify(currentLocal));
+            } catch {}
+            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+              currentLocal.forEach(p => {
+                if (!deletedIds.has(p.id)) {
+                  setDoc(doc(db, 'properties', p.id), this.cleanForFirestore(p), { merge: true }).catch(() => {});
+                }
+              });
+            }
+          }
         }
       }, err => {
-        console.warn('Firestore properties sync notice:', err);
+        console.warn('Firestore properties sync notice (operating in resilient local-first mode):', err);
       });
     } catch (e) {
       console.warn('Firestore setup error:', e);
@@ -273,26 +371,52 @@ export class RealtyService {
     try {
       const leadCol = collection(db, 'leads');
       onSnapshot(leadCol, snapshot => {
+        const deletedIds = this.getDeletedLeadIds();
+        const currentLocal = this.leads();
+
         if (!snapshot.empty) {
           const remoteLeads: LeadCRM[] = [];
+          const remoteIdSet = new Set<string>();
+
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as LeadCRM;
-            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
+            const leadId = docSnap.id || data?.id || '';
+            if (leadId && !this.isLegacyMockId(leadId) && !deletedIds.has(leadId)) {
               remoteLeads.push(data);
+              remoteIdSet.add(leadId);
             }
           });
-          this.leads.set(remoteLeads);
+
+          const localOnly = currentLocal.filter(l => l?.id && !remoteIdSet.has(l.id) && !deletedIds.has(l.id));
+          const merged = [...remoteLeads, ...localOnly];
+
+          this.leads.set(merged);
           try {
-            localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(remoteLeads));
+            localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(merged));
           } catch {}
+
+          if (localOnly.length > 0 && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+            localOnly.forEach(l => {
+              setDoc(doc(db, 'leads', l.id), this.cleanForFirestore(l), { merge: true }).catch(() => {});
+            });
+          }
         } else {
-          this.leads.set([]);
-          try {
-            localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify([]));
-          } catch {}
+          // CRITICAL FIX: Remote leads empty or offline. NEVER wipe local leads!
+          if (currentLocal.length > 0) {
+            try {
+              localStorage.setItem(STORAGE_KEY_LEADS, JSON.stringify(currentLocal));
+            } catch {}
+            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+              currentLocal.forEach(l => {
+                if (!deletedIds.has(l.id)) {
+                  setDoc(doc(db, 'leads', l.id), this.cleanForFirestore(l), { merge: true }).catch(() => {});
+                }
+              });
+            }
+          }
         }
       }, err => {
-        console.warn('Firestore leads sync notice:', err);
+        console.warn('Firestore leads sync notice (operating in resilient local-first mode):', err);
       });
     } catch (e) {
       console.warn('Firestore leads setup error:', e);
@@ -302,26 +426,52 @@ export class RealtyService {
     try {
       const visitCol = collection(db, 'siteVisits');
       onSnapshot(visitCol, snapshot => {
+        const deletedIds = this.getDeletedVisitIds();
+        const currentLocal = this.siteVisits();
+
         if (!snapshot.empty) {
           const remoteVisits: SiteVisit[] = [];
+          const remoteIdSet = new Set<string>();
+
           snapshot.forEach(docSnap => {
             const data = docSnap.data() as SiteVisit;
-            if (!this.isLegacyMockId(docSnap.id) && !this.isLegacyMockId(data?.id || '')) {
+            const visitId = docSnap.id || data?.id || '';
+            if (visitId && !this.isLegacyMockId(visitId) && !deletedIds.has(visitId)) {
               remoteVisits.push(data);
+              remoteIdSet.add(visitId);
             }
           });
-          this.siteVisits.set(remoteVisits);
+
+          const localOnly = currentLocal.filter(v => v?.id && !remoteIdSet.has(v.id) && !deletedIds.has(v.id));
+          const merged = [...remoteVisits, ...localOnly];
+
+          this.siteVisits.set(merged);
           try {
-            localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(remoteVisits));
+            localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(merged));
           } catch {}
+
+          if (localOnly.length > 0 && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+            localOnly.forEach(v => {
+              setDoc(doc(db, 'siteVisits', v.id), this.cleanForFirestore(v), { merge: true }).catch(() => {});
+            });
+          }
         } else {
-          this.siteVisits.set([]);
-          try {
-            localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify([]));
-          } catch {}
+          // CRITICAL FIX: Remote visits empty or offline. NEVER wipe local visits!
+          if (currentLocal.length > 0) {
+            try {
+              localStorage.setItem(STORAGE_KEY_VISITS, JSON.stringify(currentLocal));
+            } catch {}
+            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+              currentLocal.forEach(v => {
+                if (!deletedIds.has(v.id)) {
+                  setDoc(doc(db, 'siteVisits', v.id), this.cleanForFirestore(v), { merge: true }).catch(() => {});
+                }
+              });
+            }
+          }
         }
       }, err => {
-        console.warn('Firestore visits sync notice:', err);
+        console.warn('Firestore visits sync notice (operating in resilient local-first mode):', err);
       });
     } catch (e) {
       console.warn('Firestore visits setup error:', e);
@@ -340,7 +490,7 @@ export class RealtyService {
           }
         }
       }, err => {
-        console.warn('Firestore locations sync notice:', err);
+        console.warn('Firestore locations sync notice (operating in resilient local-first mode):', err);
       });
     } catch (e) {
       console.warn('Firestore locations setup error:', e);
@@ -387,6 +537,10 @@ export class RealtyService {
     if (!confirm('Are you sure you want to completely clear all property listings, leads, and visits to start 100% fresh?')) {
       return;
     }
+    this.properties().forEach(p => this.addDeletedPropertyId(p.id));
+    this.leads().forEach(l => this.addDeletedLeadId(l.id));
+    this.siteVisits().forEach(v => this.addDeletedVisitId(v.id));
+
     this.properties.set([]);
     this.leads.set([]);
     this.siteVisits.set([]);
@@ -554,6 +708,7 @@ export class RealtyService {
       this.notify('Permission Denied. Only Admin or Manager can delete properties.', 'error');
       return;
     }
+    this.addDeletedPropertyId(id);
     this.properties.update(list => list.filter(p => p.id !== id));
     this.saveData();
 
@@ -677,6 +832,7 @@ export class RealtyService {
       this.notify('Permission Denied. Only Admin or Manager can delete client records.', 'error');
       return;
     }
+    this.addDeletedLeadId(id);
     this.leads.update(list => list.filter(l => l.id !== id));
     this.saveData();
 

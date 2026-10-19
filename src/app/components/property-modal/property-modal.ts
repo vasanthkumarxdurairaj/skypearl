@@ -18,7 +18,7 @@ import {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="modal-backdrop" (click)="close.emit()">
-      <div class="modal-card property-modal-card" (click)="$event.stopPropagation()">
+      <form class="modal-card property-modal-card" (click)="$event.stopPropagation()" (submit)="$event.preventDefault()" autocomplete="on">
         <!-- Header -->
         <div class="modal-header">
           <div>
@@ -120,23 +120,23 @@ import {
               <div class="form-row">
                 <div class="form-group flex-1">
                   <label class="form-label">Owner Full Name *</label>
-                  <input type="text" class="form-control" placeholder="Property Owner / Landlord Name" [(ngModel)]="ownerName" />
+                  <input type="text" class="form-control" name="prop_owner_name" autocomplete="name" placeholder="Property Owner / Landlord Name" [(ngModel)]="ownerName" />
                 </div>
                 <div class="form-group flex-1">
                   <label class="form-label">Mobile Number (10-Digit) *</label>
-                  <input type="tel" class="form-control" placeholder="+91 98401 22334" [(ngModel)]="ownerPhone" />
+                  <input type="tel" class="form-control" name="prop_owner_phone" autocomplete="tel" placeholder="+91 98401 22334" [(ngModel)]="ownerPhone" />
                   <span class="form-hint">Indian mobile; +91 accepted</span>
                 </div>
                 <div class="form-group flex-1">
                   <label class="form-label">Alternate Number</label>
-                  <input type="tel" class="form-control" placeholder="Alternate phone" [(ngModel)]="ownerAltPhone" />
+                  <input type="tel" class="form-control" name="prop_owner_alt_phone" autocomplete="tel" placeholder="Alternate phone" [(ngModel)]="ownerAltPhone" />
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group flex-1">
                   <label class="form-label">Owner Email</label>
-                  <input type="email" class="form-control" placeholder="owner@example.com" [(ngModel)]="ownerEmail" />
+                  <input type="email" class="form-control" name="prop_owner_email" autocomplete="email" placeholder="owner@example.com" [(ngModel)]="ownerEmail" />
                 </div>
                 <div class="form-group flex-1">
                   <label class="form-label">Agreed Brokerage / Commission</label>
@@ -845,7 +845,7 @@ import {
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   `,
   styles: [`

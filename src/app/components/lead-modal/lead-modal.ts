@@ -20,7 +20,7 @@ import {
   imports: [CommonModule, FormsModule],
   template: `
     <div class="modal-backdrop" (click)="close.emit()">
-      <div class="modal-card lead-modal-card" (click)="$event.stopPropagation()">
+      <form class="modal-card lead-modal-card" (click)="$event.stopPropagation()" (submit)="$event.preventDefault()" autocomplete="on">
         <!-- Header -->
         <div class="modal-header">
           <div>
@@ -79,25 +79,25 @@ import {
               <div class="form-row">
                 <div class="form-group flex-1">
                   <label class="form-label">Client Full Name *</label>
-                  <input type="text" class="form-control" placeholder="e.g. Senthil Nathan" [(ngModel)]="name" />
+                  <input type="text" class="form-control" name="lead_client_name" autocomplete="name" placeholder="e.g. Senthil Nathan" [(ngModel)]="name" />
                 </div>
 
                 <div class="form-group flex-1">
                   <label class="form-label">Mobile Number *</label>
-                  <input type="tel" class="form-control" placeholder="+91 98401 22334" [(ngModel)]="phone" />
+                  <input type="tel" class="form-control" name="lead_phone" autocomplete="tel" placeholder="+91 98401 22334" [(ngModel)]="phone" />
                   <span class="form-hint">10-digit Indian mobile; +91 accepted</span>
                 </div>
 
                 <div class="form-group flex-1">
                   <label class="form-label">Alternate Phone</label>
-                  <input type="tel" class="form-control" placeholder="Alternate mobile / WhatsApp" [(ngModel)]="altPhone" />
+                  <input type="tel" class="form-control" name="lead_alt_phone" autocomplete="tel" placeholder="Alternate mobile / WhatsApp" [(ngModel)]="altPhone" />
                 </div>
               </div>
 
               <div class="form-row">
                 <div class="form-group flex-1">
                   <label class="form-label">Email Address</label>
-                  <input type="email" class="form-control" placeholder="client@company.com" [(ngModel)]="email" />
+                  <input type="email" class="form-control" name="lead_email" autocomplete="email" placeholder="client@company.com" [(ngModel)]="email" />
                 </div>
 
                 <div class="form-group flex-1">
@@ -559,7 +559,7 @@ import {
             </button>
           </div>
         </div>
-      </div>
+      </form>
     </div>
   `,
   styles: [`

@@ -75,6 +75,23 @@ export class App {
   public leadViewMode = signal<'kanban' | 'table'>('kanban');
   public filterOnlyDueFollowUps = signal<boolean>(false);
 
+  public isAnyModalOpen = computed<boolean>(() => {
+    return this.showPropertyModal() ||
+      this.showLeadModal() ||
+      this.showVisitModal() ||
+      this.showClassifiedScannerModal() ||
+      this.showFollowUpEmailModal() ||
+      this.spaceService.showSpaceSettingsModal();
+  });
+
+  public clearLeadSearch(): void {
+    this.leadSearchQuery.set('');
+  }
+
+  public clearPropertySearch(): void {
+    this.propertySearchQuery.set('');
+  }
+
   public dueFollowUpsCount = computed<number>(() => {
     const endOfToday = new Date();
     endOfToday.setHours(23, 59, 59, 999);
@@ -213,6 +230,7 @@ export class App {
   public openAddProperty(): void {
     this.editingProperty.set(null);
     this.propertyModalInitialTab.set('contact');
+    this.propertySearchQuery.set('');
     this.showPropertyModal.set(true);
   }
 
@@ -235,6 +253,7 @@ export class App {
   // Lead Actions
   public openAddLead(): void {
     this.editingLead.set(null);
+    this.leadSearchQuery.set('');
     this.showLeadModal.set(true);
   }
 
