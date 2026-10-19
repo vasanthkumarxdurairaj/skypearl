@@ -288,14 +288,6 @@ export interface SiteVisit {
   interestLevel: 'Hot' | 'Warm' | 'Cold' | 'Not Interested';
 }
 
-export interface LocalityMarketData {
-  locality: ChennaiLocality;
-  avgPricePerSqFtINR: number;
-  avgRentalYieldPercent: number;
-  quarterlyGrowthPercent: number;
-  activeListingsCount: number;
-  highDemandSegment: string;
-}
 
 export interface AppUser {
   uid: string;

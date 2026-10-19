@@ -9,7 +9,6 @@ import {
   SiteVisit,
   AgentProfile,
   ChennaiLocality,
-  LocalityMarketData,
   CHENNAI_LOCALITIES,
   PropertyType,
   TransactionType,
@@ -39,16 +38,6 @@ export const UNAUTHENTICATED_AGENT_PROFILE: AgentProfile = {
   commissionEarnedLakhs: 0
 };
 
-export const CHENNAI_MARKET_INSIGHTS: LocalityMarketData[] = [
-  { locality: 'OMR', avgPricePerSqFtINR: 6450, avgRentalYieldPercent: 4.8, quarterlyGrowthPercent: 3.2, activeListingsCount: 42, highDemandSegment: '2 & 3 BHK Tech Apartments' },
-  { locality: 'ECR', avgPricePerSqFtINR: 9800, avgRentalYieldPercent: 3.6, quarterlyGrowthPercent: 4.5, activeListingsCount: 19, highDemandSegment: 'Sea-facing Gated Villas' },
-  { locality: 'Adyar', avgPricePerSqFtINR: 14200, avgRentalYieldPercent: 3.2, quarterlyGrowthPercent: 2.1, activeListingsCount: 24, highDemandSegment: 'Ultra Luxury 3 & 4 BHK' },
-  { locality: 'Anna Nagar', avgPricePerSqFtINR: 12800, avgRentalYieldPercent: 3.4, quarterlyGrowthPercent: 2.8, activeListingsCount: 31, highDemandSegment: 'Independent Homes & Flats' },
-  { locality: 'Besant Nagar', avgPricePerSqFtINR: 16500, avgRentalYieldPercent: 3.0, quarterlyGrowthPercent: 1.9, activeListingsCount: 12, highDemandSegment: 'Beachfront Premium Living' },
-  { locality: 'Velachery', avgPricePerSqFtINR: 7200, avgRentalYieldPercent: 5.1, quarterlyGrowthPercent: 3.8, activeListingsCount: 38, highDemandSegment: 'Mid-Segment Residential' },
-  { locality: 'T. Nagar', avgPricePerSqFtINR: 15400, avgRentalYieldPercent: 4.2, quarterlyGrowthPercent: 2.4, activeListingsCount: 27, highDemandSegment: 'Commercial & Luxury Resale' },
-  { locality: 'Porur', avgPricePerSqFtINR: 5900, avgRentalYieldPercent: 4.9, quarterlyGrowthPercent: 4.1, activeListingsCount: 35, highDemandSegment: 'Affordable & Rental Tech Hub' }
-];
 
 @Injectable({
   providedIn: 'root'
@@ -66,7 +55,7 @@ export class RealtyService {
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Active view section in CRM
-  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'insights' | 'access'>('dashboard');
+  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'>('dashboard');
 
   // Theme Management (White/Light Theme & Dark Theme)
   public readonly currentTheme = signal<'light' | 'dark'>('light');

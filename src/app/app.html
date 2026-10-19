@@ -106,29 +106,6 @@
             <span class="tab-label">Site Visits</span>
             <span class="tab-badge">{{ realtyService.siteVisits().length }}</span>
           </button>
-
-          <button 
-            class="nav-tab desktop-only" 
-            [class.active]="realtyService.activeView() === 'insights'"
-            (click)="setView('insights')">
-            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
-              <line x1="17" y1="6" x2="23" y2="6"></line>
-              <line x1="23" y1="12" x2="23" y2="6"></line>
-            </svg>
-            <span class="tab-label">Chennai Insights</span>
-          </button>
-
-          <button 
-            class="nav-tab desktop-only" 
-            [class.active]="realtyService.activeView() === 'access'"
-            (click)="setView('access')">
-            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-            </svg>
-            <span class="tab-label">Team & Security</span>
-          </button>
         </div>
       </div>
 
@@ -974,91 +951,6 @@
               }
             </tbody>
           </table>
-        </div>
-      }
-
-      <!-- ============================================== -->
-      <!-- VIEW 6: CHENNAI MICRO-MARKET INSIGHTS          -->
-      <!-- ============================================== -->
-      @if (realtyService.activeView() === 'insights') {
-        <div class="section-header-row">
-          <div>
-            <div class="eyebrow-chip">LOCAL INTELLIGENCE</div>
-            <h2 class="view-title">Chennai Real Estate Market Trends</h2>
-            <p class="view-desc">Live micro-market pricing, rental yields, and demand drivers across Chennai</p>
-          </div>
-        </div>
-
-        <div class="table-container glass-panel">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Chennai Locality</th>
-                <th>Avg Capital Rate</th>
-                <th>Rental Yield</th>
-                <th>Quarterly Growth</th>
-                <th>Active SkyPearl Listings</th>
-                <th>Primary Demand Driver</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (m of marketInsights; track m.locality) {
-                <tr class="table-row">
-                  <td><strong>{{ m.locality }}</strong></td>
-                  <td>₹{{ formatINR(m.avgPricePerSqFtINR) }} / sq.ft</td>
-                  <td><span class="badge badge-viewer">{{ m.avgRentalYieldPercent }}%</span></td>
-                  <td><span class="badge badge-editor">+{{ m.quarterlyGrowthPercent }}%</span></td>
-                  <td>{{ m.activeListingsCount }} verified</td>
-                  <td>{{ m.highDemandSegment }}</td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      }
-
-      <!-- ============================================== -->
-      <!-- VIEW 7: TEAM ACCESS & ROLE SECURITY            -->
-      <!-- ============================================== -->
-      @if (realtyService.activeView() === 'access') {
-        <div class="section-header-row">
-          <div>
-            <div class="eyebrow-chip">RBAC ACCESS CONTROL</div>
-            <h2 class="view-title">Employee Accounts & Permissions Matrix</h2>
-            <p class="view-desc">Role-based access control protecting raw client contacts, financial ledgers, and inventory deletions</p>
-          </div>
-        </div>
-
-        <div class="access-matrix-grid">
-          <div class="glass-panel access-card">
-            <span class="badge badge-owner">Admin (Principal Broker)</span>
-            <p class="access-card-desc">Full administrative ownership. Can view financial ledgers, raw owner telephone numbers, export records, and manage employee accounts.</p>
-            <ul class="access-bullets">
-              <li>View unmasked property owner telephone numbers</li>
-              <li>Approve deal commission payouts</li>
-              <li>Provision and revoke agent accounts</li>
-            </ul>
-          </div>
-
-          <div class="glass-panel access-card">
-            <span class="badge badge-editor">Sales Manager</span>
-            <p class="access-card-desc">Supervises lead allocation across Chennai corridors and inspects pipeline health.</p>
-            <ul class="access-bullets">
-              <li>Assign leads to field agents</li>
-              <li>Approve physical property verification status</li>
-              <li>Track agent sales quotas and follow-up metrics</li>
-            </ul>
-          </div>
-
-          <div class="glass-panel access-card">
-            <span class="badge badge-viewer">Property Agent</span>
-            <p class="access-card-desc">Manages field site visits, publishes property specifications, and records customer interaction feedback.</p>
-            <ul class="access-bullets">
-              <li>Create and update property listings</li>
-              <li>Log site visit inspection notes</li>
-              <li>Owner direct phone is masked to prevent bypass</li>
-            </ul>
-          </div>
         </div>
       }
     </main>

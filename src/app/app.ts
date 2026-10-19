@@ -9,7 +9,7 @@ import { SpaceGateModalComponent } from './components/space-gate-modal/space-gat
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
 import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
-import { RealtyService, CHENNAI_MARKET_INSIGHTS } from './services/realty.service';
+import { RealtyService } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
   PropertyListing, 
@@ -89,7 +89,6 @@ export class App {
   get localities() {
     return this.realtyService.localities();
   }
-  public marketInsights = CHENNAI_MARKET_INSIGHTS;
   public leadStages: LeadStage[] = [
     'New', 
     'Contacted',
@@ -205,7 +204,7 @@ export class App {
   });
 
   // Navigation View Selection
-  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'insights' | 'access'): void {
+  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'): void {
     this.realtyService.activeView.set(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
