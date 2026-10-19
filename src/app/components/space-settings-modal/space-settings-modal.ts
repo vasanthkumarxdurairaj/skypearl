@@ -774,19 +774,40 @@ import { AuthService } from '../../services/auth.service';
     /* Mobile Responsive Optimizations */
     @media (max-width: 640px) {
       .modal-backdrop {
-        padding: 8px;
-        align-items: flex-end;
+        padding: 8px 6px;
+        align-items: center;
+        justify-content: center;
+        overflow-y: hidden;
       }
       .modal-card {
+        width: 100% !important;
         max-width: 100% !important;
-        max-height: 94vh !important;
-        border-radius: 16px 16px 0 0 !important;
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        border-radius: 16px !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
         padding: 16px 14px !important;
+        overflow: hidden !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+      }
+      .modal-header {
+        flex-shrink: 0;
       }
       .modal-scroll-body {
+        flex: 1 1 auto;
+        min-height: 0;
         margin: 12px 0;
-        gap: 12px;
-        max-height: calc(94vh - 120px);
+        gap: 14px;
+        max-height: none;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .form-input,
+      .role-select {
+        font-size: 16px !important;
+        min-height: 46px;
       }
       .user-status-card {
         padding: 10px 12px;
@@ -797,6 +818,7 @@ import { AuthService } from '../../services/auth.service';
         margin-top: 6px;
         text-align: center;
         justify-content: center;
+        min-height: 40px;
       }
       .request-item, .member-dir-item {
         flex-direction: column;
@@ -810,6 +832,7 @@ import { AuthService } from '../../services/auth.service';
       .request-actions .btn {
         flex: 1;
         justify-content: center;
+        min-height: 42px;
       }
       .member-right {
         width: 100%;
@@ -825,6 +848,7 @@ import { AuthService } from '../../services/auth.service';
       .invite-email-row .btn {
         width: 100%;
         justify-content: center;
+        min-height: 46px;
       }
       .copy-input-row {
         flex-direction: column;
@@ -833,14 +857,22 @@ import { AuthService } from '../../services/auth.service';
       .copy-input-row .btn {
         width: 100%;
         justify-content: center;
+        min-height: 46px;
       }
       .modal-footer {
+        flex-shrink: 0;
         flex-direction: column-reverse;
         gap: 8px;
+        padding-top: 12px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
       .modal-footer .btn {
         width: 100%;
         justify-content: center;
+        padding: 12px;
+        min-height: 46px;
+        font-size: 14px;
+        font-weight: 600;
       }
     }
   `]

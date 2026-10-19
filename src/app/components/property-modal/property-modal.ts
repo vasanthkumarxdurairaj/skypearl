@@ -1467,33 +1467,69 @@ import {
 
     @media (max-width: 640px) {
       .modal-backdrop {
-        padding: 6px;
-        align-items: flex-end;
+        padding: 8px 6px;
+        align-items: center;
+        justify-content: center;
+        overflow-y: hidden;
       }
       .property-modal-card {
-        max-height: 94vh;
-        border-radius: 16px 16px 0 0;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        border-radius: 16px !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
       }
       .modal-header {
+        flex-shrink: 0;
         padding: 14px 16px 10px;
+        background: var(--bg-card);
       }
       .modal-title {
         font-size: 17px;
       }
       .modal-tabs {
-        padding: 6px 10px;
-        gap: 4px;
+        flex-shrink: 0;
+        padding: 8px 10px;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
       }
       .tab-btn {
-        padding: 6px 10px;
-        font-size: 11px;
+        padding: 7px 12px;
+        font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
       }
       .modal-body-scroll {
-        padding: 14px 14px;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        padding: 16px 14px 24px;
       }
       .form-row {
-        gap: 10px;
-        margin-bottom: 10px;
+        flex-direction: column;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .form-group {
+        margin-bottom: 16px;
+        gap: 8px;
+      }
+      .form-label {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .form-control {
+        font-size: 16px !important;
+        min-height: 46px;
+        padding: 10px 14px;
+        border-radius: 10px;
       }
       .flex-1, .flex-2 {
         min-width: 100% !important;
@@ -1501,6 +1537,7 @@ import {
       }
       .amenities-grid {
         grid-template-columns: 1fr;
+        gap: 8px;
       }
       .photos-tab-header {
         flex-direction: column;
@@ -1513,24 +1550,34 @@ import {
       .photo-mode-toggle button {
         flex: 1;
         justify-content: center;
+        min-height: 44px;
       }
       .modal-footer {
-        padding: 12px 14px;
+        flex-shrink: 0;
+        padding: 12px 14px calc(12px + env(safe-area-inset-bottom, 0px));
         flex-direction: column-reverse;
         gap: 8px;
+        background: var(--bg-card);
+        border-top: 1px solid var(--border-subtle);
       }
       .tab-nav-actions {
         width: 100%;
-        justify-content: space-between;
-      }
-      .modal-footer > .btn {
-        width: 100%;
-        justify-content: center;
-        padding: 10px;
+        display: flex;
+        gap: 8px;
       }
       .tab-nav-actions .btn {
         flex: 1;
+        min-height: 46px;
         justify-content: center;
+        font-size: 13px;
+        border-radius: 10px;
+      }
+      .modal-footer > .btn {
+        width: 100%;
+        min-height: 46px;
+        justify-content: center;
+        font-size: 14px;
+        border-radius: 10px;
       }
     }
   `]

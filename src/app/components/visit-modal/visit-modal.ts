@@ -25,52 +25,54 @@ import { SiteVisit } from '../../models/realty.model';
           </button>
         </div>
 
-        <div class="form-group">
-          <label class="form-label">Select Property Listing *</label>
-          <select class="form-control" [(ngModel)]="selectedPropertyId" (change)="onPropertySelect()">
-            <option value="">-- Choose from available inventory --</option>
-            @for (prop of realtyService.properties(); track prop.id) {
-              <option [value]="prop.id">
-                [{{ prop.locality }}] {{ prop.title }} (₹{{ prop.priceLakhs }} L)
-              </option>
-            }
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Select Client / Lead *</label>
-          <select class="form-control" [(ngModel)]="selectedLeadId" (change)="onLeadSelect()">
-            <option value="">-- Choose active client from CRM --</option>
-            @for (lead of realtyService.leads(); track lead.id) {
-              <option [value]="lead.id">
-                {{ lead.name }} ({{ lead.leadType }} - Budget ₹{{ lead.budgetMaxLakhs }} L)
-              </option>
-            }
-          </select>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group flex-1">
-            <label class="form-label">Client Mobile</label>
-            <input type="text" class="form-control" [(ngModel)]="leadPhone" />
-          </div>
-
-          <div class="form-group flex-1">
-            <label class="form-label">Interest Level</label>
-            <select class="form-control" [(ngModel)]="interestLevel">
-              <option value="Hot">Hot (Ready to close)</option>
-              <option value="Warm">Warm (Comparing options)</option>
-              <option value="Cold">Cold (Early inquiry)</option>
+        <div class="modal-body-scroll">
+          <div class="form-group">
+            <label class="form-label">Select Property Listing *</label>
+            <select class="form-control" [(ngModel)]="selectedPropertyId" (change)="onPropertySelect()">
+              <option value="">-- Choose from available inventory --</option>
+              @for (prop of realtyService.properties(); track prop.id) {
+                <option [value]="prop.id">
+                  [{{ prop.locality }}] {{ prop.title }} (₹{{ prop.priceLakhs }} L)
+                </option>
+              }
             </select>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Visit Agenda & Meeting Notes</label>
-          <textarea 
-            class="form-control" 
-            placeholder="e.g. Buyer visiting with architect and spouse to inspect kitchen ventilation and car parking."
-            [(ngModel)]="feedbackNotes"></textarea>
+          <div class="form-group">
+            <label class="form-label">Select Client / Lead *</label>
+            <select class="form-control" [(ngModel)]="selectedLeadId" (change)="onLeadSelect()">
+              <option value="">-- Choose active client from CRM --</option>
+              @for (lead of realtyService.leads(); track lead.id) {
+                <option [value]="lead.id">
+                  {{ lead.name }} ({{ lead.leadType }} - Budget ₹{{ lead.budgetMaxLakhs }} L)
+                </option>
+              }
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label class="form-label">Client Mobile</label>
+              <input type="text" class="form-control" [(ngModel)]="leadPhone" />
+            </div>
+
+            <div class="form-group flex-1">
+              <label class="form-label">Interest Level</label>
+              <select class="form-control" [(ngModel)]="interestLevel">
+                <option value="Hot">Hot (Ready to close)</option>
+                <option value="Warm">Warm (Comparing options)</option>
+                <option value="Cold">Cold (Early inquiry)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Visit Agenda & Meeting Notes</label>
+            <textarea 
+              class="form-control" 
+              placeholder="e.g. Buyer visiting with architect and spouse to inspect kitchen ventilation and car parking."
+              [(ngModel)]="feedbackNotes"></textarea>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -92,6 +94,10 @@ import { SiteVisit } from '../../models/realty.model';
   styles: [`
     .visit-modal-card {
       max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
     }
 
     .modal-header {
@@ -99,6 +105,7 @@ import { SiteVisit } from '../../models/realty.model';
       justify-content: space-between;
       align-items: flex-start;
       margin-bottom: 20px;
+      flex-shrink: 0;
     }
 
     .modal-title {
@@ -133,6 +140,14 @@ import { SiteVisit } from '../../models/realty.model';
       border-color: var(--border-hover);
     }
 
+    .modal-body-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-right: 4px;
+    }
+
     .form-row {
       display: flex;
       gap: 12px;
@@ -150,29 +165,67 @@ import { SiteVisit } from '../../models/realty.model';
       padding-top: 16px;
       border-top: 1px solid var(--border-subtle);
       margin-top: 16px;
+      flex-shrink: 0;
     }
 
     @media (max-width: 640px) {
       .modal-backdrop {
-        padding: 8px;
-        align-items: flex-end;
+        padding: 8px 6px;
+        align-items: center;
+        justify-content: center;
+        overflow-y: hidden;
       }
-      .modal-card {
+      .modal-card.visit-modal-card {
+        width: 100% !important;
         max-width: 100% !important;
-        border-radius: 16px 16px 0 0 !important;
+        height: calc(100dvh - 16px) !important;
+        max-height: calc(100dvh - 16px) !important;
+        border-radius: 16px !important;
+        margin: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
         padding: 16px 14px !important;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45) !important;
+      }
+      .modal-header {
+        margin-bottom: 14px;
+      }
+      .modal-body-scroll {
+        padding-right: 0;
       }
       .form-row {
         flex-direction: column;
-        gap: 10px;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+      .form-group {
+        margin-bottom: 16px;
+        gap: 8px;
+      }
+      .form-label {
+        font-size: 13px;
+        font-weight: 700;
+      }
+      .form-control {
+        font-size: 16px !important;
+        min-height: 46px;
+        padding: 10px 14px;
+        border-radius: 10px;
       }
       .modal-footer {
         flex-direction: column-reverse;
         gap: 8px;
+        margin-top: 12px;
+        padding-top: 12px;
+        padding-bottom: env(safe-area-inset-bottom, 0px);
       }
       .modal-footer .btn {
         width: 100%;
         justify-content: center;
+        padding: 12px;
+        min-height: 46px;
+        font-size: 14px;
+        font-weight: 600;
       }
     }
   `]
