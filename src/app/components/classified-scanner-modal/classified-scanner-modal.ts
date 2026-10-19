@@ -1179,6 +1179,15 @@ import { CHENNAI_LOCALITIES, ChennaiLocality, PropertyType, TransactionType, Lea
       .camera-stream-wrapper {
         height: 280px;
       }
+      .form-row {
+        flex-direction: column !important;
+        gap: 10px !important;
+        margin-bottom: 10px !important;
+      }
+      .flex-1, .flex-2 {
+        min-width: 100% !important;
+        flex: 1 1 100% !important;
+      }
       .confirmation-actions-bar {
         flex-direction: column-reverse;
         gap: 8px;

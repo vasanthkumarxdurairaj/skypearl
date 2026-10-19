@@ -151,6 +151,30 @@ import { SiteVisit } from '../../models/realty.model';
       border-top: 1px solid var(--border-subtle);
       margin-top: 16px;
     }
+
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 8px;
+        align-items: flex-end;
+      }
+      .modal-card {
+        max-width: 100% !important;
+        border-radius: 16px 16px 0 0 !important;
+        padding: 16px 14px !important;
+      }
+      .form-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+      }
+      .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
   `]
 })
 export class VisitModalComponent {

@@ -1504,6 +1504,10 @@ body.dark-theme .chip-miss {
     align-items: center;
   }
 
+  .nav-tab.desktop-only {
+    display: none !important;
+  }
+
   .nav-tab {
     flex: 1;
     display: flex;

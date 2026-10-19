@@ -23,16 +23,6 @@ import { AuthService } from '../../services/auth.service';
         <!-- STATE 1: User is NOT signed in with Google -->
         @if (!authService.currentUser()) {
           <div class="auth-gate-state">
-            @if (spaceService.pendingInviteFromUrl(); as urlCode) {
-              <div class="invite-banner">
-                <span class="invite-icon">🎫</span>
-                <div class="invite-info">
-                  <strong>Invite Code Detected:</strong> {{ urlCode }}
-                  <p>Sign in with your Google account below to automatically claim access.</p>
-                </div>
-              </div>
-            }
-
             <div class="security-notice">
               <svg class="lock-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
@@ -78,7 +68,7 @@ import { AuthService } from '../../services/auth.service';
           </div>
         }
 
-        <!-- STATE 2: Signed In with Google, but NOT invited / NOT approved yet -->
+        <!-- STATE 2: Signed In with Google, but NOT approved yet by Owner -->
         @if (authService.currentUser(); as user) {
           <div class="pending-gate-state">
             <div class="user-card-pending">
@@ -90,60 +80,35 @@ import { AuthService } from '../../services/auth.service';
               <div class="pending-user-details">
                 <span class="pending-name">{{ user.displayName || 'Google User' }}</span>
                 <span class="pending-email">{{ user.email }}</span>
-                <span class="badge-awaiting">⚠️ Invitation Required</span>
+                <span class="badge-awaiting">⚠️ Owner Approval Required</span>
               </div>
             </div>
 
             <div class="pending-explanation">
               <p>
-                This space is private and owned by
-                <strong>{{ spaceService.space().ownerName || spaceService.space().ownerEmail || 'the Space Creator' }}</strong>.
-                You are currently signed in, but your Google account has not been granted access by the owner yet.
+                This space is private and managed by the Owner
+                <strong>{{ spaceService.space().ownerName || spaceService.space().ownerEmail || 'Space Owner' }}</strong>.
+                Access must be granted directly by the Owner.
               </p>
             </div>
 
-            <!-- Option 1: Enter Invite Code -->
-            <div class="option-box">
-              <label class="option-label">Have an Invite Code from the Owner?</label>
-              <div class="invite-code-input-row">
-                <input 
-                  type="text" 
-                  class="gate-input uppercase" 
-                  placeholder="e.g. SKYPEARL-CHENNAI"
-                  [(ngModel)]="inviteCode" 
-                  (keyup.enter)="submitInviteCode()" />
-                <button type="button" class="btn btn-gold" (click)="submitInviteCode()">
-                  Unlock
-                </button>
-              </div>
-              <div class="code-quick-fill">
-                <button type="button" class="btn-chip" (click)="inviteCode = 'SKYPEARL-CHENNAI'; submitInviteCode()" title="Unlock immediately using agency master code">
-                  ⚡ Agency Code: SKYPEARL-CHENNAI (Click to Unlock)
-                </button>
-              </div>
-            </div>
-
-            <div class="divider">
-              <span>OR</span>
-            </div>
-
-            <!-- Option 2: Request Access from Owner -->
+            <!-- Request Access Action -->
             <div class="option-box text-center">
-              @if (spaceService.pendingRequestSent()) {
+              @if (spaceService.pendingRequestSent() || isAlreadyRequested(user.uid, user.email)) {
                 <div class="request-sent-card">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                   <div>
-                    <strong>Request Sent to Owner!</strong>
-                    <p>Your access request was delivered. As soon as the owner approves it, this space will unlock automatically.</p>
+                    <strong>Request Pending Owner Approval</strong>
+                    <p>Your access request was delivered to the space Owner. You will be admitted as soon as the Owner approves your Google account.</p>
                   </div>
                 </div>
               } @else {
-                <button type="button" class="btn btn-secondary btn-block" (click)="spaceService.requestAccessFromOwner()">
+                <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.requestAccessFromOwner()">
                   <span>Request Access from Space Owner</span>
                 </button>
-                <p class="request-hint">Sends an access request directly to the creator's dashboard.</p>
+                <p class="request-hint">Sends an instant access request directly to the Owner's dashboard.</p>
               }
             </div>
 
@@ -179,7 +144,7 @@ import { AuthService } from '../../services/auth.service';
       position: fixed;
       inset: 0;
       z-index: 99999;
-      background: rgba(10, 15, 26, 0.92);
+      background: rgba(10, 15, 26, 0.94);
       backdrop-filter: blur(16px);
       display: flex;
       align-items: center;
@@ -195,7 +160,7 @@ import { AuthService } from '../../services/auth.service';
 
     .space-gate-card {
       width: 100%;
-      max-width: 460px;
+      max-width: 470px;
       background: var(--bg-card);
       border: 1px solid var(--border-active);
       border-radius: var(--radius-xl);
@@ -223,8 +188,8 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .gate-logo-img {
-      width: 48px;
-      height: 48px;
+      width: 46px;
+      height: 46px;
       object-fit: contain;
     }
 
@@ -278,31 +243,6 @@ import { AuthService } from '../../services/auth.service';
       color: var(--text-muted);
     }
 
-    .invite-banner {
-      display: flex;
-      gap: 12px;
-      align-items: flex-start;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-bottom: 18px;
-      font-size: 0.82rem;
-    }
-
-    .invite-icon {
-      font-size: 1.3rem;
-    }
-
-    .invite-info strong {
-      color: #10b981;
-    }
-
-    .invite-info p {
-      margin: 4px 0 0;
-      color: var(--text-muted);
-    }
-
     .btn-google {
       width: 100%;
       display: flex;
@@ -330,6 +270,23 @@ import { AuthService } from '../../services/auth.service';
     .btn-google:disabled {
       opacity: 0.7;
       cursor: not-allowed;
+    }
+
+    .btn-redirect-subtle {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      margin-top: 10px;
+      cursor: pointer;
+      width: 100%;
+      text-align: center;
+      padding: 4px;
+    }
+
+    .btn-redirect-subtle:hover {
+      color: var(--gold);
+      text-decoration: underline;
     }
 
     .gate-trust-footer {
@@ -417,64 +374,9 @@ import { AuthService } from '../../services/auth.service';
       margin-bottom: 16px;
     }
 
-    .option-label {
+    .btn-block {
+      width: 100%;
       display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: var(--text-main);
-    }
-
-    .invite-code-input-row {
-      display: flex;
-      gap: 8px;
-    }
-
-    .gate-input {
-      flex: 1;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-subtle);
-      border-radius: 8px;
-      padding: 10px 14px;
-      color: var(--text-main);
-      font-size: 0.88rem;
-      outline: none;
-    }
-
-    .gate-input.uppercase {
-      text-transform: uppercase;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-    }
-
-    .gate-input:focus {
-      border-color: #cba86b;
-      box-shadow: 0 0 0 2px rgba(203, 168, 107, 0.2);
-    }
-
-    .divider {
-      text-align: center;
-      position: relative;
-      margin: 18px 0;
-    }
-
-    .divider::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 50%;
-      right: 0;
-      height: 1px;
-      background: var(--border-subtle);
-    }
-
-    .divider span {
-      position: relative;
-      background: var(--bg-card);
-      padding: 0 12px;
-      font-size: 0.72rem;
-      color: var(--text-muted);
-      letter-spacing: 0.08em;
     }
 
     .request-sent-card {
@@ -484,15 +386,16 @@ import { AuthService } from '../../services/auth.service';
       text-align: left;
       background: rgba(16, 185, 129, 0.12);
       border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 10px;
-      padding: 12px 14px;
-      font-size: 0.8rem;
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 0.82rem;
+      line-height: 1.45;
     }
 
     .request-sent-card strong {
       color: #10b981;
       display: block;
-      margin-bottom: 2px;
+      margin-bottom: 3px;
     }
 
     .request-sent-card p {
@@ -503,14 +406,12 @@ import { AuthService } from '../../services/auth.service';
     .request-hint {
       font-size: 0.74rem;
       color: var(--text-muted);
-      margin: 6px 0 0;
+      margin: 8px 0 0;
     }
 
     .signout-row {
       text-align: center;
-      margin-top: 18px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border-subtle);
+      margin-top: 20px;
     }
 
     .btn-link {
@@ -519,54 +420,11 @@ import { AuthService } from '../../services/auth.service';
       color: var(--text-muted);
       font-size: 0.78rem;
       cursor: pointer;
-      transition: color 0.2s;
     }
 
     .btn-link:hover {
-      color: #cba86b;
+      color: var(--gold);
       text-decoration: underline;
-    }
-
-    .btn-redirect-subtle {
-      display: inline-block;
-      margin-top: 10px;
-      background: none;
-      border: none;
-      color: #94a3b8;
-      font-size: 0.78rem;
-      cursor: pointer;
-      text-decoration: underline;
-      transition: color 0.2s ease;
-      width: 100%;
-      text-align: center;
-    }
-
-    .btn-redirect-subtle:hover {
-      color: #cba86b;
-    }
-
-    .code-quick-fill {
-      margin-top: 8px;
-      display: flex;
-      justify-content: flex-start;
-    }
-
-    .btn-chip {
-      background: rgba(203, 168, 107, 0.12);
-      border: 1px solid rgba(203, 168, 107, 0.35);
-      color: #d4af37;
-      font-size: 0.74rem;
-      font-weight: 600;
-      padding: 4px 10px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      text-align: left;
-    }
-
-    .btn-chip:hover {
-      background: rgba(203, 168, 107, 0.25);
-      border-color: #d4af37;
     }
 
     .error-banner {
@@ -575,39 +433,49 @@ import { AuthService } from '../../services/auth.service';
       gap: 10px;
       background: rgba(239, 68, 68, 0.12);
       border: 1px solid rgba(239, 68, 68, 0.35);
-      color: #ef4444;
-      border-radius: 8px;
-      padding: 10px 12px;
-      font-size: 0.8rem;
-      margin-top: 16px;
+      border-radius: 10px;
+      padding: 10px 14px;
+      color: #f87171;
+      margin-top: 14px;
+      font-size: 0.78rem;
     }
 
     .error-col {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      align-items: flex-start;
-    }
-
-    .error-msg-text {
-      line-height: 1.4;
-      font-weight: 500;
+      gap: 4px;
     }
 
     .btn-redirect-link {
       background: none;
       border: none;
       padding: 0;
-      color: #f59e0b;
-      font-size: 0.78rem;
-      font-weight: 600;
+      color: #fca5a5;
       text-decoration: underline;
+      font-size: 0.75rem;
       cursor: pointer;
-      transition: color 0.2s ease;
+      text-align: left;
     }
 
-    .btn-redirect-link:hover {
-      color: #fbbf24;
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 640px) {
+      .space-gate-backdrop {
+        padding: 10px;
+      }
+      .space-gate-card {
+        padding: 24px 18px;
+        max-width: 100%;
+      }
+      .gate-title {
+        font-size: 1.35rem;
+      }
+      .btn-google {
+        font-size: 0.88rem;
+        padding: 11px 14px;
+      }
+      .user-card-pending {
+        padding: 10px 12px;
+      }
     }
   `]
 })
@@ -615,27 +483,23 @@ export class SpaceGateModalComponent {
   public spaceService = inject(SpaceService);
   public authService = inject(AuthService);
 
-  public inviteCode = '';
   public errorMessage = signal<string | null>(null);
+
+  public isAlreadyRequested(uid: string, email?: string | null): boolean {
+    const list = this.spaceService.space().pendingRequests;
+    return list.some(r => r.uid === uid || (!!email && r.email.toLowerCase() === email.toLowerCase()));
+  }
 
   public async loginWithGoogle(): Promise<void> {
     this.errorMessage.set(null);
     const success = await this.spaceService.loginWithGoogle();
     if (!success) {
-      this.errorMessage.set(this.authService.authError() || 'Google sign-in was cancelled or failed.');
+      this.errorMessage.set(this.authService.authError() || 'Google Sign-In was cancelled or encountered an error.');
     }
   }
 
   public async loginWithGoogleRedirect(): Promise<void> {
     this.errorMessage.set(null);
     await this.spaceService.loginWithGoogleRedirect();
-  }
-
-  public submitInviteCode(): void {
-    this.errorMessage.set(null);
-    const ok = this.spaceService.unlockWithInviteCode(this.inviteCode);
-    if (!ok) {
-      this.errorMessage.set('Invalid or expired Invite Code. Please contact the space owner.');
-    }
   }
 }

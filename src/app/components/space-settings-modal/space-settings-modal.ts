@@ -22,7 +22,7 @@ import { AuthService } from '../../services/auth.service';
               <p class="modal-subtitle">{{ spaceService.space().name }}</p>
             </div>
           </div>
-          <button class="btn-close" (click)="spaceService.showSpaceSettingsModal.set(false)">✕</button>
+          <button class="btn-close" (click)="spaceService.showSpaceSettingsModal.set(false)" title="Close">✕</button>
         </div>
 
         <div class="modal-scroll-body">
@@ -39,7 +39,7 @@ import { AuthService } from '../../services/auth.service';
             </div>
             <div class="user-info">
               <div class="user-name">
-                {{ authService.currentUser()?.displayName || 'Authenticated Google User' }}
+                <span class="user-display-name">{{ authService.currentUser()?.displayName || 'Authenticated Google User' }}</span>
                 @if (spaceService.isOwner()) {
                   <span class="badge-owner-crown">👑 Creator & Owner</span>
                 } @else {
@@ -48,7 +48,7 @@ import { AuthService } from '../../services/auth.service';
               </div>
               <div class="user-email">{{ authService.currentUser()?.email }}</div>
             </div>
-            <button class="btn btn-xs btn-outline-danger" (click)="logout()">Sign Out</button>
+            <button class="btn btn-xs btn-outline-danger btn-signout-top" (click)="logout()">Sign Out</button>
           </div>
 
           <!-- Space Ownership Info (if viewing user is not owner) -->
@@ -60,7 +60,7 @@ import { AuthService } from '../../services/auth.service';
                 <line x1="12" y1="16" x2="12.01" y2="16"></line>
               </svg>
               <span>
-                Space Creator: <strong>{{ spaceService.space().ownerName || 'Agency Owner' }}</strong> ({{ spaceService.space().ownerEmail }}). Only the creator can invite new members and manage access permissions.
+                Space Creator: <strong>{{ spaceService.space().ownerName || 'Agency Owner' }}</strong> ({{ spaceService.space().ownerEmail }}). Only the Owner can grant access to new team members.
               </span>
             </div>
           }
@@ -72,9 +72,9 @@ import { AuthService } from '../../services/auth.service';
                 <span class="section-title">
                   🔔 Pending Access Requests ({{ spaceService.space().pendingRequests.length }})
                 </span>
-                <span class="badge-pill warn">Action Required</span>
+                <span class="badge-pill warn">Owner Approval Required</span>
               </div>
-              <p class="section-desc">Google users requesting access to view your listings and client leads:</p>
+              <p class="section-desc">Google accounts requesting access to your properties and client leads:</p>
               
               <div class="requests-list">
                 @for (req of spaceService.space().pendingRequests; track req.uid) {
@@ -106,14 +106,14 @@ import { AuthService } from '../../services/auth.service';
             </div>
           }
 
-          <!-- DIRECT EMAIL INVITATION FORM (Owner Only) -->
+          <!-- DIRECT EMAIL AUTHORIZATION FORM (Owner Only) -->
           @if (spaceService.isOwner()) {
             <div class="section-card">
               <div class="section-header">
-                <span class="section-title">Give Access by Google Email</span>
-                <span class="badge-pill">Direct Whitelist</span>
+                <span class="section-title">Grant Access by Google Email</span>
+                <span class="badge-pill">Owner Authorization</span>
               </div>
-              <p class="section-desc">Enter the Google email of a team agent. They will receive immediate access upon signing in.</p>
+              <p class="section-desc">Enter a team agent's Google email to authorize them. They will receive immediate access upon signing in.</p>
               
               <div class="invite-email-row">
                 <input 
@@ -123,13 +123,13 @@ import { AuthService } from '../../services/auth.service';
                   [(ngModel)]="newInviteEmail" 
                   (keyup.enter)="addEmailInvite()" />
                 <button class="btn btn-gold btn-sm" (click)="addEmailInvite()">
-                  + Give Access
+                  + Grant Access
                 </button>
               </div>
 
               @if (spaceService.space().allowedEmails.length > 0) {
                 <div class="allowed-emails-wrap">
-                  <span class="sub-label">Pre-Authorized Google Accounts:</span>
+                  <span class="sub-label">Authorized Google Accounts:</span>
                   <div class="email-tags-list">
                     @for (email of spaceService.space().allowedEmails; track email) {
                       <div class="email-tag">
@@ -146,10 +146,10 @@ import { AuthService } from '../../services/auth.service';
           <!-- SHAREABLE DIRECT INVITE LINK -->
           <div class="section-card">
             <div class="section-header">
-              <span class="section-title">One-Click Shareable Invite Link</span>
+              <span class="section-title">Share Space Link</span>
               <span class="badge-pill">Link Access</span>
             </div>
-            <p class="section-desc">Send this link to agents. Anyone opening it and logging in with Google will be admitted into the space.</p>
+            <p class="section-desc">Send this link to agents. When they sign in with Google, you can approve their account or pre-authorize their email above.</p>
             <div class="copy-input-row">
               <input type="text" class="form-input mono" [value]="inviteLink()" readonly />
               <button class="btn btn-gold btn-sm" (click)="copyInviteLink()">
@@ -158,32 +158,11 @@ import { AuthService } from '../../services/auth.service';
             </div>
           </div>
 
-          <!-- ACTIVE INVITE CODES (Self-Invite) -->
-          <div class="section-card">
-            <div class="section-header">
-              <span class="section-title">Active Space Invite Codes</span>
-              @if (spaceService.isOwner()) {
-                <button class="btn btn-xs btn-secondary" (click)="generateNewCode()">+ New Code</button>
-              }
-            </div>
-            <div class="tags-cloud">
-              @for (code of spaceService.space().inviteCodes; track code) {
-                <div class="invite-tag">
-                  <span class="tag-code">{{ code }}</span>
-                  <button class="btn-copy-tag" (click)="copyText(code)" title="Copy Code">📋</button>
-                  @if (spaceService.isOwner() && spaceService.space().inviteCodes.length > 1) {
-                    <button class="btn-del-tag" (click)="spaceService.removeInviteCode(code)" title="Revoke Code">✕</button>
-                  }
-                </div>
-              }
-            </div>
-          </div>
-
           <!-- PEOPLE WHO ACCESSED THIS SPACE (Active Members Directory) -->
           <div class="section-card">
             <div class="section-header">
               <span class="section-title">People Who Accessed ({{ spaceService.space().members.length }})</span>
-              <span class="badge-pill">Live Directory</span>
+              <span class="badge-pill">Active Directory</span>
             </div>
             <p class="section-desc">Real Google accounts tracking identity on every property and lead record:</p>
 
@@ -201,41 +180,59 @@ import { AuthService } from '../../services/auth.service';
                     <div class="member-meta">
                       <div class="member-name-row">
                         <span class="member-name">{{ member.name }}</span>
-                        <span class="badge" [ngClass]="'badge-' + member.role">{{ member.role | uppercase }}</span>
+                        @if (member.role === 'owner') {
+                          <span class="badge-owner">OWNER</span>
+                        } @else if (member.role === 'admin') {
+                          <span class="badge-admin">ADMIN</span>
+                        } @else {
+                          <span class="badge-agent">AGENT</span>
+                        }
                         <span class="joined-via-badge">{{ formatJoinedVia(member.joinedVia) }}</span>
                       </div>
                       <span class="member-email">{{ member.email }}</span>
-                      <span class="member-activity">Last active: {{ formatTimeAgo(member.lastActiveAt || member.joinedAt) }}</span>
                     </div>
                   </div>
 
-                  @if (spaceService.isOwner() && member.role !== 'owner') {
-                    <div class="member-right-actions">
-                      <button class="btn btn-xs btn-outline-danger" (click)="spaceService.revokeMemberAccess(member.id)" title="Revoke Access">
-                        Revoke
-                      </button>
-                    </div>
-                  }
+                  <div class="member-right">
+                    @if (spaceService.isOwner() && member.role !== 'owner') {
+                      <div class="member-actions">
+                        <select 
+                          class="role-select" 
+                          [value]="member.role" 
+                          (change)="onRoleChange(member.id, $event)">
+                          <option value="agent">Agent</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <button class="btn btn-xs btn-outline-danger" (click)="spaceService.revokeMemberAccess(member.id)" title="Revoke member access">
+                          Revoke
+                        </button>
+                      </div>
+                    } @else {
+                      <span class="member-activity">
+                        {{ member.role === 'owner' ? '👑 Owner' : 'Active Member' }}
+                      </span>
+                    }
+                  </div>
                 </div>
               } @empty {
                 <div class="empty-members-note">
-                  No other accounts have accessed this space yet. Share the invite link above with your team.
+                  No active team members have logged in yet.
                 </div>
               }
             </div>
           </div>
         </div>
 
-        <!-- Footer Actions -->
+        <!-- Footer -->
         <div class="modal-footer">
-          <button class="btn btn-danger btn-sm" (click)="lockSpace()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button class="btn btn-secondary btn-sm" (click)="lockSpace()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
             </svg>
             <span>Lock Space & Sign Out</span>
           </button>
-          <button class="btn btn-secondary btn-sm" (click)="spaceService.showSpaceSettingsModal.set(false)">
+          <button class="btn btn-primary btn-sm" (click)="spaceService.showSpaceSettingsModal.set(false)">
             Close
           </button>
         </div>
@@ -246,12 +243,13 @@ import { AuthService } from '../../services/auth.service';
     .modal-backdrop {
       position: fixed;
       inset: 0;
-      z-index: 9999;
-      background: rgba(10, 15, 26, 0.78);
-      backdrop-filter: blur(10px);
+      background: rgba(10, 16, 26, 0.75);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       display: flex;
       align-items: center;
       justify-content: center;
+      z-index: 1200;
       padding: 16px;
       animation: fadeIn 0.2s ease-out;
     }
@@ -263,23 +261,24 @@ import { AuthService } from '../../services/auth.service';
 
     .modal-card {
       width: 100%;
-      max-width: 580px;
+      max-width: 600px;
       max-height: 90vh;
-      background: var(--bg-card);
-      border: 1px solid var(--border-active);
-      border-radius: var(--radius-xl);
+      border-radius: 18px;
       padding: 24px;
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 40px rgba(203, 168, 107, 0.12);
-      color: var(--text-main);
       display: flex;
       flex-direction: column;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+      border: 1px solid var(--border-active);
+      background: var(--bg-card);
+      color: var(--text-main);
+      overflow: hidden;
     }
 
     .modal-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 16px;
+      padding-bottom: 14px;
       border-bottom: 1px solid var(--border-subtle);
     }
 
@@ -293,17 +292,18 @@ import { AuthService } from '../../services/auth.service';
       width: 40px;
       height: 40px;
       border-radius: 10px;
-      background: radial-gradient(circle, #2a2215, #11141c);
-      border: 1px solid rgba(203, 168, 107, 0.3);
+      background: radial-gradient(circle at 30% 30%, #2a2215, #11141c);
+      border: 1px solid rgba(203, 168, 107, 0.4);
       display: flex;
       align-items: center;
       justify-content: center;
       overflow: hidden;
+      flex-shrink: 0;
     }
 
     .space-logo-img {
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       object-fit: contain;
     }
 
@@ -321,14 +321,16 @@ import { AuthService } from '../../services/auth.service';
 
     .btn-close {
       background: transparent;
-      border: none;
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
       color: var(--text-muted);
-      font-size: 1.1rem;
+      padding: 6px 10px;
       cursor: pointer;
-      padding: 4px;
+      font-size: 0.95rem;
     }
 
     .btn-close:hover {
+      background: var(--bg-surface);
       color: var(--text-main);
     }
 
@@ -339,6 +341,7 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       flex-direction: column;
       gap: 16px;
+      max-height: calc(90vh - 140px);
     }
 
     .user-status-card {
@@ -349,6 +352,7 @@ import { AuthService } from '../../services/auth.service';
       border: 1px solid var(--border-subtle);
       border-radius: 12px;
       padding: 12px 14px;
+      flex-wrap: wrap;
     }
 
     .user-avatar-wrap {
@@ -377,6 +381,7 @@ import { AuthService } from '../../services/auth.service';
 
     .user-info {
       flex: 1;
+      min-width: 140px;
     }
 
     .user-name {
@@ -385,6 +390,11 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .user-display-name {
+      word-break: break-word;
     }
 
     .badge-owner-crown {
@@ -395,6 +405,7 @@ import { AuthService } from '../../services/auth.service';
       background: rgba(203, 168, 107, 0.2);
       color: #e5c378;
       border: 1px solid rgba(203, 168, 107, 0.4);
+      white-space: nowrap;
     }
 
     .badge-role {
@@ -405,11 +416,17 @@ import { AuthService } from '../../services/auth.service';
       background: rgba(59, 130, 246, 0.15);
       color: #60a5fa;
       border: 1px solid rgba(59, 130, 246, 0.3);
+      white-space: nowrap;
     }
 
     .user-email {
       font-size: 0.75rem;
       color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .btn-signout-top {
+      margin-left: auto;
     }
 
     .owner-info-notice {
@@ -422,6 +439,7 @@ import { AuthService } from '../../services/auth.service';
       padding: 10px 12px;
       font-size: 0.78rem;
       color: var(--text-muted);
+      line-height: 1.45;
     }
 
     .owner-info-notice strong {
@@ -445,6 +463,8 @@ import { AuthService } from '../../services/auth.service';
       align-items: center;
       justify-content: space-between;
       margin-bottom: 6px;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
     .section-title {
@@ -459,6 +479,7 @@ import { AuthService } from '../../services/auth.service';
       background: rgba(203, 168, 107, 0.15);
       color: #cba86b;
       font-weight: 500;
+      white-space: nowrap;
     }
 
     .badge-pill.warn {
@@ -470,6 +491,7 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.76rem;
       color: var(--text-muted);
       margin: 0 0 12px;
+      line-height: 1.4;
     }
 
     /* Requests */
@@ -488,24 +510,27 @@ import { AuthService } from '../../services/auth.service';
       border-radius: 10px;
       padding: 10px 12px;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .request-user {
       display: flex;
       align-items: center;
       gap: 10px;
+      min-width: 140px;
     }
 
     .avatar-sm-img {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       object-fit: cover;
+      flex-shrink: 0;
     }
 
     .avatar-sm-initial {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: linear-gradient(135deg, #4285F4, #34A853);
       color: white;
@@ -514,6 +539,7 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       align-items: center;
       justify-content: center;
+      flex-shrink: 0;
     }
 
     .request-meta {
@@ -530,6 +556,7 @@ import { AuthService } from '../../services/auth.service';
     .req-email {
       font-size: 0.72rem;
       color: var(--text-muted);
+      word-break: break-all;
     }
 
     .req-time {
@@ -586,13 +613,14 @@ import { AuthService } from '../../services/auth.service';
       color: var(--text-muted);
       cursor: pointer;
       font-size: 0.75rem;
+      padding: 0 2px;
     }
 
     .btn-del-tag:hover {
       color: #ef4444;
     }
 
-    /* Links & Codes */
+    /* Links */
     .copy-input-row {
       display: flex;
       gap: 8px;
@@ -613,37 +641,6 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.75rem;
     }
 
-    .tags-cloud {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .invite-tag {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-card);
-      border: 1px solid rgba(203, 168, 107, 0.35);
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-family: monospace;
-      font-weight: 600;
-      font-size: 0.8rem;
-    }
-
-    .tag-code {
-      color: #e5c378;
-    }
-
-    .btn-copy-tag {
-      background: transparent;
-      border: none;
-      cursor: pointer;
-      font-size: 0.8rem;
-      padding: 0;
-    }
-
     /* Members Directory */
     .members-directory-list {
       display: flex;
@@ -660,12 +657,14 @@ import { AuthService } from '../../services/auth.service';
       border-radius: 10px;
       padding: 10px 12px;
       gap: 12px;
+      flex-wrap: wrap;
     }
 
     .member-left {
       display: flex;
       align-items: center;
       gap: 10px;
+      min-width: 140px;
     }
 
     .member-meta {
@@ -678,6 +677,7 @@ import { AuthService } from '../../services/auth.service';
       display: flex;
       align-items: center;
       gap: 6px;
+      flex-wrap: wrap;
     }
 
     .member-name {
@@ -692,6 +692,7 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.65rem;
       padding: 1px 6px;
       border-radius: 4px;
+      font-weight: 700;
     }
 
     .badge-admin {
@@ -701,6 +702,7 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.65rem;
       padding: 1px 6px;
       border-radius: 4px;
+      font-weight: 700;
     }
 
     .badge-agent {
@@ -710,6 +712,7 @@ import { AuthService } from '../../services/auth.service';
       font-size: 0.65rem;
       padding: 1px 6px;
       border-radius: 4px;
+      font-weight: 700;
     }
 
     .joined-via-badge {
@@ -718,16 +721,34 @@ import { AuthService } from '../../services/auth.service';
       background: var(--bg-card);
       padding: 1px 6px;
       border-radius: 4px;
+      white-space: nowrap;
     }
 
     .member-email {
       font-size: 0.72rem;
       color: var(--text-muted);
+      word-break: break-all;
+    }
+
+    .member-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .role-select {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 3px 6px;
+      font-size: 0.72rem;
+      color: var(--text-main);
     }
 
     .member-activity {
-      font-size: 0.68rem;
+      font-size: 0.72rem;
       color: var(--text-muted);
+      white-space: nowrap;
     }
 
     .empty-members-note {
@@ -743,6 +764,80 @@ import { AuthService } from '../../services/auth.service';
       justify-content: space-between;
       padding-top: 14px;
       border-top: 1px solid var(--border-subtle);
+      gap: 10px;
+    }
+
+    /* Mobile Responsive Optimizations */
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 8px;
+        align-items: flex-end;
+      }
+      .modal-card {
+        max-width: 100% !important;
+        max-height: 94vh !important;
+        border-radius: 16px 16px 0 0 !important;
+        padding: 16px 14px !important;
+      }
+      .modal-scroll-body {
+        margin: 12px 0;
+        gap: 12px;
+        max-height: calc(94vh - 120px);
+      }
+      .user-status-card {
+        padding: 10px 12px;
+        gap: 10px;
+      }
+      .btn-signout-top {
+        width: 100%;
+        margin-top: 6px;
+        text-align: center;
+        justify-content: center;
+      }
+      .request-item, .member-dir-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+      .request-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+      .request-actions .btn {
+        flex: 1;
+        justify-content: center;
+      }
+      .member-right {
+        width: 100%;
+      }
+      .member-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .invite-email-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .invite-email-row .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .copy-input-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+      .copy-input-row .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+      }
+      .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+      }
     }
   `]
 })
@@ -763,10 +858,6 @@ export class SpaceSettingsModalComponent {
     setTimeout(() => this.copied.set(false), 2500);
   }
 
-  public copyText(text: string): void {
-    navigator.clipboard.writeText(text);
-  }
-
   public addEmailInvite(): void {
     if (this.newInviteEmail.trim()) {
       this.spaceService.grantEmailAccess(this.newInviteEmail.trim());
@@ -774,8 +865,11 @@ export class SpaceSettingsModalComponent {
     }
   }
 
-  public generateNewCode(): void {
-    this.spaceService.generateNewInviteCode();
+  public onRoleChange(memberId: string, event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    if (select && select.value) {
+      this.spaceService.updateMemberRole(memberId, select.value as 'admin' | 'agent');
+    }
   }
 
   public async logout(): Promise<void> {
@@ -791,10 +885,9 @@ export class SpaceSettingsModalComponent {
   public formatJoinedVia(via: string): string {
     switch (via) {
       case 'creator': return '👑 Creator';
-      case 'email_invite': return '✉️ Invited Email';
-      case 'invite_code': return '🎫 Invite Code';
-      case 'approved_request': return '✓ Approved Request';
-      default: return via;
+      case 'email_invite': return '✉️ Authorized Email';
+      case 'approved_request': return '✓ Owner Approved';
+      default: return via || 'Google';
     }
   }
 

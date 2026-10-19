@@ -642,6 +642,45 @@ import { RealtyService } from '../../services/realty.service';
     .text-xs { font-size: 0.72rem; }
     .font-semibold { font-weight: 600; }
     .ml-2 { margin-left: 8px; }
+
+    @media (max-width: 640px) {
+      .modal-backdrop {
+        padding: 8px;
+        align-items: flex-end;
+      }
+      .email-modal-card {
+        max-width: 100% !important;
+        max-height: 94vh !important;
+        border-radius: 16px 16px 0 0 !important;
+      }
+      .modal-header {
+        padding: 14px 16px 10px;
+      }
+      .modal-body-scroll {
+        padding: 14px 14px;
+      }
+      .form-row {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .modal-footer {
+        flex-direction: column-reverse;
+        gap: 8px;
+        padding: 12px 14px;
+      }
+      .modal-footer .btn {
+        width: 100%;
+        justify-content: center;
+      }
+      .footer-actions-right {
+        width: 100%;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .footer-actions-right .btn {
+        width: 100%;
+      }
+    }
   `]
 })
 export class FollowUpEmailModalComponent implements OnInit {

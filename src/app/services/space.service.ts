@@ -12,7 +12,7 @@ export interface SpaceMember {
   status: 'active' | 'pending';
   joinedAt: number;
   lastActiveAt?: number;
-  joinedVia: 'creator' | 'email_invite' | 'invite_code' | 'approved_request';
+  joinedVia: 'creator' | 'email_invite' | 'approved_request';
   invitedBy?: string;
 }
 
@@ -31,13 +31,12 @@ export interface AgencySpace {
   ownerEmail?: string;
   ownerName?: string;
   allowedEmails: string[];
-  inviteCodes: string[];
+  inviteCodes?: string[];
   members: SpaceMember[];
   pendingRequests: AccessRequest[];
 }
 
 const STORAGE_KEY_SPACE_SETTINGS = 'skypearl_space_settings_v2';
-const DEFAULT_INVITES = ['SKYPEARL-CHENNAI', 'AGENT-VIP-2025'];
 
 @Injectable({
   providedIn: 'root'
@@ -50,7 +49,6 @@ export class SpaceService {
   public readonly showAccessModal = signal<boolean>(false);
   public readonly showSpaceSettingsModal = signal<boolean>(false);
   public readonly pendingRequestSent = signal<boolean>(false);
-  public readonly pendingInviteFromUrl = signal<string | null>(null);
   private isSyncingFromRemote = false;
 
   public readonly space = signal<AgencySpace>({
@@ -60,7 +58,6 @@ export class SpaceService {
     ownerEmail: '',
     ownerName: '',
     allowedEmails: [],
-    inviteCodes: [...DEFAULT_INVITES],
     members: [],
     pendingRequests: []
   });
@@ -120,16 +117,7 @@ export class SpaceService {
   }
 
   private initSpace(): void {
-    // 1. Check URL for automatic invite access (?invite=... or ?code=...)
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const inviteParam = params.get('invite') || params.get('code');
-      if (inviteParam) {
-        this.pendingInviteFromUrl.set(inviteParam.trim().toUpperCase());
-      }
-    }
-
-    // 2. Load saved space settings from local storage
+    // Load saved space settings from local storage
     try {
       const savedSettings = localStorage.getItem(STORAGE_KEY_SPACE_SETTINGS);
       if (savedSettings) {
@@ -141,14 +129,13 @@ export class SpaceService {
           ownerEmail: parsed.ownerEmail || '',
           ownerName: parsed.ownerName || '',
           allowedEmails: Array.isArray(parsed.allowedEmails) ? parsed.allowedEmails : [],
-          inviteCodes: Array.isArray(parsed.inviteCodes) && parsed.inviteCodes.length > 0 ? parsed.inviteCodes : [...DEFAULT_INVITES],
           members: Array.isArray(parsed.members) ? parsed.members : [],
           pendingRequests: Array.isArray(parsed.pendingRequests) ? parsed.pendingRequests : []
         });
       }
     } catch {}
 
-    // 3. Setup real-time Firestore sync for team collaboration
+    // Setup real-time Firestore sync for team collaboration
     this.setupFirestoreSpaceSync();
   }
 
@@ -170,7 +157,6 @@ export class SpaceService {
                 ownerEmail: remoteData.ownerEmail || curr.ownerEmail,
                 ownerName: remoteData.ownerName || curr.ownerName,
                 allowedEmails: Array.isArray(remoteData.allowedEmails) ? remoteData.allowedEmails : curr.allowedEmails,
-                inviteCodes: Array.isArray(remoteData.inviteCodes) && remoteData.inviteCodes.length > 0 ? remoteData.inviteCodes : curr.inviteCodes,
                 members: Array.isArray(remoteData.members) ? remoteData.members : curr.members,
                 pendingRequests: Array.isArray(remoteData.pendingRequests) ? remoteData.pendingRequests : curr.pendingRequests
               }));
@@ -199,7 +185,7 @@ export class SpaceService {
     const currentSpace = this.space();
     const userEmail = (user.email || '').toLowerCase();
 
-    // 1. First user who creates or logs in when no owner exists becomes Space Creator / Owner
+    // 1. First user who logs in when no owner exists becomes Space Creator / Owner
     if (!currentSpace.ownerEmail && !currentSpace.ownerUid) {
       const ownerMember: SpaceMember = {
         id: user.uid,
@@ -254,32 +240,9 @@ export class SpaceService {
       return;
     }
 
-    // 3. Check if user opened with an invite link (?invite=CODE)
-    const pendingCode = this.pendingInviteFromUrl();
-    if (pendingCode && currentSpace.inviteCodes.some(c => c.toUpperCase() === pendingCode.toUpperCase())) {
-      if (allowRemoteWrite && !this.isSyncingFromRemote) {
-        this.registerOrUpdateMember({
-          id: user.uid,
-          name: user.displayName || userEmail.split('@')[0],
-          email: user.email,
-          photoURL: user.photoURL,
-          role: 'agent',
-          status: 'active',
-          joinedAt: Date.now(),
-          lastActiveAt: Date.now(),
-          joinedVia: 'invite_code',
-          invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
-        });
-        this.pendingInviteFromUrl.set(null);
-      }
-      if (!this.isUnlocked()) this.isUnlocked.set(true);
-      if (this.showAccessModal()) this.showAccessModal.set(false);
-      return;
-    }
-
-    // 4. Was this email pre-invited by the creator?
-    const isPreInvited = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
-    if (isPreInvited) {
+    // 3. Was this Google email directly pre-authorized by the Owner?
+    const isPreAuthorized = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
+    if (isPreAuthorized) {
       const alreadyMember = currentSpace.members.some(
         m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
       );
@@ -302,7 +265,7 @@ export class SpaceService {
       return;
     }
 
-    // 5. Is user already an approved active member?
+    // 4. Is user already an approved active member in the directory?
     const existingMember = currentSpace.members.find(
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
@@ -315,7 +278,7 @@ export class SpaceService {
       return;
     }
 
-    // 6. User is signed in with Google, but NOT invited / NOT approved yet!
+    // 5. User is signed in with Google, but NOT approved by Owner yet!
     if (this.isUnlocked()) this.isUnlocked.set(false);
     if (!this.showAccessModal()) this.showAccessModal.set(true);
   }
@@ -335,34 +298,6 @@ export class SpaceService {
 
   public async loginWithGoogleRedirect(): Promise<void> {
     await this.authService.loginWithGoogleRedirect();
-  }
-
-  public unlockWithInviteCode(inputCode: string): boolean {
-    const cleanCode = inputCode.trim().toUpperCase();
-    if (!cleanCode) return false;
-
-    const matched = this.space().inviteCodes.some(c => c.toUpperCase() === cleanCode);
-    if (matched) {
-      const user = this.authService.currentUser();
-      if (user) {
-        this.registerOrUpdateMember({
-          id: user.uid,
-          name: user.displayName || user.email?.split('@')[0] || 'Team Member',
-          email: user.email || '',
-          photoURL: user.photoURL,
-          role: 'agent',
-          status: 'active',
-          joinedAt: Date.now(),
-          lastActiveAt: Date.now(),
-          joinedVia: 'invite_code',
-          invitedBy: this.space().ownerName || this.space().ownerEmail
-        });
-        this.isUnlocked.set(true);
-        this.showAccessModal.set(false);
-        return true;
-      }
-    }
-    return false;
   }
 
   public requestAccessFromOwner(): void {
@@ -474,33 +409,11 @@ export class SpaceService {
     this.saveSpace();
   }
 
-  public generateNewInviteCode(): string {
-    if (!this.isOwner()) return '';
-    const rand = Math.random().toString(36).substring(2, 6).toUpperCase();
-    const newCode = `SKYPEARL-${rand}`;
-    this.space.update(s => ({
-      ...s,
-      inviteCodes: [newCode, ...s.inviteCodes]
-    }));
-    this.saveSpace();
-    return newCode;
-  }
-
-  public removeInviteCode(code: string): void {
-    if (!this.isOwner()) return;
-    this.space.update(s => ({
-      ...s,
-      inviteCodes: s.inviteCodes.filter(c => c !== code)
-    }));
-    this.saveSpace();
-  }
-
-  public getInviteLink(code?: string): string {
-    const selectedCode = code || this.space().inviteCodes[0] || 'SKYPEARL-CHENNAI';
+  public getInviteLink(): string {
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}${window.location.pathname}?invite=${encodeURIComponent(selectedCode)}`;
+      return `${window.location.origin}${window.location.pathname}`;
     }
-    return `https://skypearl.netlify.app?invite=${encodeURIComponent(selectedCode)}`;
+    return `https://skypearl.netlify.app/`;
   }
 
   public lockSpace(): void {

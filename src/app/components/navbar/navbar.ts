@@ -28,8 +28,8 @@ import { AuthService } from '../../services/auth.service';
           <span class="city-badge">{{ realtyService.localities().length }} Localities</span>
         </div>
 
-        <!-- Space & Invite Pill -->
-        <button class="space-pill" (click)="spaceService.showSpaceSettingsModal.set(true)" title="Manage Space, Share & Invites">
+        <!-- Space & Team Access Pill -->
+        <button class="space-pill" (click)="spaceService.showSpaceSettingsModal.set(true)" title="Manage Agency Space & Team Access">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <circle cx="18" cy="5" r="3"></circle>
             <circle cx="6" cy="12" r="3"></circle>
@@ -38,7 +38,7 @@ import { AuthService } from '../../services/auth.service';
             <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
           </svg>
           <span class="space-name">Space: Chennai</span>
-          <span class="space-badge">Share & Invites</span>
+          <span class="space-badge">Team Access</span>
         </button>
       </div>
 
@@ -50,7 +50,7 @@ import { AuthService } from '../../services/auth.service';
         </button>
 
         <!-- Quick Action Buttons -->
-        <button class="btn btn-secondary btn-sm" (click)="openVisitModal.emit()" title="Schedule Site Visit">
+        <button class="btn btn-secondary btn-sm nav-btn-secondary" (click)="openVisitModal.emit()" title="Schedule Site Visit">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
             <line x1="16" y1="2" x2="16" y2="6"></line>
@@ -799,7 +799,7 @@ import { AuthService } from '../../services/auth.service';
     /* Mobile Responsiveness for Top Navbar */
     @media (max-width: 768px) {
       .navbar-container {
-        padding: 0 10px;
+        padding: 0 8px;
         gap: 6px;
         height: 56px;
       }
@@ -811,11 +811,26 @@ import { AuthService } from '../../services/auth.service';
       }
 
       .brand-title {
-        font-size: 0.92rem;
+        font-size: 0.88rem;
+      }
+
+      /* Compact icon-only space pill on mobile */
+      .space-pill {
+        padding: 6px !important;
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+      }
+
+      .space-pill .space-name,
+      .space-pill .space-badge {
+        display: none !important;
       }
 
       .nav-right {
-        gap: 5px;
+        gap: 4px;
       }
 
       .nav-right .btn-sm span,
@@ -825,13 +840,15 @@ import { AuthService } from '../../services/auth.service';
 
       .nav-right .btn-sm,
       .theme-toggle-btn {
-        padding: 6px;
+        padding: 0;
         min-width: 32px;
+        width: 32px;
         height: 32px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 8px;
+        flex-shrink: 0;
       }
 
       .agent-pill {
@@ -853,22 +870,25 @@ import { AuthService } from '../../services/auth.service';
       }
     }
 
-    @media (max-width: 420px) {
+    @media (max-width: 520px) {
+      .nav-btn-secondary {
+        display: none !important;
+      }
       .brand-gem {
         width: 28px;
         height: 28px;
       }
       .brand-title {
-        font-size: 0.85rem;
+        font-size: 0.82rem;
       }
       .nav-right {
-        gap: 4px;
+        gap: 3px;
       }
       .nav-right .btn-sm,
       .theme-icon-btn {
         min-width: 30px;
+        width: 30px;
         height: 30px;
-        padding: 5px;
       }
     }
   `]
@@ -933,9 +953,8 @@ export class NavbarComponent {
   public formatJoinedVia(via: string): string {
     switch (via) {
       case 'creator': return '👑 Creator';
-      case 'email_invite': return '✉️ Invited Email';
-      case 'invite_code': return '🎫 Invite Code';
-      case 'approved_request': return '✓ Approved';
+      case 'email_invite': return '✉️ Authorized Email';
+      case 'approved_request': return '✓ Owner Approved';
       default: return via || 'Google';
     }
   }
