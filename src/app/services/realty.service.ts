@@ -85,11 +85,12 @@ export class RealtyService {
     this.notify(`Switched to ${theme === 'light' ? 'Executive White' : 'Dark'} theme.`, 'info');
   }
 
-  // Computed Permissions
-  public readonly isAdmin = computed(() => this.activeAgent().role === 'admin');
-  public readonly isManager = computed(() => this.activeAgent().role === 'manager' || this.activeAgent().role === 'admin');
-  public readonly canManageTeam = computed(() => this.activeAgent().role === 'admin');
-  public readonly canViewOwnerContacts = computed(() => this.activeAgent().role === 'admin' || this.activeAgent().role === 'manager');
+  // Enterprise Hierarchical Permissions (Owner > Admin > Manager > Agent)
+  public readonly isOwner = computed(() => this.activeAgent().role === 'owner' || this.spaceService.isOwner());
+  public readonly isAdmin = computed(() => this.isOwner() || this.activeAgent().role === 'admin');
+  public readonly isManager = computed(() => this.isAdmin() || this.activeAgent().role === 'manager');
+  public readonly canManageTeam = computed(() => this.isAdmin());
+  public readonly canViewOwnerContacts = computed(() => this.isManager());
 
   // KPI Metrics
   public readonly totalPropertiesCount = computed(() => this.properties().length);
@@ -432,40 +433,69 @@ export class RealtyService {
     };
   }
 
-  // Save / Update Property Listing (Seller data)
-  public saveProperty(propertyData: Partial<PropertyListing>): boolean {
+  // Save / Update Property Listing (Seller data) - Returns saved entity with guaranteed ID
+  public saveProperty(propertyData: Partial<PropertyListing>): PropertyListing | null {
     const existingId = propertyData.id;
     const actorName = this.activeAgent().name || 'Agent';
     const actorEmail = this.activeAgent().email || '';
     const now = Date.now();
 
     if (existingId) {
+      let savedProp: PropertyListing | null = null;
       this.properties.update(list => 
-        list.map(p => p.id === existingId ? {
-          ...p,
-          ...propertyData,
-          updatedBy: actorName,
-          updatedByEmail: actorEmail,
-          updatedAt: now
-        } as PropertyListing : p)
+        list.map(p => {
+          if (p.id === existingId) {
+            savedProp = {
+              ...p,
+              ...propertyData,
+              updatedBy: actorName,
+              updatedByEmail: actorEmail,
+              updatedAt: now
+            } as PropertyListing;
+            return savedProp;
+          }
+          return p;
+        })
       );
-      const updated = this.properties().find(p => p.id === existingId);
-      if (updated && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-        setDoc(doc(this.firebaseService.firestore, 'properties', existingId), this.cleanForFirestore(updated), { merge: true })
-          .then(() => {
-            this.isCloudConnected.set(true);
-            this.lastCloudSync.set(Date.now());
-            this.notify('Property listing updated & synced to Cloud (Firebase)!', 'success');
-          })
-          .catch(err => {
-            console.error('Firestore save property error:', err);
-            this.cloudSyncError.set(err.message);
-            this.notify(`Cloud Save Notice: ${err.message}`, 'error');
-          });
-      } else {
-        this.notify('Property listing updated successfully!', 'success');
+
+      if (savedProp) {
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'properties', existingId), this.cleanForFirestore(savedProp), { merge: true })
+            .then(() => {
+              this.isCloudConnected.set(true);
+              this.lastCloudSync.set(Date.now());
+              this.notify('Property listing updated & synced to Cloud (Firebase)!', 'success');
+            })
+            .catch(err => {
+              console.error('Firestore save property error:', err);
+              this.cloudSyncError.set(err.message);
+              this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+            });
+        } else {
+          this.notify('Property listing updated successfully!', 'success');
+        }
+
+        // Relational cascade: keep site visits updated with latest property title and locality
+        this.siteVisits.update(visits => visits.map(v => {
+          if (v.propertyId === existingId && (v.propertyTitle !== savedProp!.title || v.locality !== savedProp!.locality)) {
+            const updatedVisit: SiteVisit = {
+              ...v,
+              propertyTitle: savedProp!.title,
+              locality: savedProp!.locality
+            };
+            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+              setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+            }
+            return updatedVisit;
+          }
+          return v;
+        }));
+
+        // Bidirectional sync: recalculate matches for all active buyer leads
+        this.syncLeadsForProperty(savedProp);
+        return savedProp;
       }
-      return true;
+      return null;
     }
 
     // Check Duplicate
@@ -569,15 +599,87 @@ export class RealtyService {
     } else {
       this.notify('Property listing added to SkyPearl Inventory!', 'success');
     }
-    return true;
+
+    // Bidirectional sync: immediately connect new property with all matching buyer requirements
+    this.syncLeadsForProperty(newProp);
+    return newProp;
   }
 
-  public deleteProperty(id: string): void {
+  // Bidirectional Relational Sync: Connects property updates across all active buyer CRM leads
+  private syncLeadsForProperty(property: PropertyListing): void {
+    const activeLeads = this.leads().filter(l => l.stage !== 'Closed Lost' && l.stage !== 'Closed Won');
+    if (activeLeads.length === 0) return;
+
+    this.leads.update(leads => leads.map(lead => {
+      if (lead.stage === 'Closed Lost' || lead.stage === 'Closed Won') return lead;
+      const { score } = this.calculateCompatibilityScore(lead, property);
+      const isMatch = score >= 50;
+      const currentMatched = lead.matchedPropertyIds || [];
+      const hasProp = currentMatched.includes(property.id);
+
+      if (isMatch && !hasProp) {
+        const updatedLead: LeadCRM = {
+          ...lead,
+          matchedPropertyIds: [...currentMatched, property.id],
+          updatedAt: Date.now()
+        };
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+        }
+        return updatedLead;
+      } else if (!isMatch && hasProp) {
+        const updatedLead: LeadCRM = {
+          ...lead,
+          matchedPropertyIds: currentMatched.filter(id => id !== property.id),
+          updatedAt: Date.now()
+        };
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+        }
+        return updatedLead;
+      }
+      return lead;
+    }));
+  }
+
+  public deleteProperty(id: string): boolean {
     if (!this.isAdmin() && !this.isManager()) {
       this.notify('Permission Denied. Only Admin or Manager can delete properties.', 'error');
-      return;
+      return false;
     }
     this.properties.update(list => list.filter(p => p.id !== id));
+
+    // Relational cleanup: Remove deleted property from leads' match lists
+    this.leads.update(leads => leads.map(lead => {
+      if (lead.matchedPropertyIds && lead.matchedPropertyIds.includes(id)) {
+        const updatedLead = {
+          ...lead,
+          matchedPropertyIds: lead.matchedPropertyIds.filter(pid => pid !== id),
+          updatedAt: Date.now()
+        };
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+        }
+        return updatedLead;
+      }
+      return lead;
+    }));
+
+    // Relational cleanup: Update any scheduled site visits associated with this property
+    this.siteVisits.update(visits => visits.map(v => {
+      if (v.propertyId === id && v.status === 'Scheduled') {
+        const updatedVisit: SiteVisit = {
+          ...v,
+          status: 'Cancelled',
+          feedbackNotes: (v.feedbackNotes ? v.feedbackNotes + ' • ' : '') + 'Listing unlisted/removed from inventory'
+        };
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+        }
+        return updatedVisit;
+      }
+      return v;
+    }));
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       deleteDoc(doc(this.firebaseService.firestore, 'properties', id))
@@ -594,42 +696,77 @@ export class RealtyService {
     } else {
       this.notify('Property listing deleted from inventory.', 'info');
     }
+    return true;
   }
 
-  // Save / Update Lead (Buyer / Client requirement)
-  public saveLead(leadData: Partial<LeadCRM>): boolean {
+  // Save / Update Lead (Buyer / Client requirement) - Returns saved entity with guaranteed ID
+  public saveLead(leadData: Partial<LeadCRM>): LeadCRM | null {
     const existingId = leadData.id;
     const actorName = this.activeAgent().name || 'Agent';
     const actorEmail = this.activeAgent().email || '';
     const now = Date.now();
 
     if (existingId) {
+      let savedLead: LeadCRM | null = null;
       this.leads.update(list =>
-        list.map(l => l.id === existingId ? {
-          ...l,
-          ...leadData,
-          updatedBy: actorName,
-          updatedByEmail: actorEmail,
-          updatedAt: now
-        } as LeadCRM : l)
+        list.map(l => {
+          if (l.id === existingId) {
+            const merged = {
+              ...l,
+              ...leadData,
+              updatedBy: actorName,
+              updatedByEmail: actorEmail,
+              updatedAt: now
+            } as LeadCRM;
+
+            // Dynamically recalculate matched properties based on updated criteria
+            const matches = this.properties()
+              .map(p => ({ property: p, score: this.calculateCompatibilityScore(merged, p).score }))
+              .filter(m => m.score >= 50);
+            merged.matchedPropertyIds = matches.map(m => m.property.id);
+
+            savedLead = merged;
+            return savedLead;
+          }
+          return l;
+        })
       );
-      const updated = this.leads().find(l => l.id === existingId);
-      if (updated && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-        setDoc(doc(this.firebaseService.firestore, 'leads', existingId), this.cleanForFirestore(updated), { merge: true })
-          .then(() => {
-            this.isCloudConnected.set(true);
-            this.lastCloudSync.set(Date.now());
-            this.notify('Customer requirement updated & synced to Cloud (Firebase)!', 'success');
-          })
-          .catch(err => {
-            console.error('Firestore save lead error:', err);
-            this.cloudSyncError.set(err.message);
-            this.notify(`Cloud Save Notice: ${err.message}`, 'error');
-          });
-      } else {
-        this.notify('Customer requirement updated.', 'success');
+
+      if (savedLead) {
+        // Relational cascade: keep site visits updated with latest lead name and phone
+        this.siteVisits.update(visits => visits.map(v => {
+          if (v.leadId === existingId && (v.leadName !== savedLead!.name || v.leadPhone !== savedLead!.phone)) {
+            const updatedVisit: SiteVisit = {
+              ...v,
+              leadName: savedLead!.name,
+              leadPhone: savedLead!.phone
+            };
+            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+              setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+            }
+            return updatedVisit;
+          }
+          return v;
+        }));
+
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'leads', existingId), this.cleanForFirestore(savedLead), { merge: true })
+            .then(() => {
+              this.isCloudConnected.set(true);
+              this.lastCloudSync.set(Date.now());
+              this.notify('Customer requirement updated & synced to Cloud (Firebase)!', 'success');
+            })
+            .catch(err => {
+              console.error('Firestore save lead error:', err);
+              this.cloudSyncError.set(err.message);
+              this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+            });
+        } else {
+          this.notify('Customer requirement updated.', 'success');
+        }
+        return savedLead;
       }
-      return true;
+      return null;
     }
 
     // Auto-calculate expected commission
@@ -720,15 +857,87 @@ export class RealtyService {
     } else {
       this.notify('New Client Lead added to SkyPearl CRM pipeline!', 'success');
     }
+    return newLead;
+  }
+
+  /**
+   * Enterprise Activity Logger: Logs email dispatches, calls, site visit results, and stage progressions
+   * Keeps lead history, timestamps, follow-up scheduler, and cloud database 100% in sync.
+   */
+  public logLeadActivity(
+    leadId: string, 
+    activityNote: string, 
+    advanceToStage?: LeadStage, 
+    newFollowUpDate?: number, 
+    updateEmail?: string
+  ): boolean {
+    const target = this.leads().find(l => l.id === leadId);
+    if (!target) return false;
+
+    const now = Date.now();
+    const dateStr = new Date(now).toLocaleDateString('en-IN', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    });
+
+    const timestampedEntry = `[${dateStr}] ${activityNote}`;
+    const combinedNotes = target.notes ? `${timestampedEntry}\n${target.notes}` : timestampedEntry;
+
+    let targetStage = target.stage;
+    if (advanceToStage) {
+      targetStage = advanceToStage;
+    } else if (target.stage === 'New') {
+      targetStage = 'Contacted';
+    }
+
+    const updatedLead: LeadCRM = {
+      ...target,
+      stage: targetStage,
+      notes: combinedNotes,
+      email: updateEmail || target.email,
+      lastContactDate: now,
+      nextFollowUpDate: newFollowUpDate || (now + 86400000 * 3), // Default follow up in 3 days
+      updatedAt: now,
+      updatedBy: this.activeAgent().name || 'Agent',
+      updatedByEmail: this.activeAgent().email || ''
+    };
+
+    this.leads.update(list => list.map(l => l.id === leadId ? updatedLead : l));
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      setDoc(doc(this.firebaseService.firestore, 'leads', leadId), this.cleanForFirestore(updatedLead), { merge: true })
+        .then(() => {
+          this.lastCloudSync.set(Date.now());
+        })
+        .catch(err => console.warn('Firestore logLeadActivity notice:', err));
+    }
+
     return true;
   }
 
-  public deleteLead(id: string): void {
+  public deleteLead(id: string): boolean {
     if (!this.isAdmin() && !this.isManager()) {
       this.notify('Permission Denied. Only Admin or Manager can delete client records.', 'error');
-      return;
+      return false;
     }
     this.leads.update(list => list.filter(l => l.id !== id));
+
+    // Relational cleanup: update any scheduled site visits associated with this lead
+    this.siteVisits.update(visits => visits.map(v => {
+      if (v.leadId === id && v.status === 'Scheduled') {
+        const updatedVisit: SiteVisit = {
+          ...v,
+          status: 'Cancelled',
+          feedbackNotes: (v.feedbackNotes ? v.feedbackNotes + ' • ' : '') + 'Lead record removed from CRM'
+        };
+        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+          setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+        }
+        return updatedVisit;
+      }
+      return v;
+    }));
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       deleteDoc(doc(this.firebaseService.firestore, 'leads', id))
@@ -745,6 +954,7 @@ export class RealtyService {
     } else {
       this.notify('Client record deleted.', 'info');
     }
+    return true;
   }
 
   public updateLeadStage(leadId: string, stage: LeadStage): void {
@@ -920,8 +1130,11 @@ export class RealtyService {
     return `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
   }
 
-  // Schedule Site Visit
-  public scheduleVisit(visitData: Partial<SiteVisit>): boolean {
+  // Schedule Site Visit - Returns created entity with guaranteed ID & logs activity to lead
+  public scheduleVisit(visitData: Partial<SiteVisit>): SiteVisit | null {
+    const actorName = this.activeAgent().name || 'Agent';
+    const actorUid = this.activeAgent().uid || 'agent';
+
     const newVisit: SiteVisit = {
       id: 'visit-' + Date.now().toString(36),
       propertyId: visitData.propertyId || '',
@@ -930,8 +1143,8 @@ export class RealtyService {
       leadId: visitData.leadId || '',
       leadName: visitData.leadName || '',
       leadPhone: visitData.leadPhone || '',
-      agentId: this.activeAgent().uid,
-      agentName: this.activeAgent().name,
+      agentId: actorUid,
+      agentName: actorName,
       scheduledTime: visitData.scheduledTime || (Date.now() + 86400000),
       status: 'Scheduled',
       feedbackNotes: visitData.feedbackNotes || '',
@@ -940,12 +1153,19 @@ export class RealtyService {
 
     this.siteVisits.update(list => [newVisit, ...list]);
     
-    // Automatically advance lead stage
+    // Automatically advance lead stage and log activity
     if (newVisit.leadId) {
-      const lead = this.leads().find(l => l.id === newVisit.leadId);
-      if (lead && (lead.stage === 'New' || lead.stage === 'Qualified' || lead.stage === 'Contacted')) {
-        this.updateLeadStage(newVisit.leadId, 'Site Visit Scheduled');
-      }
+      const visitDateFormatted = new Date(newVisit.scheduledTime).toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      this.logLeadActivity(
+        newVisit.leadId,
+        `Site visit scheduled for "${newVisit.propertyTitle}" (${newVisit.locality}) on ${visitDateFormatted}`,
+        'Site Visit Scheduled'
+      );
     }
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
@@ -964,15 +1184,52 @@ export class RealtyService {
       this.notify('Site visit scheduled successfully!', 'success');
     }
 
-    return true;
+    return newVisit;
   }
 
-  public updateVisitStatus(visitId: string, status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled'): void {
-    this.siteVisits.update(list => list.map(v => v.id === visitId ? { ...v, status } : v));
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      const updated = this.siteVisits().find(v => v.id === visitId);
-      if (updated) {
-        setDoc(doc(this.firebaseService.firestore, 'siteVisits', visitId), this.cleanForFirestore(updated), { merge: true })
+  public updateVisitStatus(
+    visitId: string, 
+    status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled', 
+    feedbackNotes?: string
+  ): void {
+    let targetVisit: SiteVisit | null = null;
+    this.siteVisits.update(list => list.map(v => {
+      if (v.id === visitId) {
+        targetVisit = { 
+          ...v, 
+          status, 
+          feedbackNotes: feedbackNotes !== undefined ? feedbackNotes : v.feedbackNotes 
+        };
+        return targetVisit;
+      }
+      return v;
+    }));
+
+    if (targetVisit) {
+      const v = targetVisit as SiteVisit;
+      // Connect to lead activity log
+      if (v.leadId) {
+        if (status === 'Completed') {
+          this.logLeadActivity(
+            v.leadId,
+            `Site visit completed for "${v.propertyTitle}". Notes: ${v.feedbackNotes || 'No notes provided'}`,
+            'In Negotiation'
+          );
+        } else if (status === 'Cancelled') {
+          this.logLeadActivity(
+            v.leadId,
+            `Site visit cancelled for "${v.propertyTitle}". Reason: ${v.feedbackNotes || 'Cancelled'}`
+          );
+        } else if (status === 'Rescheduled') {
+          this.logLeadActivity(
+            v.leadId,
+            `Site visit rescheduled for "${v.propertyTitle}". Notes: ${v.feedbackNotes || 'Rescheduled'}`
+          );
+        }
+      }
+
+      if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+        setDoc(doc(this.firebaseService.firestore, 'siteVisits', visitId), this.cleanForFirestore(v), { merge: true })
           .then(() => {
             this.isCloudConnected.set(true);
             this.lastCloudSync.set(Date.now());
@@ -982,9 +1239,9 @@ export class RealtyService {
             console.error('Firestore visit update error:', err);
             this.cloudSyncError.set(err.message);
           });
+      } else {
+        this.notify(`Visit status updated to ${status}`, 'info');
       }
-    } else {
-      this.notify(`Visit status updated to ${status}`, 'info');
     }
   }
 

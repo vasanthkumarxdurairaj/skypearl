@@ -311,9 +311,19 @@ export class SpaceService {
       return;
     }
 
-    // 4. Was this Google email directly pre-authorized or invited via link?
+    // 4. Was this Google email directly pre-authorized or invited via link / code?
+    let hasValidCodeParam = false;
+    if (typeof window !== 'undefined') {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const codeInUrl = searchParams.get('code');
+        if (codeInUrl && currentSpace.code && codeInUrl.trim().toUpperCase() === currentSpace.code.trim().toUpperCase()) {
+          hasValidCodeParam = true;
+        }
+      } catch {}
+    }
     const hasJoinParam = typeof window !== 'undefined' && 
-      (window.location.search.includes('join') || window.location.search.includes('invite') || window.location.search.includes('space'));
+      (window.location.search.includes('join') || window.location.search.includes('invite') || window.location.search.includes('space') || hasValidCodeParam);
     const isPreAuthorized = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
 
     if (hasJoinParam || isPreAuthorized) {
@@ -568,10 +578,11 @@ export class SpaceService {
   }
 
   public getInviteLink(): string {
+    const code = this.space().code || 'SKP-CHN-4829';
     if (typeof window !== 'undefined') {
-      return `${window.location.origin}/?join=true`;
+      return `${window.location.origin}/?join=true&code=${encodeURIComponent(code)}`;
     }
-    return `https://skypearl.netlify.app/?join=true`;
+    return `https://skypearl.netlify.app/?join=true&code=${encodeURIComponent(code)}`;
   }
 
   public getWhatsAppInviteUrl(): string {

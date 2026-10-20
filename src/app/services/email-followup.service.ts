@@ -1,5 +1,6 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { FirebaseService } from './firebase.service';
+import { RealtyService } from './realty.service';
 import { LeadCRM, PropertyListing } from '../models/realty.model';
 import { collection, addDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
@@ -30,6 +31,7 @@ export type FollowUpTemplateType = 'property_matches' | 'site_visit' | 'negotiat
 })
 export class EmailFollowupService {
   private firebaseService = inject(FirebaseService);
+  private realtyService = inject(RealtyService);
 
   public readonly emailSettings = signal<EmailAutomationSettings>({ ...DEFAULT_EMAIL_SETTINGS });
   public readonly isSending = signal<boolean>(false);
@@ -191,7 +193,7 @@ SkyPearl Realty Advisors · Chennai`;
    * 1-Click Native Mail Client (Zero Keys Required)
    * Opens user's default email client (Gmail, Outlook, Apple Mail) with prefilled to, subject, and body.
    */
-  public openNativeEmailClient(toEmail: string, subject: string, body: string): boolean {
+  public openNativeEmailClient(toEmail: string, subject: string, body: string, leadId?: string): boolean {
     const cleanEmail = toEmail ? toEmail.trim() : '';
     const mailtoUrl = `mailto:${encodeURIComponent(cleanEmail)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     
@@ -203,6 +205,10 @@ SkyPearl Realty Advisors · Chennai`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+
+      if (leadId && this.emailSettings().autoLogFollowUp) {
+        this.realtyService.logLeadActivity(leadId, `Follow-up email draft opened in default Mail client (Subject: "${subject}")`);
+      }
       return true;
     }
     return false;
@@ -212,11 +218,14 @@ SkyPearl Realty Advisors · Chennai`;
    * 1-Click Direct Google Mail (Gmail Web)
    * Opens Gmail directly in a new browser tab with recipient, subject, and body pre-filled.
    */
-  public openGmailWebClient(toEmail: string, subject: string, body: string): boolean {
+  public openGmailWebClient(toEmail: string, subject: string, body: string, leadId?: string): boolean {
     const cleanEmail = toEmail ? toEmail.trim() : '';
     const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(cleanEmail)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     if (typeof window !== 'undefined') {
       window.open(gmailUrl, '_blank', 'noopener,noreferrer');
+      if (leadId && this.emailSettings().autoLogFollowUp) {
+        this.realtyService.logLeadActivity(leadId, `Follow-up email draft opened in Gmail Web Client (Subject: "${subject}")`);
+      }
       return true;
     }
     return false;
@@ -231,7 +240,8 @@ SkyPearl Realty Advisors · Chennai`;
     toName: string,
     subject: string,
     body: string,
-    agentName: string
+    agentName: string,
+    leadId?: string
   ): Promise<{ success: boolean; message: string }> {
     const config = this.emailSettings();
     if (!this.hasValidEmailJsKeys()) {
@@ -270,6 +280,9 @@ SkyPearl Realty Advisors · Chennai`;
       if (response.ok) {
         const msg = `Automated follow-up email successfully delivered to ${toEmail}!`;
         this.lastSendStatus.set({ success: true, message: msg });
+        if (leadId && config.autoLogFollowUp) {
+          this.realtyService.logLeadActivity(leadId, `Automated email delivered via EmailJS (Subject: "${subject}")`);
+        }
         return { success: true, message: msg };
       } else {
         const errText = await response.text();
@@ -293,7 +306,8 @@ SkyPearl Realty Advisors · Chennai`;
   public async sendViaFirebaseMailCollection(
     toEmail: string,
     subject: string,
-    body: string
+    body: string,
+    leadId?: string
   ): Promise<{ success: boolean; message: string }> {
     if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) {
       return {
@@ -314,6 +328,10 @@ SkyPearl Realty Advisors · Chennai`;
         },
         createdAt: Date.now()
       });
+
+      if (leadId && this.emailSettings().autoLogFollowUp) {
+        this.realtyService.logLeadActivity(leadId, `Follow-up email queued in Cloud /mail collection (Subject: "${subject}")`);
+      }
 
       return {
         success: true,

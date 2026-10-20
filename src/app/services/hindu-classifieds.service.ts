@@ -523,13 +523,11 @@ export class HinduClassifiedsService {
 
     const saved = this.realtyService.saveProperty(newProp);
     if (saved) {
-      const matched = this.realtyService.properties().find(p => p.ownerPhone === item.contactPhone && p.locality === item.locality) || this.realtyService.properties()[0];
-      const propId = matched?.id || ('prop-' + now.toString(36));
-
+      const propId = saved.id;
       // Mark classified as imported and sync Firestore
       this.updateClassifiedStatus(item.id, 'Imported', propId);
       this.realtyService.notify(`Property #${propId} successfully added to SkyPearl Inventory from The Hindu Classifieds!`, 'success');
-      return matched || null;
+      return saved;
     }
     return null;
   }
@@ -538,7 +536,6 @@ export class HinduClassifiedsService {
    * 1-Click Import Option: Add Buyer to SkyPearl CRM Leads
    */
   public addBuyerToUs(item: HinduClassifiedItem): LeadCRM | null {
-    const now = Date.now();
     const newLead: Partial<LeadCRM> = {
       name: item.contactName || 'The Hindu Buyer Inquiry',
       phone: item.contactPhone || '',
@@ -557,12 +554,10 @@ export class HinduClassifiedsService {
 
     const saved = this.realtyService.saveLead(newLead);
     if (saved) {
-      const matched = this.realtyService.leads().find(l => l.phone === item.contactPhone) || this.realtyService.leads()[0];
-      const leadId = matched?.id || ('lead-' + now.toString(36));
-
+      const leadId = saved.id;
       this.updateClassifiedStatus(item.id, 'Imported', undefined, leadId);
       this.realtyService.notify(`Buyer inquiry successfully added to SkyPearl CRM Pipeline!`, 'success');
-      return matched || null;
+      return saved;
     }
     return null;
   }

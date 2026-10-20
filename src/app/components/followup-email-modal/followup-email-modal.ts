@@ -874,27 +874,13 @@ export class FollowUpEmailModalComponent implements OnInit {
   }
 
   private commitFollowUpLog(actionNote: string): void {
-    const now = Date.now();
-    const nextDate = now + (this.rescheduleDays * 86400000);
-
-    this.realtyService.leads.update(list =>
-      list.map(l => {
-        if (l.id === this.lead.id) {
-          const updatedNotes = l.notes 
-            ? `${l.notes}\n[${new Date().toLocaleDateString('en-IN')}] Follow-up email: ${actionNote}`
-            : `[${new Date().toLocaleDateString('en-IN')}] Follow-up email: ${actionNote}`;
-          return {
-            ...l,
-            email: this.toEmail || l.email,
-            lastContactDate: now,
-            nextFollowUpDate: nextDate,
-            notes: updatedNotes,
-            updatedAt: now,
-            updatedBy: this.realtyService.activeAgent().name
-          };
-        }
-        return l;
-      })
+    const nextDate = Date.now() + (this.rescheduleDays * 86400000);
+    this.realtyService.logLeadActivity(
+      this.lead.id,
+      `Follow-up email: ${actionNote} (Subject: "${this.subject}")`,
+      undefined,
+      nextDate,
+      this.toEmail || this.lead.email
     );
     this.realtyService.notify(`Next follow-up set for +${this.rescheduleDays} days.`, 'info');
   }

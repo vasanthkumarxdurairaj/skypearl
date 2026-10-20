@@ -39,8 +39,12 @@ export class AuthService {
     this.currentUser.set(appUser);
   }
 
-  private initAuthListener(): void {
+  private listenerAttached = false;
+
+  public initAuthListener(): void {
+    if (this.listenerAttached) return;
     if (this.firebaseService.auth && !this.firebaseService.isDemoMode()) {
+      this.listenerAttached = true;
       // Check for redirect result if returned from Google OAuth redirect
       getRedirectResult(this.firebaseService.auth)
         .then((cred) => {
@@ -131,6 +135,7 @@ export class AuthService {
       if (!this.firebaseService.auth) {
         if (environment?.firebase?.apiKey && environment.firebase.projectId) {
           this.firebaseService.initializeWithConfig(environment.firebase);
+          this.initAuthListener();
         }
       }
 
@@ -183,6 +188,7 @@ export class AuthService {
     try {
       if (!this.firebaseService.auth && environment?.firebase?.apiKey) {
         this.firebaseService.initializeWithConfig(environment.firebase);
+        this.initAuthListener();
       }
 
       if (this.firebaseService.auth) {

@@ -15,11 +15,27 @@ export class FirebaseService {
 
   public readonly isConnected = signal<boolean>(false);
   public readonly isDemoMode = signal<boolean>(false);
+  public readonly isOnline = signal<boolean>(typeof navigator !== 'undefined' ? navigator.onLine : true);
   public readonly projectId = signal<string>('skypearl-217d7');
   public readonly currentConfig = signal<FirebaseConfigOptions | null>(null);
 
   constructor() {
+    this.setupNetworkListeners();
     this.initFirebase();
+  }
+
+  private setupNetworkListeners(): void {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online', () => {
+        this.isOnline.set(true);
+        if (!this.isConnected() && environment?.firebase?.apiKey) {
+          this.initializeWithConfig(environment.firebase);
+        }
+      });
+      window.addEventListener('offline', () => {
+        this.isOnline.set(false);
+      });
+    }
   }
 
   private initFirebase(): void {
