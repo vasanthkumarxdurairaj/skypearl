@@ -44,17 +44,19 @@ import { FirebaseService } from '../../services/firebase.service';
             </button>
             <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Personal Workspace">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              <span>Personal</span>
+              <span class="btn-text-desktop">Personal</span>
             </button>
           </div>
         } @else {
           <div class="space-pill-group personal-active">
             <div class="space-pill personal" title="You are currently in Personal Workspace mode">
               <span class="personal-dot"></span>
-              <span class="space-name">Personal Workspace</span>
+              <span class="space-name">Personal</span>
             </div>
             <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Team Space">
-              <span>↩ Return to Team Space</span>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+              <span class="btn-text-desktop">Return to Team Space</span>
+              <span class="btn-text-mobile">Team</span>
             </button>
           </div>
         }
@@ -73,7 +75,7 @@ import { FirebaseService } from '../../services/firebase.service';
           <span>Site Visit</span>
         </button>
 
-        <button class="btn btn-gold btn-sm" (click)="openLeadModal.emit()" title="Add Lead to CRM">
+        <button class="btn btn-gold btn-sm nav-btn-buyer" (click)="openLeadModal.emit()" title="Add Lead to CRM">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
             <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
             <circle cx="9" cy="7" r="4"></circle>
@@ -83,7 +85,7 @@ import { FirebaseService } from '../../services/firebase.service';
           <span>Add Buyer</span>
         </button>
 
-        <button class="btn btn-primary btn-sm" (click)="openPropertyModal.emit()" title="List Property in Chennai">
+        <button class="btn btn-primary btn-sm nav-btn-property" (click)="openPropertyModal.emit()" title="List Property in Chennai">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19"></line>
             <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -874,57 +876,122 @@ import { FirebaseService } from '../../services/firebase.service';
       border-top: 1px solid var(--border-subtle);
     }
 
+    .btn-text-mobile {
+      display: none;
+    }
+
+    .btn-text-desktop {
+      display: inline;
+    }
+
     /* Mobile Responsiveness for Top Navbar */
     @media (max-width: 768px) {
       .navbar-container {
-        padding: 0 8px;
+        padding: 0 10px;
         gap: 6px;
-        height: 56px;
+        height: 52px;
       }
 
-      .brand-sub,
+      .brand-subtitle,
       .city-pill,
+      .nav-divider-v,
+      .nav-btn-secondary,
+      .nav-btn-buyer,
       .passcode-tag {
         display: none !important;
       }
 
-      .brand-title {
-        font-size: 0.88rem;
-      }
-
-      /* Compact icon-only space pill on mobile */
-      .space-pill {
-        padding: 6px !important;
-        min-width: 32px !important;
-        width: 32px !important;
-        height: 32px !important;
-        justify-content: center !important;
-        border-radius: 8px !important;
-      }
-
-      .space-pill .space-name,
-      .space-pill .space-badge,
-      .cloud-pill .cloud-label {
+      .btn-text-desktop {
         display: none !important;
       }
 
-      .cloud-pill {
-        padding: 6px !important;
-        min-width: 28px !important;
-        justify-content: center !important;
+      .btn-text-mobile {
+        display: inline !important;
+      }
+
+      .nav-left {
+        gap: 6px;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .brand {
+        gap: 6px;
+        flex-shrink: 0;
+      }
+
+      .brand-gem {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+      }
+
+      .brand-title {
+        font-size: 0.86rem;
+        white-space: nowrap;
+      }
+
+      /* Compact and perfectly proportioned space pills on mobile */
+      .space-pill-group {
+        padding: 2px 3px;
+        gap: 2px;
+        flex-shrink: 0;
+      }
+
+      .space-pill {
+        padding: 2px 5px !important;
+        font-size: 0.67rem !important;
+        gap: 3px !important;
+      }
+
+      .space-pill .space-name {
+        display: none !important;
+      }
+
+      .space-badge {
+        font-size: 0.62rem !important;
+        padding: 1px 4px !important;
+      }
+
+      .space-pill-group.personal-active .space-pill.personal {
+        display: none !important;
+      }
+
+      .space-mode-btn {
+        padding: 2px 6px !important;
+        font-size: 0.67rem !important;
+        height: 25px !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+      }
+
+      .space-mode-btn.return-btn {
+        padding: 2px 8px !important;
+        font-size: 0.67rem !important;
+        height: 25px !important;
+        border-radius: var(--radius-full) !important;
+        white-space: nowrap !important;
+        gap: 3px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        width: auto !important;
+        min-width: unset !important;
+        box-shadow: 0 2px 6px rgba(203, 168, 107, 0.3) !important;
       }
 
       .nav-right {
-        gap: 4px;
+        gap: 5px;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
       }
 
-      .nav-right .btn-sm span,
-      .theme-toggle-btn span {
+      .nav-right .btn-sm span {
         display: none !important;
       }
 
-      .nav-right .btn-sm,
-      .theme-toggle-btn {
+      .nav-right .btn-sm {
         padding: 0;
         min-width: 32px;
         width: 32px;
@@ -936,18 +1003,15 @@ import { FirebaseService } from '../../services/firebase.service';
         flex-shrink: 0;
       }
 
-      .agent-pill {
-        padding: 4px;
-        gap: 4px;
-      }
-
-      .agent-details {
-        display: none;
+      .theme-icon-btn,
+      .profile-circle-btn {
+        width: 32px;
+        height: 32px;
       }
 
       .agent-dropdown {
         position: fixed;
-        top: 58px;
+        top: 56px;
         right: 8px;
         left: 8px;
         width: auto;
@@ -955,9 +1019,8 @@ import { FirebaseService } from '../../services/firebase.service';
       }
     }
 
-    @media (max-width: 520px) {
-      .nav-btn-secondary,
-      .nav-classifieds-btn {
+    @media (max-width: 480px) {
+      .nav-btn-secondary {
         display: none !important;
       }
       .brand-gem {
@@ -965,13 +1028,14 @@ import { FirebaseService } from '../../services/firebase.service';
         height: 28px;
       }
       .brand-title {
-        font-size: 0.82rem;
+        font-size: 0.86rem;
       }
       .nav-right {
         gap: 3px;
       }
       .nav-right .btn-sm,
-      .theme-icon-btn {
+      .theme-icon-btn,
+      .profile-circle-btn {
         min-width: 30px;
         width: 30px;
         height: 30px;

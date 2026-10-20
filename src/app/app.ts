@@ -217,7 +217,13 @@ export class App {
   // Navigation View Selection
   public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'settings'): void {
     this.realtyService.activeView.set(view);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      const contentEl = document.querySelector('.content-area');
+      if (contentEl) {
+        contentEl.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    }
   }
 
   // Property Actions

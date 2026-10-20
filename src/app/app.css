@@ -1468,6 +1468,11 @@ body.dark-theme .chip-miss {
   max-width: 480px;
 }
 
+/* Mobile Bottom Navigation Dock (Hidden on Desktop) */
+.mobile-bottom-nav {
+  display: none;
+}
+
 /* ==============================================
    RESPONSIVE MEDIA QUERIES
    ============================================== */
@@ -1489,125 +1494,135 @@ body.dark-theme .chip-miss {
 
   .main-body {
     flex-direction: column;
-    height: calc(100vh - 56px);
-    height: calc(100dvh - 56px);
+    height: calc(100vh - 52px);
+    height: calc(100dvh - 52px);
     overflow: hidden;
     position: relative;
   }
 
-  /* Fixed Bottom App Navigation Dock */
+  /* Desktop Sidebar Hidden on Mobile */
   .sidebar {
+    display: none !important;
+  }
+
+  /* Executive Mobile Bottom Navigation Bar (App Dock) */
+  .mobile-bottom-nav {
+    display: grid !important;
+    grid-template-columns: repeat(6, 1fr);
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
     height: 58px;
-    z-index: 850;
-    background: var(--bg-card);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg-secondary);
     border-top: 1px solid var(--border-subtle);
-    border-right: none;
-    border-bottom: none;
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
-    padding: 2px 8px;
-    margin: 0;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-  }
-
-  .sidebar-section {
-    width: 100%;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-around;
-    padding: 0;
-    gap: 0;
-  }
-
-  .section-title {
-    display: none !important;
-  }
-
-  .sidebar-section.mt-auto {
-    display: none !important;
-  }
-
-  .nav-menu {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-    justify-content: space-around;
-    gap: 4px;
+    box-shadow: 0 -4px 22px rgba(0, 0, 0, 0.35);
+    z-index: 1000;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     align-items: center;
   }
 
-  .nav-tab.desktop-only {
-    display: none !important;
-  }
-
-  .nav-tab {
-    flex: 1;
+  .mob-tab {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 8px 4px;
-    height: 44px;
-    border-radius: 12px;
+    gap: 3px;
+    height: 100%;
     background: transparent;
     border: none;
-    min-width: 0;
-    position: relative;
+    cursor: pointer;
     color: var(--text-muted);
-    transition: all 0.2s ease;
+    padding: 5px 2px;
+    position: relative;
+    transition: color 0.15s ease, transform 0.15s ease;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
   }
 
-  .nav-tab .tab-icon {
-    width: 22px;
-    height: 22px;
-    stroke-width: 2.2;
-    transition: transform 0.18s ease, stroke 0.18s ease;
+  .mob-tab:active {
+    transform: scale(0.92);
   }
 
-  /* No text names on mobile bottom navigation */
-  .nav-tab .tab-label {
-    display: none !important;
+  .mob-tab.active {
+    color: var(--gold);
   }
 
-  .nav-tab .tab-badge {
-    position: absolute;
-    top: 4px;
-    right: calc(50% - 17px);
-    font-size: 0.6rem;
-    padding: 1px 4px;
-    min-width: 15px;
-    height: 15px;
-    line-height: 13px;
-    border-radius: 10px;
+  .mob-tab-icon-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+  }
+
+  .mob-tab-icon-wrap svg {
+    transition: stroke 0.15s ease, transform 0.15s ease;
+  }
+
+  .mob-tab.active .mob-tab-icon-wrap svg {
+    stroke: var(--gold);
+    transform: scale(1.1);
+  }
+
+  .mob-tab-label {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    line-height: 1;
+    white-space: nowrap;
+    transition: color 0.15s ease;
+  }
+
+  .mob-tab.active .mob-tab-label {
     font-weight: 800;
+    color: var(--gold);
+  }
+
+  .mob-tab-badge {
+    position: absolute;
+    top: -4px;
+    right: -8px;
+    font-size: 0.58rem;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    padding: 1px 4px;
+    min-width: 14px;
+    height: 14px;
+    line-height: 12px;
+    border-radius: var(--radius-full);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+    text-align: center;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
 
-  .nav-tab.active {
-    color: var(--gold-accent);
-    background: rgba(203, 168, 107, 0.14);
+  .mob-tab-badge.highlight {
+    background: rgba(2, 132, 199, 0.2);
+    color: var(--accent-sky);
+    border-color: rgba(2, 132, 199, 0.4);
   }
 
-  .nav-tab.active .tab-icon {
-    stroke: var(--gold);
-    transform: scale(1.12);
+  .mob-tab-badge.match {
+    background: rgba(203, 168, 107, 0.25);
+    color: var(--gold);
+    border-color: rgba(203, 168, 107, 0.45);
+  }
+
+  .mob-tab-badge.warn {
+    background: #f59e0b;
+    color: #000;
+    border-color: #f59e0b;
   }
 
   .content-area {
-    padding: 14px 12px 76px 12px;
+    padding: 14px 12px 86px 12px;
     width: 100%;
+    max-width: 100vw;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
@@ -1641,8 +1656,99 @@ body.dark-theme .chip-miss {
   .header-action-group .btn {
     flex: 1 1 calc(50% - 4px);
     font-size: 0.74rem;
-    padding: 8px 8px;
+    padding: 8px 10px;
     justify-content: center;
+  }
+
+  /* Workspace Banner & Metrics on Mobile */
+  .workspace-banner {
+    padding: 16px 14px;
+    margin-bottom: 14px;
+    border-radius: var(--radius-lg);
+  }
+
+  .banner-top {
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .workspace-title {
+    font-size: 1.2rem;
+    letter-spacing: -0.02em;
+  }
+
+  .workspace-desc {
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .banner-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .banner-actions .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 36px;
+    font-size: 0.74rem;
+    padding: 7px 10px;
+    justify-content: center;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .metric-card {
+    padding: 12px 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .metric-value {
+    font-size: 1.35rem;
+    line-height: 1.15;
+    margin: 3px 0 2px;
+  }
+
+  .metric-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.04em;
+  }
+
+  .metric-hint {
+    font-size: 0.67rem;
+    line-height: 1.25;
+  }
+
+  /* Dashboard Split Grid on Mobile */
+  .dashboard-split-grid {
+    grid-template-columns: 1fr !important;
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .feed-panel {
+    padding: 14px;
+    border-radius: var(--radius-lg);
+    gap: 10px;
+  }
+
+  .feed-item {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  .item-title {
+    font-size: 0.84rem;
+  }
+
+  .feed-price {
+    font-size: 0.95rem;
   }
 
   /* Filter Toolbar on Mobile */
@@ -1656,12 +1762,13 @@ body.dark-theme .chip-miss {
 
   .search-box {
     width: 100%;
+    max-width: 100%;
+    min-width: 100%;
   }
 
   .search-box .toolbar-search {
     width: 100%;
-    font-size: 0.8rem;
-    padding: 8px 10px 8px 30px;
+    font-size: 0.82rem;
   }
 
   .filter-group {
@@ -1674,31 +1781,12 @@ body.dark-theme .chip-miss {
   .toolbar-select {
     flex: 1 1 calc(50% - 4px);
     min-width: 120px;
-    font-size: 0.75rem;
-    height: 36px;
+    font-size: 0.76rem;
+    height: 38px;
   }
 
   .view-mode-toggle {
     margin-left: auto;
-  }
-
-  /* Metrics Grid on Mobile */
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr) !important;
-    gap: 8px;
-    margin-bottom: 14px;
-  }
-
-  .metric-card {
-    padding: 12px 10px;
-  }
-
-  .metric-value {
-    font-size: 1.3rem;
-  }
-
-  .metric-label {
-    font-size: 0.7rem;
   }
 
   /* Property Inventory on Mobile */
@@ -1712,15 +1800,15 @@ body.dark-theme .chip-miss {
   }
 
   .property-img-container {
-    height: 190px;
+    height: 180px;
   }
 
   .property-content {
-    padding: 12px;
+    padding: 12px 14px;
   }
 
   .property-price {
-    font-size: 1.25rem;
+    font-size: 1.22rem;
   }
 
   .property-specs-ribbon {
@@ -1750,8 +1838,8 @@ body.dark-theme .chip-miss {
   .property-action-buttons .btn {
     flex: 1;
     justify-content: center;
-    min-height: 34px;
-    font-size: 0.74rem;
+    min-height: 36px;
+    font-size: 0.75rem;
   }
 
   /* Data Table on Mobile */
@@ -1764,7 +1852,8 @@ body.dark-theme .chip-miss {
   }
 
   .data-table {
-    min-width: 650px;
+    min-width: 620px;
+    font-size: 0.78rem;
   }
 
   /* Kanban Pipeline on Mobile */
@@ -1778,11 +1867,11 @@ body.dark-theme .chip-miss {
   }
 
   .kanban-column {
-    min-width: 84vw;
-    max-width: 86vw;
-    scroll-snap-align: start;
+    min-width: 82vw;
+    max-width: 84vw;
+    scroll-snap-align: center;
     padding: 12px;
-    max-height: calc(100vh - 240px);
+    max-height: calc(100vh - 220px);
   }
 
   /* Connections & Matches on Mobile */
@@ -1791,11 +1880,29 @@ body.dark-theme .chip-miss {
     gap: 12px;
   }
 
+  .connection-body {
+    padding: 12px;
+  }
+
+  .connection-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    width: 100%;
+  }
+
+  .connection-actions-row .btn {
+    flex: 1 1 calc(50% - 4px);
+    min-height: 36px;
+    font-size: 0.74rem;
+    justify-content: center;
+  }
+
   .matching-drawer {
     width: 100%;
     max-width: 100vw;
-    top: 56px;
-    height: calc(100vh - 56px);
+    top: 52px;
+    height: calc(100vh - 52px);
   }
 
   /* Global Modal Adjustments on Mobile */
@@ -1808,7 +1915,7 @@ body.dark-theme .chip-miss {
   .modal-card {
     max-width: 100% !important;
     max-height: 94vh !important;
-    border-radius: 16px 16px 0 0 !important;
+    border-radius: 18px 18px 0 0 !important;
     padding: 16px 14px !important;
   }
 
@@ -1827,6 +1934,14 @@ body.dark-theme .chip-miss {
   }
 
   .toolbar-select {
+    flex: 1 1 100%;
+  }
+
+  .banner-actions .btn {
+    flex: 1 1 100%;
+  }
+
+  .connection-actions-row .btn {
     flex: 1 1 100%;
   }
 }
