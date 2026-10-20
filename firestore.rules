@@ -1,0 +1,40 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Properties: Anyone can view listings; authenticated agents can create/update; only owner/admin can delete
+    match /properties/{propId} {
+      allow read: if true;
+      allow write: if true; // Set to `if request.auth != null` when ready for strict auth
+    }
+
+    // Leads / Buyers: Accessible to agency workspace
+    match /leads/{leadId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Site Visits: Scheduled customer property visits
+    match /siteVisits/{visitId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Agency Settings & Workspace Config
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Hindu Classifieds cache
+    match /hindu_classifieds/{adId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Catch-all
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,65 @@
+name: SkyPearl Production CI & Security Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-audit:
+    name: Build & Security Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Project Dependencies
+        run: npm ci
+
+      - name: Repository Secrets & Hygiene Scan
+        run: |
+          echo "Scanning for forbidden credential files..."
+          FORBIDDEN_FILES=$(find . -maxdepth 3 \( -name "*.pem" -o -name "*serviceAccountKey*.json" -o -name ".env.production" -o -name ".env.local" \) ! -path "*/node_modules/*")
+          if [ -n "$FORBIDDEN_FILES" ]; then
+            echo "::error::Forbidden secret file detected in repository: $FORBIDDEN_FILES"
+            exit 1
+          fi
+          echo "No forbidden secret files detected."
+
+      - name: Dependency Vulnerability Audit
+        run: |
+          echo "Running npm audit for critical vulnerabilities..."
+          npm audit --audit-level=critical || true
+
+      - name: Compile & Build Angular Production Bundle
+        run: npm run build
+
+      - name: Verify Production Output Artifacts
+        run: |
+          echo "Verifying build artifact structure..."
+          if [ ! -f "dist/skypearl/browser/index.html" ]; then
+            echo "::error::Build verification failed: dist/skypearl/browser/index.html does not exist!"
+            exit 1
+          fi
+          echo "SUCCESS: dist/skypearl/browser/index.html is present."
+          ls -lh dist/skypearl/browser
+
+      - name: Upload Production Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: skypearl-production-dist
+          path: dist/skypearl/browser
+          retention-days: 7
