@@ -32,16 +32,15 @@ import { FirebaseService } from '../../services/firebase.service';
         <!-- Space & Team Access Pill Group (Supports Go & Back between Agency Space & Personal Mode) -->
         @if (spaceService.activeSpaceMode() === 'agency') {
           <div class="space-pill-group">
-            <button class="space-pill" (click)="goToSettings()" [title]="'Agency Space: ' + spaceService.space().name + ' • Auto Code: ' + spaceService.space().code">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <circle cx="18" cy="5" r="3"></circle>
-                <circle cx="6" cy="12" r="3"></circle>
-                <circle cx="18" cy="19" r="3"></circle>
-                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            <button class="space-pill" (click)="goToSettings()" title="Agency Shared Workspace • Click to invite team agents or manage access">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
-              <span class="space-name">Space: {{ spaceService.space().code }}</span>
-              <span class="space-badge">Manage</span>
+              <span class="space-name">Team Space</span>
+              <span class="space-badge">Invite Team</span>
             </button>
             <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Personal Workspace">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
@@ -54,8 +53,8 @@ import { FirebaseService } from '../../services/firebase.service';
               <span class="personal-dot"></span>
               <span class="space-name">Personal Workspace</span>
             </div>
-            <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" [title]="'Return to ' + spaceService.space().name + ' (' + spaceService.space().code + ')'">
-              <span>↩ Return to Space</span>
+            <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Team Space">
+              <span>↩ Return to Team Space</span>
             </button>
           </div>
         }
