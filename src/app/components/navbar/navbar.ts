@@ -157,8 +157,8 @@ import { FirebaseService } from '../../services/firebase.service';
           @if (showAgentMenu()) {
             <div class="agent-dropdown glass-panel">
               <div class="dropdown-header">
-                <span class="dropdown-title">Active Account & Space Access</span>
-                <span class="dropdown-desc">Live authenticated profile & team access directory</span>
+                <span class="dropdown-title">Active Account & Workspace</span>
+                <span class="dropdown-desc">Agent profile and agency workspace access</span>
               </div>
 
               <!-- Guest Sign In Prompt if not signed in -->
@@ -211,10 +211,10 @@ import { FirebaseService } from '../../services/firebase.service';
                 </div>
               }
 
-              <!-- People Who Accessed This Space Section -->
+              <!-- Workspace Members Section -->
               <div class="accessed-header">
-                <span class="accessed-title">PEOPLE WHO ACCESSED ({{ spaceService.space().members.length }})</span>
-                <span class="accessed-subtitle">Real authenticated accounts tracking identity</span>
+                <span class="accessed-title">TEAM MEMBERS ({{ spaceService.space().members.length }})</span>
+                <span class="accessed-subtitle">Active agents and brokers in this workspace</span>
               </div>
 
               <div class="agent-list">
@@ -1090,7 +1090,7 @@ export class NavbarComponent {
 
   public async signOutGoogle(): Promise<void> {
     await this.authService.logout();
-    this.realtyService.notify('Signed out of Google account.', 'info');
+    this.realtyService.notify('Signed out successfully.', 'info');
     this.showAgentMenu.set(false);
   }
 

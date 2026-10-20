@@ -101,7 +101,7 @@ import { FirebaseService } from '../../services/firebase.service';
                 <h3 class="card-title text-gold">Invite Team Agents & Brokers</h3>
                 <span class="card-subtitle">1-click WhatsApp share & direct link for instant team onboarding</span>
               </div>
-              <span class="badge-gold">✓ Direct Google Sign-In</span>
+              <span class="badge-gold">✓ 1-Click Access</span>
             </div>
 
             <!-- Big 1-Click Action Buttons for Non-Tech Brokers -->
@@ -129,14 +129,14 @@ import { FirebaseService } from '../../services/firebase.service';
                 <span class="invite-link-text">{{ inviteLink() }}</span>
               </div>
               <p class="invite-link-hint">
-                💡 When agents open this link, they simply sign in with Google to enter your team workspace. No manual code needed.
+                💡 When agents open this link, they sign in to immediately join your agency workspace. No manual code needed.
               </p>
             </div>
 
-            <!-- Pre-Authorize Agent Google Account -->
+            <!-- Pre-Authorize Agent by Email -->
             <div class="preauth-section">
-              <span class="subhead">Pre-Authorize Agent by Google Account</span>
-              <p class="hint">Enter an agent's Gmail to authorize them before they even open the link.</p>
+              <span class="subhead">Pre-Authorize Agent by Email</span>
+              <p class="hint">Enter an agent's email address to authorize them before they open the link.</p>
               <div class="email-input-row">
                 <input 
                   type="email" 
@@ -171,7 +171,7 @@ import { FirebaseService } from '../../services/firebase.service';
               <div class="card-head">
                 <div class="card-title-group">
                   <h3 class="card-title text-gold">Pending Join Requests ({{ spaceService.space().pendingRequests.length }})</h3>
-                  <span class="card-subtitle">Google accounts awaiting your approval to access properties & CRM</span>
+                  <span class="card-subtitle">Agents awaiting your approval to access properties & CRM</span>
                 </div>
                 <span class="badge-warn">Owner Decision Needed</span>
               </div>
@@ -213,7 +213,7 @@ import { FirebaseService } from '../../services/firebase.service';
             <div class="card-head">
               <div class="card-title-group">
                 <h3 class="card-title">Active Team Members Directory ({{ spaceService.space().members.length }})</h3>
-                <span class="card-subtitle">Verified Google accounts with active access to listings & leads</span>
+                <span class="card-subtitle">Active agents and brokers in your agency workspace</span>
               </div>
             </div>
 
@@ -222,7 +222,7 @@ import { FirebaseService } from '../../services/firebase.service';
                 <thead>
                   <tr>
                     <th>Member Profile</th>
-                    <th>Google Email</th>
+                    <th>Email Address</th>
                     <th>Role in Space</th>
                     <th>Joined Via</th>
                     <th>Last Active</th>
@@ -285,7 +285,7 @@ import { FirebaseService } from '../../services/firebase.service';
             <div class="card-head">
               <div class="card-title-group">
                 <h3 class="card-title">Workspace Configuration</h3>
-                <span class="card-subtitle">Manage workspace identity and switch between Agency Space and Personal Mode</span>
+                <span class="card-subtitle">Agency workspace details and mode switcher</span>
               </div>
             </div>
 
@@ -299,7 +299,7 @@ import { FirebaseService } from '../../services/firebase.service';
                 <span class="val">{{ spaceService.space().ownerName || 'Dinesh Murugan' }} ({{ spaceService.space().ownerEmail || 'dineshmurugan518@gmail.com' }})</span>
               </div>
               <div class="identity-row">
-                <span class="label">Your Authenticated Role</span>
+                <span class="label">Your Role</span>
                 <span class="role-pill" [class.owner]="spaceService.isOwner()">{{ (spaceService.currentRole() || 'agent') | uppercase }}</span>
               </div>
               <div class="identity-row">

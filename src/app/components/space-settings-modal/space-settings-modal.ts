@@ -39,7 +39,7 @@ import { AuthService } from '../../services/auth.service';
             </div>
             <div class="user-info">
               <div class="user-name">
-                <span class="user-display-name">{{ authService.currentUser()?.displayName || 'Authenticated Google User' }}</span>
+                <span class="user-display-name">{{ authService.currentUser()?.displayName || 'Team Member' }}</span>
                 @if (spaceService.isOwner()) {
                   <span class="badge-owner-crown">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="var(--gold)" stroke="var(--gold)" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
@@ -78,7 +78,7 @@ import { AuthService } from '../../services/auth.service';
                 </span>
                 <span class="badge-pill warn">Owner Approval Required</span>
               </div>
-              <p class="section-desc">Google accounts requesting access to your properties and client leads:</p>
+              <p class="section-desc">Agents requesting access to your workspace listings and CRM:</p>
               
               <div class="requests-list">
                 @for (req of spaceService.space().pendingRequests; track req.uid) {
@@ -114,10 +114,10 @@ import { AuthService } from '../../services/auth.service';
           @if (spaceService.isOwner()) {
             <div class="section-card">
               <div class="section-header">
-                <span class="section-title">Grant Access by Google Email</span>
+                <span class="section-title">Grant Access by Email</span>
                 <span class="badge-pill">Owner Authorization</span>
               </div>
-              <p class="section-desc">Enter a team agent's Google email to authorize them. They will receive immediate access upon signing in.</p>
+              <p class="section-desc">Enter a team agent's email to pre-authorize them. They will receive immediate workspace access upon signing in.</p>
               
               <div class="invite-email-row">
                 <input 
@@ -133,7 +133,7 @@ import { AuthService } from '../../services/auth.service';
 
               @if (spaceService.space().allowedEmails.length > 0) {
                 <div class="allowed-emails-wrap">
-                  <span class="sub-label">Authorized Google Accounts:</span>
+                  <span class="sub-label">Authorized Team Accounts:</span>
                   <div class="email-tags-list">
                     @for (email of spaceService.space().allowedEmails; track email) {
                       <div class="email-tag">
@@ -153,7 +153,7 @@ import { AuthService } from '../../services/auth.service';
               <span class="section-title">Invite Team Agents & Brokers</span>
               <span class="badge-pill">WhatsApp & Direct Link</span>
             </div>
-            <p class="section-desc">Share an invite directly on WhatsApp or copy your team join link. When agents sign in with Google, they enter directly.</p>
+            <p class="section-desc">Share an invite directly on WhatsApp or copy your team join link. When agents open the link, they enter directly.</p>
             <div class="modal-invite-actions">
               <button type="button" class="btn btn-whatsapp btn-sm" (click)="shareOnWhatsApp()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -173,10 +173,10 @@ import { AuthService } from '../../services/auth.service';
           <!-- PEOPLE WHO ACCESSED THIS SPACE (Active Members Directory) -->
           <div class="section-card">
             <div class="section-header">
-              <span class="section-title">People Who Accessed ({{ spaceService.space().members.length }})</span>
+              <span class="section-title">Team Members ({{ spaceService.space().members.length }})</span>
               <span class="badge-pill">Active Directory</span>
             </div>
-            <p class="section-desc">Real Google accounts tracking identity on every property and lead record:</p>
+            <p class="section-desc">Team members managing properties and client leads in this workspace:</p>
 
             <div class="members-directory-list">
               @for (member of spaceService.space().members; track member.id) {
