@@ -91,93 +91,83 @@ import { FirebaseService } from '../../services/firebase.service';
         </nav>
       </header>
 
-      <!-- TAB 1: TEAM & ACCESS CONTROL -->
+      <!-- TAB 1: TEAM & ACCESS CONTROL (BROKER-FIRST & NON-TECH INTUITIVE) -->
       @if (activeTab() === 'team') {
         <div class="settings-grid">
-          <!-- Space Overview Card -->
-          <div class="card glass-panel">
+          <!-- CARD 1 (FULL WIDTH): INVITE TEAM AGENTS & BROKERS -->
+          <div class="card glass-panel full-width highlight-gold-card">
             <div class="card-head">
               <div class="card-title-group">
-                <h3 class="card-title">Agency Space Identity</h3>
-                <span class="card-subtitle">Realtime multi-agent workspace</span>
+                <h3 class="card-title text-gold">Invite Team Agents & Brokers</h3>
+                <span class="card-subtitle">1-click WhatsApp share & direct link for instant team onboarding</span>
               </div>
-              <span class="badge-gold">Space: Chennai</span>
+              <span class="badge-gold">✓ Direct Google Sign-In</span>
             </div>
 
-            <div class="space-identity-box">
-              <div class="identity-row">
-                <span class="label">Space Name</span>
-                <span class="val font-semibold">{{ spaceService.space().name }}</span>
-              </div>
-              <div class="identity-row">
-                <span class="label">Space Auto Code</span>
-                <div class="val space-code-row">
-                  <span class="space-code-val">{{ spaceService.space().code }}</span>
-                  <button type="button" class="btn btn-xs btn-outline-gold" (click)="copySpaceCode()">
-                    {{ copiedCode() ? '✓ Copied' : 'Copy Code' }}
-                  </button>
-                  @if (spaceService.isOwner()) {
-                    <button type="button" class="btn btn-xs btn-subtle" (click)="spaceService.regenerateSpaceCode()" title="Generate a fresh auto code">
-                      ↻ New Code
-                    </button>
-                  }
-                </div>
-              </div>
-              <div class="identity-row">
-                <span class="label">Creator & Owner</span>
-                <span class="val">{{ spaceService.space().ownerName || 'Agency Owner' }} ({{ spaceService.space().ownerEmail }})</span>
-              </div>
-              <div class="identity-row">
-                <span class="label">Your Authenticated Role</span>
-                <span class="role-pill" [class.owner]="spaceService.isOwner()">{{ (spaceService.currentRole() || 'agent') | uppercase }}</span>
-              </div>
-              <div class="identity-row">
-                <span class="label">Active Workspace</span>
-                <div class="val mode-control-row">
-                  <span class="mode-status-tag" [class.personal]="spaceService.activeSpaceMode() === 'personal'">
-                    {{ spaceService.activeSpaceMode() === 'agency' ? '🏢 Agency Shared Space' : '👤 Personal Workspace' }}
-                  </span>
-                  @if (spaceService.activeSpaceMode() === 'agency') {
-                    <button type="button" class="btn btn-xs btn-outline-subtle" (click)="spaceService.switchToPersonalMode()" title="Work privately in personal workspace">
-                      Go to Personal
-                    </button>
-                  } @else {
-                    <button type="button" class="btn btn-xs btn-gold" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Space">
-                      ↩ Return to Space
-                    </button>
-                  }
-                </div>
-              </div>
+            <!-- Big 1-Click Action Buttons for Non-Tech Brokers -->
+            <div class="invite-hero-actions">
+              <button type="button" class="btn btn-whatsapp btn-hero" (click)="shareOnWhatsApp()">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/>
+                </svg>
+                <span>Share Invite on WhatsApp</span>
+              </button>
+
+              <button type="button" class="btn btn-gold btn-hero" (click)="copyInviteLink()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                </svg>
+                <span>{{ copiedLink() ? '✓ Join Link Copied!' : 'Copy Team Join Link' }}</span>
+              </button>
             </div>
 
-            <!-- Join Another Space via Auto Code -->
-            <div class="join-code-block">
-              <span class="subhead">Switch / Join Another Space by Auto Code</span>
-              <p class="hint">Enter an auto-generated Space Code (e.g. SKP-CHN-4829) to switch or join another agency space.</p>
-              <div class="copy-input-row">
-                <input type="text" class="input-mono uppercase" [(ngModel)]="spaceCodeToJoin" placeholder="e.g. SKP-CHN-4829" />
-                <button class="btn btn-gold btn-sm" (click)="joinByCode()" [disabled]="!spaceCodeToJoin.trim()">
-                  Join Space
+            <!-- Direct Join Link Box -->
+            <div class="invite-link-row">
+              <span class="invite-link-label">Direct Team Link:</span>
+              <div class="invite-link-pill">
+                <span class="invite-link-text">{{ inviteLink() }}</span>
+              </div>
+              <p class="invite-link-hint">
+                💡 When agents open this link, they simply sign in with Google to enter your team workspace. No manual code needed.
+              </p>
+            </div>
+
+            <!-- Pre-Authorize Agent Google Account -->
+            <div class="preauth-section">
+              <span class="subhead">Pre-Authorize Agent by Google Account</span>
+              <p class="hint">Enter an agent's Gmail to authorize them before they even open the link.</p>
+              <div class="email-input-row">
+                <input 
+                  type="email" 
+                  class="form-control" 
+                  placeholder="agent.chennai@gmail.com" 
+                  [(ngModel)]="newPreAuthEmail" 
+                  (keyup.enter)="addPreAuthEmail()" />
+                <button class="btn btn-gold btn-sm" (click)="addPreAuthEmail()">
+                  + Authorize Agent
                 </button>
               </div>
-            </div>
 
-            <!-- Shareable Direct Invite Link -->
-            <div class="invite-share-block">
-              <span class="subhead">Shareable Agency Access Link</span>
-              <p class="hint">Send this link to agents or team brokers to sign in and join this space.</p>
-              <div class="copy-input-row">
-                <input type="text" class="input-mono" [value]="inviteLink()" readonly />
-                <button class="btn btn-gold btn-sm" (click)="copyInviteLink()">
-                  {{ copiedLink() ? '✓ Copied' : 'Copy Link' }}
-                </button>
-              </div>
+              @if (spaceService.space().allowedEmails.length > 0) {
+                <div class="email-chips-container">
+                  <span class="chips-title">Pre-Authorized Agent Accounts:</span>
+                  <div class="chips-wrap">
+                    @for (email of spaceService.space().allowedEmails; track email) {
+                      <div class="email-chip">
+                        <span>{{ email }}</span>
+                        <button type="button" class="chip-del" (click)="spaceService.revokeEmailAccess(email)" title="Revoke Authorization">✕</button>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
             </div>
           </div>
 
           <!-- Pending Requests (Visible to Owner) -->
           @if (spaceService.isOwner() && spaceService.space().pendingRequests.length > 0) {
-            <div class="card glass-panel highlight-warn-card">
+            <div class="card glass-panel full-width highlight-warn-card">
               <div class="card-head">
                 <div class="card-title-group">
                   <h3 class="card-title text-gold">Pending Join Requests ({{ spaceService.space().pendingRequests.length }})</h3>
@@ -215,44 +205,6 @@ import { FirebaseService } from '../../services/firebase.service';
                   </div>
                 }
               </div>
-            </div>
-          }
-
-          <!-- Direct Email Authorization (Owner Only) -->
-          @if (spaceService.isOwner()) {
-            <div class="card glass-panel">
-              <div class="card-head">
-                <div class="card-title-group">
-                  <h3 class="card-title">Pre-Authorize Team Emails</h3>
-                  <span class="card-subtitle">Grant instant access without requiring manual approval</span>
-                </div>
-              </div>
-
-              <div class="email-input-row">
-                <input 
-                  type="email" 
-                  class="form-control" 
-                  placeholder="broker.name@gmail.com" 
-                  [(ngModel)]="newPreAuthEmail" 
-                  (keyup.enter)="addPreAuthEmail()" />
-                <button class="btn btn-gold btn-sm" (click)="addPreAuthEmail()">
-                  + Authorize Email
-                </button>
-              </div>
-
-              @if (spaceService.space().allowedEmails.length > 0) {
-                <div class="email-chips-container">
-                  <span class="chips-title">Authorized Google Accounts:</span>
-                  <div class="chips-wrap">
-                    @for (email of spaceService.space().allowedEmails; track email) {
-                      <div class="email-chip">
-                        <span>{{ email }}</span>
-                        <button type="button" class="chip-del" (click)="spaceService.revokeEmailAccess(email)" title="Revoke Authorization">✕</button>
-                      </div>
-                    }
-                  </div>
-                </div>
-              }
             </div>
           }
 
@@ -325,6 +277,48 @@ import { FirebaseService } from '../../services/firebase.service';
                   }
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <!-- Workspace Details & Personal Mode (Subtle at the bottom) -->
+          <div class="card glass-panel full-width">
+            <div class="card-head">
+              <div class="card-title-group">
+                <h3 class="card-title">Workspace Configuration</h3>
+                <span class="card-subtitle">Manage workspace identity and switch between Agency Space and Personal Mode</span>
+              </div>
+            </div>
+
+            <div class="space-identity-box">
+              <div class="identity-row">
+                <span class="label">Space Name</span>
+                <span class="val font-semibold">{{ spaceService.space().name }}</span>
+              </div>
+              <div class="identity-row">
+                <span class="label">Primary Owner</span>
+                <span class="val">{{ spaceService.space().ownerName || 'Dinesh Murugan' }} ({{ spaceService.space().ownerEmail || 'dineshmurugan518@gmail.com' }})</span>
+              </div>
+              <div class="identity-row">
+                <span class="label">Your Authenticated Role</span>
+                <span class="role-pill" [class.owner]="spaceService.isOwner()">{{ (spaceService.currentRole() || 'agent') | uppercase }}</span>
+              </div>
+              <div class="identity-row">
+                <span class="label">Active Workspace</span>
+                <div class="val mode-control-row">
+                  <span class="mode-status-tag" [class.personal]="spaceService.activeSpaceMode() === 'personal'">
+                    {{ spaceService.activeSpaceMode() === 'agency' ? '🏢 Agency Shared Space' : '👤 Personal Workspace' }}
+                  </span>
+                  @if (spaceService.activeSpaceMode() === 'agency') {
+                    <button type="button" class="btn btn-xs btn-outline-subtle" (click)="spaceService.switchToPersonalMode()" title="Work privately in personal workspace">
+                      Switch to Personal Mode
+                    </button>
+                  } @else {
+                    <button type="button" class="btn btn-xs btn-gold" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Space">
+                      ↩ Return to Agency Space
+                    </button>
+                  }
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -825,6 +819,92 @@ import { FirebaseService } from '../../services/firebase.service';
     .card.highlight-warn-card {
       border-color: rgba(212, 175, 55, 0.4);
       background: linear-gradient(180deg, rgba(212, 175, 55, 0.04), transparent);
+    }
+
+    .card.highlight-gold-card {
+      border: 1px solid rgba(212, 175, 55, 0.45);
+      background: linear-gradient(180deg, rgba(212, 175, 55, 0.08) 0%, rgba(17, 24, 39, 0.4) 100%);
+      box-shadow: 0 10px 30px -10px rgba(212, 175, 55, 0.15);
+    }
+
+    .invite-hero-actions {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+
+    .btn-hero {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 14px 24px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .btn-whatsapp {
+      background: #25D366;
+      color: #ffffff;
+      border: none;
+      box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+    }
+
+    .btn-whatsapp:hover {
+      background: #20bd5a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(37, 211, 102, 0.45);
+    }
+
+    .invite-link-row {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 14px 18px;
+      margin-bottom: 22px;
+    }
+
+    .invite-link-label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .invite-link-pill {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      margin-bottom: 8px;
+    }
+
+    .invite-link-text {
+      font-family: var(--font-mono);
+      font-size: 0.88rem;
+      color: var(--text-main);
+      word-break: break-all;
+    }
+
+    .invite-link-hint {
+      margin: 0;
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      line-height: 1.45;
+    }
+
+    .preauth-section {
+      padding-top: 18px;
+      border-top: 1px solid var(--border-subtle);
     }
 
     .card.danger-card {
@@ -1584,11 +1664,17 @@ service cloud.firestore {
     return this.spaceService.getInviteLink();
   });
 
+  public shareOnWhatsApp(): void {
+    const url = this.spaceService.getWhatsAppInviteUrl();
+    window.open(url, '_blank');
+  }
+
   public copyInviteLink(): void {
     const url = this.inviteLink();
     if (navigator && navigator.clipboard) {
       navigator.clipboard.writeText(url).then(() => {
         this.copiedLink.set(true);
+        this.realtyService.notify('Team Join Link copied! Share this link with your agents on WhatsApp or email.', 'success');
         setTimeout(() => this.copiedLink.set(false), 2500);
       });
     }

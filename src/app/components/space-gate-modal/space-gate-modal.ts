@@ -69,84 +69,54 @@ import { AuthService } from '../../services/auth.service';
           </div>
         }
 
-        <!-- STATE 2: Signed In with Google, but NOT approved yet by Owner -->
+        <!-- STATE 2: Signed In with Google - Non-Tech 1-Click Entry -->
         @if (authService.currentUser(); as user) {
-          <div class="pending-gate-state">
-            <div class="user-card-pending">
+          <div class="welcome-gate-state">
+            <!-- User Verified Profile Header -->
+            <div class="user-card-welcome">
               @if (user.photoURL) {
-                <img [src]="user.photoURL" [alt]="user.displayName" class="pending-user-avatar" />
+                <img [src]="user.photoURL" [alt]="user.displayName" class="welcome-user-avatar" />
               } @else {
-                <div class="pending-user-initial">{{ (user.displayName || user.email || 'G').charAt(0) }}</div>
+                <div class="welcome-user-initial">{{ (user.displayName || user.email || 'G').charAt(0) }}</div>
               }
-              <div class="pending-user-details">
-                <span class="pending-name">{{ user.displayName || 'Google User' }}</span>
-                <span class="pending-email">{{ user.email }}</span>
-                <span class="badge-awaiting">
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                  <span>Owner Approval Required</span>
+              <div class="welcome-user-details">
+                <span class="welcome-name">{{ user.displayName || 'Google User' }}</span>
+                <span class="welcome-email">{{ user.email }}</span>
+                <span class="badge-verified">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                  <span>Google Account Verified</span>
                 </span>
               </div>
             </div>
 
-            <!-- If user has an invitation pending, show one-click Accept button -->
-            @if (spaceService.pendingInvitation(); as invite) {
-              <div class="invite-found-card">
-                <div class="invite-found-badge">🎉 INVITATION READY</div>
-                <h4 class="invite-found-title">You're Invited to Join {{ invite.spaceName }}</h4>
-                <p class="invite-found-desc">Owner {{ invite.ownerName || invite.ownerEmail }} has authorized your Google account.</p>
-                <div class="invite-code-preview">Space Code: <strong>{{ invite.spaceCode }}</strong></div>
-                <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.acceptSpaceInvitation()">
-                  ✓ Accept Invitation & Enter Space
-                </button>
-              </div>
-            } @else {
-              <div class="pending-explanation">
-                <p>
-                  This space is private and managed by the Owner
-                  <strong>{{ spaceService.space().ownerName || spaceService.space().ownerEmail || 'Space Owner' }}</strong>.
-                  Access must be granted directly by the Owner or via Space Code.
-                </p>
-              </div>
+            <!-- Warm Agency Welcome Message -->
+            <div class="welcome-info-card">
+              <h4 class="welcome-heading">Welcome to {{ spaceService.space().name }}</h4>
+              <p class="welcome-subtext">
+                Access Chennai properties, verified buyer leads, client site visits, and team brokerage records.
+              </p>
+            </div>
 
-              <!-- Request Access Action -->
-              <div class="option-box text-center">
-                @if (spaceService.pendingRequestSent() || isAlreadyRequested(user.uid, user.email)) {
-                  <div class="request-sent-card">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    <div>
-                      <strong>Request Pending Owner Approval</strong>
-                      <p>Your access request was delivered to the space Owner. You will be admitted as soon as the Owner approves your Google account.</p>
-                    </div>
-                  </div>
-                } @else {
-                  <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.requestAccessFromOwner()">
-                    <span>Request Access from Space Owner</span>
-                  </button>
-                  <p class="request-hint">Sends an instant access request directly to the Owner's dashboard.</p>
-                }
-              </div>
-
-              <!-- Enter Space Auto Code -->
-              <div class="code-entry-box">
-                <div class="code-entry-label">Have an Agency Space Auto Code?</div>
-                <div class="code-entry-row">
-                  <input type="text" [(ngModel)]="spaceCodeInput" placeholder="e.g. SKP-CHN-4829" class="input-code" (keyup.enter)="submitSpaceCode()" />
-                  <button type="button" class="btn btn-gold btn-sm" (click)="submitSpaceCode()" [disabled]="!spaceCodeInput.trim()">
-                    Join
-                  </button>
-                </div>
-                @if (codeError()) {
-                  <span class="code-error-text">{{ codeError() }}</span>
-                }
-              </div>
-            }
+            <!-- Primary 1-Click Action for Non-Tech Users -->
+            <div class="welcome-action-block">
+              <button 
+                type="button" 
+                class="btn-enter-workspace" 
+                (click)="spaceService.joinAsTeamAgent()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Enter Team Workspace Now</span>
+              </button>
+              <p class="action-note">✓ Instant 1-click access • No manual code required</p>
+            </div>
 
             <!-- Personal Workspace Option -->
             <div class="personal-option-box text-center">
               <button type="button" class="btn-personal-link" (click)="spaceService.switchToPersonalMode()">
-                Or Continue in Personal Workspace Mode →
+                Or work privately in Personal Mode →
               </button>
             </div>
 
@@ -335,8 +305,8 @@ import { AuthService } from '../../services/auth.service';
       letter-spacing: 0.02em;
     }
 
-    /* Pending State Styles */
-    .user-card-pending {
+    /* Welcome State Styles for Non-Tech Users */
+    .user-card-welcome {
       display: flex;
       align-items: center;
       gap: 14px;
@@ -347,101 +317,112 @@ import { AuthService } from '../../services/auth.service';
       margin-bottom: 16px;
     }
 
-    .pending-user-avatar {
-      width: 44px;
-      height: 44px;
+    .welcome-user-avatar {
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
-      border: 2px solid #cba86b;
+      border: 2px solid #10b981;
       object-fit: cover;
     }
 
-    .pending-user-initial {
-      width: 44px;
-      height: 44px;
+    .welcome-user-initial {
+      width: 46px;
+      height: 46px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #4285F4, #34A853);
+      background: linear-gradient(135deg, #10b981, #059669);
       color: white;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
+      font-size: 1.15rem;
     }
 
-    .pending-user-details {
+    .welcome-user-details {
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
-    .pending-name {
-      font-weight: 600;
-      font-size: 0.92rem;
+    .welcome-name {
+      font-weight: 700;
+      font-size: 0.95rem;
       color: var(--text-main);
     }
 
-    .pending-email {
-      font-size: 0.78rem;
+    .welcome-email {
+      font-size: 0.8rem;
       color: var(--text-muted);
     }
 
-    .badge-awaiting {
+    .badge-verified {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
       align-self: flex-start;
-      margin-top: 3px;
-      font-size: 0.68rem;
-      font-weight: 600;
+      margin-top: 4px;
+      font-size: 0.72rem;
+      font-weight: 700;
       padding: 2px 8px;
       border-radius: 999px;
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
-      border: 1px solid rgba(245, 158, 11, 0.3);
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.35);
     }
 
-    .pending-explanation {
-      font-size: 0.82rem;
-      color: var(--text-muted);
-      line-height: 1.45;
+    .welcome-info-card {
+      background: rgba(203, 168, 107, 0.08);
+      border: 1px solid rgba(203, 168, 107, 0.25);
+      border-radius: 12px;
+      padding: 14px 18px;
       margin-bottom: 20px;
+      text-align: center;
     }
 
-    .pending-explanation strong {
+    .welcome-heading {
+      margin: 0 0 6px;
+      font-size: 1rem;
+      font-weight: 700;
       color: var(--text-main);
     }
 
-    .option-box {
-      margin-bottom: 16px;
-    }
-
-    .btn-block {
-      width: 100%;
-      display: block;
-    }
-
-    .request-sent-card {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      text-align: left;
-      background: rgba(16, 185, 129, 0.12);
-      border: 1px solid rgba(16, 185, 129, 0.35);
-      border-radius: 12px;
-      padding: 14px 16px;
+    .welcome-subtext {
+      margin: 0;
       font-size: 0.82rem;
+      color: var(--text-muted);
       line-height: 1.45;
     }
 
-    .request-sent-card strong {
-      color: #10b981;
-      display: block;
-      margin-bottom: 3px;
+    .welcome-action-block {
+      margin-bottom: 16px;
+      text-align: center;
     }
 
-    .request-sent-card p {
-      margin: 0;
-      color: var(--text-muted);
+    .btn-enter-workspace {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: linear-gradient(135deg, #f5d77f, #cba86b, #b38b4d);
+      color: #1a150b;
+      font-weight: 700;
+      font-size: 1.05rem;
+      padding: 14px 22px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(203, 168, 107, 0.35);
+      transition: all 0.2s ease;
     }
 
-    .request-hint {
+    .btn-enter-workspace:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(203, 168, 107, 0.45);
+      filter: brightness(1.05);
+    }
+
+    .action-note {
       font-size: 0.74rem;
       color: var(--text-muted);
       margin: 8px 0 0;
