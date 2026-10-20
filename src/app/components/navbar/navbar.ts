@@ -58,23 +58,6 @@ import { FirebaseService } from '../../services/firebase.service';
             </button>
           </div>
         }
-
-        <!-- Live Firebase Cloud Status Pill -->
-        <div class="cloud-pill" (click)="goToSettings()" 
-             [class.cloud-connected]="realtyService.isCloudConnected() && !realtyService.isPermissionError()" 
-             [class.cloud-error]="realtyService.isPermissionError()"
-             [title]="realtyService.isPermissionError() ? 'Firestore Security Rules are blocking access. Click to view quick fix.' : (realtyService.isCloudConnected() ? 'Directly synced to Firebase Cloud. Zero local storage.' : 'Connecting to Firebase Cloud...')">
-          <span class="cloud-pulse-dot"></span>
-          <span class="cloud-label">
-            @if (realtyService.isPermissionError()) {
-              Rules Action Needed
-            } @else if (realtyService.isCloudConnected()) {
-              Cloud Live
-            } @else {
-              Connecting Cloud
-            }
-          </span>
-        </div>
       </div>
 
       <div class="nav-right">
@@ -464,59 +447,6 @@ import { FirebaseService } from '../../services/firebase.service';
       border-radius: 50%;
       background: #3b82f6;
       box-shadow: 0 0 6px #3b82f6;
-    }
-
-    /* Cloud Status Pill */
-    .cloud-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(16, 185, 129, 0.08);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      border-radius: var(--radius-full);
-      padding: 4px 10px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: #059669;
-      letter-spacing: 0.01em;
-      transition: all 0.2s ease;
-    }
-
-    .cloud-pill:not(.cloud-connected) {
-      background: rgba(245, 158, 11, 0.08);
-      border-color: rgba(245, 158, 11, 0.25);
-      color: #d97706;
-    }
-
-    .cloud-pulse-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #10b981;
-      box-shadow: 0 0 6px #10b981;
-      animation: cloud-pulse 2s infinite ease-in-out;
-    }
-
-    .cloud-pill:not(.cloud-connected) .cloud-pulse-dot {
-      background: #f59e0b;
-      box-shadow: 0 0 6px #f59e0b;
-    }
-
-    .cloud-pill.cloud-error {
-      background: rgba(239, 68, 68, 0.12) !important;
-      border-color: rgba(239, 68, 68, 0.4) !important;
-      color: #ef4444 !important;
-      cursor: pointer;
-    }
-
-    .cloud-pill.cloud-error .cloud-pulse-dot {
-      background: #ef4444 !important;
-      box-shadow: 0 0 6px #ef4444 !important;
-    }
-
-    @keyframes cloud-pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.4; transform: scale(0.85); }
     }
 
     .btn-google-nav {

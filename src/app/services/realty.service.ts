@@ -374,19 +374,19 @@ export class RealtyService {
       }
     }
 
-    this.notify(`Location "${trimmed}" added and synced to Cloud (Firebase)!`, 'success');
+    this.notify(`Location "${trimmed}" added successfully!`, 'success');
     return true;
   }
 
-  // Clear all data directly from Cloud (Clean Slate utility)
+  // Clear all data (Clean Slate utility)
   public async clearAllData(): Promise<void> {
-    if (!confirm('Are you sure you want to completely clear all property listings, leads, and visits from Cloud (Firebase)? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to permanently clear all listings, leads, and site visits? This cannot be undone.')) {
       return;
     }
 
     const db = this.firebaseService.firestore;
     if (!db || this.firebaseService.isDemoMode()) {
-      this.notify('Firebase Cloud is not connected.', 'error');
+      this.notify('Cloud service is not connected.', 'error');
       return;
     }
 
@@ -400,10 +400,10 @@ export class RealtyService {
       this.leads.set([]);
       this.siteVisits.set([]);
       this.lastCloudSync.set(Date.now());
-      this.notify('All inventory, leads, and site visits permanently cleared from Cloud (Firebase)!', 'info');
+      this.notify('All inventory, leads, and site visits permanently cleared.', 'info');
     } catch (err: any) {
-      console.error('Firebase clearAllData error:', err);
-      this.notify(`Cloud Delete Error: ${err.message}`, 'error');
+      console.error('Clear data error:', err);
+      this.notify(`Operation Error: ${err.message}`, 'error');
     }
   }
 
@@ -464,12 +464,12 @@ export class RealtyService {
             .then(() => {
               this.isCloudConnected.set(true);
               this.lastCloudSync.set(Date.now());
-              this.notify('Property listing updated & synced to Cloud (Firebase)!', 'success');
+              this.notify('Property listing updated successfully!', 'success');
             })
             .catch(err => {
-              console.error('Firestore save property error:', err);
+              console.error('Save property error:', err);
               this.cloudSyncError.set(err.message);
-              this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+              this.notify(`Save Notice: ${err.message}`, 'error');
             });
         } else {
           this.notify('Property listing updated successfully!', 'success');
@@ -589,12 +589,12 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('Property listing saved to Cloud (Firebase)!', 'success');
+          this.notify('Property listing added to inventory!', 'success');
         })
         .catch(err => {
-          console.error('Firestore new property error:', err);
+          console.error('New property error:', err);
           this.cloudSyncError.set(err.message);
-          this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+          this.notify(`Save Notice: ${err.message}`, 'error');
         });
     } else {
       this.notify('Property listing added to SkyPearl Inventory!', 'success');
@@ -686,12 +686,12 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('Property listing deleted from Cloud (Firebase).', 'info');
+          this.notify('Property listing deleted from inventory.', 'info');
         })
         .catch(err => {
-          console.error('Firestore delete property error:', err);
+          console.error('Delete property error:', err);
           this.cloudSyncError.set(err.message);
-          this.notify(`Cloud Delete Error: ${err.message}`, 'error');
+          this.notify(`Delete Error: ${err.message}`, 'error');
         });
     } else {
       this.notify('Property listing deleted from inventory.', 'info');
@@ -754,12 +754,12 @@ export class RealtyService {
             .then(() => {
               this.isCloudConnected.set(true);
               this.lastCloudSync.set(Date.now());
-              this.notify('Customer requirement updated & synced to Cloud (Firebase)!', 'success');
+              this.notify('Customer requirement updated successfully!', 'success');
             })
             .catch(err => {
-              console.error('Firestore save lead error:', err);
+              console.error('Save lead error:', err);
               this.cloudSyncError.set(err.message);
-              this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+              this.notify(`Save Notice: ${err.message}`, 'error');
             });
         } else {
           this.notify('Customer requirement updated.', 'success');
@@ -847,12 +847,12 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('New Client Lead added to Cloud (Firebase)!', 'success');
+          this.notify('New Client Lead added to CRM pipeline!', 'success');
         })
         .catch(err => {
-          console.error('Firestore new lead error:', err);
+          console.error('New lead error:', err);
           this.cloudSyncError.set(err.message);
-          this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+          this.notify(`Save Notice: ${err.message}`, 'error');
         });
     } else {
       this.notify('New Client Lead added to SkyPearl CRM pipeline!', 'success');
@@ -944,12 +944,12 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('Client record deleted from Cloud (Firebase).', 'info');
+          this.notify('Client record deleted.', 'info');
         })
         .catch(err => {
-          console.error('Firestore delete lead error:', err);
+          console.error('Delete lead error:', err);
           this.cloudSyncError.set(err.message);
-          this.notify(`Cloud Delete Error: ${err.message}`, 'error');
+          this.notify(`Delete Error: ${err.message}`, 'error');
         });
     } else {
       this.notify('Client record deleted.', 'info');
@@ -980,10 +980,10 @@ export class RealtyService {
           .then(() => {
             this.isCloudConnected.set(true);
             this.lastCloudSync.set(Date.now());
-            this.notify(`Lead stage updated to "${stage}" on Cloud (Firebase)`, 'info');
+            this.notify(`Lead stage updated to "${stage}"`, 'info');
           })
           .catch(err => {
-            console.error('Firestore update lead stage error:', err);
+            console.error('Update lead stage error:', err);
             this.cloudSyncError.set(err.message);
           });
       }
@@ -1173,12 +1173,12 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('Site visit scheduled & synced to Cloud (Firebase)!', 'success');
+          this.notify('Site visit scheduled successfully!', 'success');
         })
         .catch(err => {
-          console.error('Firestore visit save error:', err);
+          console.error('Visit save error:', err);
           this.cloudSyncError.set(err.message);
-          this.notify(`Cloud Save Notice: ${err.message}`, 'error');
+          this.notify(`Save Notice: ${err.message}`, 'error');
         });
     } else {
       this.notify('Site visit scheduled successfully!', 'success');
@@ -1233,10 +1233,10 @@ export class RealtyService {
           .then(() => {
             this.isCloudConnected.set(true);
             this.lastCloudSync.set(Date.now());
-            this.notify(`Visit status updated to ${status} on Cloud (Firebase)`, 'success');
+            this.notify(`Visit status updated to ${status}`, 'success');
           })
           .catch(err => {
-            console.error('Firestore visit update error:', err);
+            console.error('Visit update error:', err);
             this.cloudSyncError.set(err.message);
           });
       } else {
@@ -1252,14 +1252,14 @@ export class RealtyService {
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
-          this.notify('Site visit removed from Cloud (Firebase)', 'info');
+          this.notify('Site visit removed.', 'info');
         })
         .catch(err => {
-          console.error('Firestore delete visit error:', err);
+          console.error('Delete visit error:', err);
           this.cloudSyncError.set(err.message);
         });
     } else {
-      this.notify('Site visit removed from memory', 'info');
+      this.notify('Site visit removed.', 'info');
     }
   }
 

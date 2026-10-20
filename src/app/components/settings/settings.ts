@@ -20,12 +20,12 @@ import { FirebaseService } from '../../services/firebase.service';
             <span class="settings-tag">AGENCY CONFIGURATION</span>
             <span class="cloud-badge" [class.connected]="realtyService.isCloudConnected()">
               <span class="pulse-dot"></span>
-              {{ realtyService.isCloudConnected() ? 'Firebase Firestore Live' : 'Connecting Cloud...' }}
+              {{ realtyService.isCloudConnected() ? 'Cloud Synchronized' : 'Connecting Cloud...' }}
             </span>
           </div>
           <h1 class="settings-title">Agency Space & System Settings</h1>
           <p class="settings-desc">
-            Manage your team access, Chennai micro-markets, automated follow-ups, CSV backups, and cloud sync policies.
+            Manage your team access, Chennai micro-markets, automated follow-ups, and data exports.
           </p>
         </div>
 
@@ -60,15 +60,6 @@ import { FirebaseService } from '../../services/firebase.service';
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
             <span>Chennai Corridors</span>
             <span class="pill-count">{{ realtyService.localities().length }}</span>
-          </button>
-
-          <button 
-            type="button"
-            class="subtab-btn" 
-            [class.active]="activeTab() === 'cloud'"
-            (click)="activeTab.set('cloud')">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>
-            <span>Cloud Sync</span>
           </button>
 
           <button 
@@ -410,7 +401,7 @@ import { FirebaseService } from '../../services/firebase.service';
             <!-- Add Location Input -->
             <div class="locality-add-box">
               <span class="subhead">Add Custom Chennai Locality / Hub</span>
-              <p class="hint">Location is saved straight to Cloud (Firebase) and becomes instantly available in all property and buyer dropdowns.</p>
+              <p class="hint">Location is saved to cloud and becomes instantly available in all property and buyer dropdowns.</p>
               <div class="loc-input-row">
                 <input 
                   type="text" 
@@ -438,126 +429,7 @@ import { FirebaseService } from '../../services/firebase.service';
         </div>
       }
 
-      <!-- TAB 4: CLOUD SYNC & FIREBASE TELEMETRY -->
-      @if (activeTab() === 'cloud') {
-        <div class="settings-grid">
-          <div class="card glass-panel full-width">
-            <div class="card-head">
-              <div class="card-title-group">
-                <h3 class="card-title">Firebase Cloud Architecture & Sync Health</h3>
-                <span class="card-subtitle">Authoritative live database ensuring zero dependency on browser localStorage</span>
-              </div>
-              <span class="badge" [ngClass]="realtyService.isCloudConnected() ? 'badge-success' : 'badge-warn'">
-                {{ realtyService.isCloudConnected() ? 'CONNECTED' : 'DISCONNECTED' }}
-              </span>
-            </div>
-
-            <!-- Firestore Security Rules Card -->
-            <div class="firestore-rules-guide-card glass-panel" [class.rules-warning]="realtyService.isPermissionError()">
-              <div class="rules-guide-header">
-                <div class="rules-guide-title">
-                  <span class="rules-indicator-dot" [class.dot-error]="realtyService.isPermissionError()" [class.dot-success]="realtyService.isCloudConnected() && !realtyService.isPermissionError()"></span>
-                  <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">Cloud Firestore Security Rules Status</h4>
-                </div>
-                <span class="badge" [ngClass]="realtyService.isPermissionError() ? 'badge-danger' : (realtyService.isCloudConnected() ? 'badge-success' : 'badge-warn')">
-                  {{ realtyService.isPermissionError() ? 'RULES ACTION REQUIRED' : (realtyService.isCloudConnected() ? 'PERMISSIONS ACTIVE' : 'CHECKING RULES') }}
-                </span>
-              </div>
-
-              <div class="rules-guide-body mt-2">
-                @if (realtyService.isPermissionError()) {
-                  <div class="rules-error-banner mb-3">
-                    <strong>⚠️ Database in Locked Mode:</strong>
-                    <span>Your Cloud Firestore database was created with locked rules (<code>allow read, write: if false;</code>). Firebase is rejecting client read and write attempts.</span>
-                  </div>
-                }
-
-                <p class="rules-desc" style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
-                  To allow this web app to store, read, and synchronize real estate properties, client leads, and team spaces across all browsers, your Firestore database requires open or authenticated read/write rules.
-                </p>
-
-                <div class="rules-steps-list">
-                  <div class="rule-step">
-                    <span class="step-num">1</span>
-                    <span>In your Firebase Console, click the <strong>Rules</strong> tab (shown right next to Data).</span>
-                  </div>
-                  <div class="rule-step">
-                    <span class="step-num">2</span>
-                    <span>Paste this rule into the rules editor:</span>
-                  </div>
-                </div>
-
-                <div class="code-snippet-box">
-                  <pre><code>{{ firestoreRulesSnippet }}</code></pre>
-                  <button type="button" class="btn btn-xs btn-copy-rules" (click)="copyFirestoreRules()">
-                    {{ copiedRules() ? '✓ Copied!' : 'Copy Rules' }}
-                  </button>
-                </div>
-
-                <div class="rule-step mt-2">
-                  <span class="step-num">3</span>
-                  <span>Click the blue <strong>"Publish"</strong> button in Firebase Console. Once published, click "Retry Sync" below.</span>
-                </div>
-
-                <div class="rules-action-buttons mt-3">
-                  <button type="button" class="btn btn-primary btn-sm" (click)="openFirebaseRules()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                    <span>Open Firebase Console Rules Tab ↗</span>
-                  </button>
-                  <button type="button" class="btn btn-secondary btn-sm" (click)="retryCloudConnection()">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l6 5.67"/></svg>
-                    <span>Retry Sync</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="cloud-telemetry-grid">
-              <div class="telemetry-card">
-                <span class="t-label">Firebase Project ID</span>
-                <span class="t-value font-mono">skypearl-217d7</span>
-                <span class="t-hint">Google Cloud Firestore Production instance</span>
-              </div>
-
-              <div class="telemetry-card">
-                <span class="t-label">Data Storage Policy</span>
-                <span class="t-value text-gold">100% Cloud Authoritative</span>
-                <span class="t-hint">Zero business data stored in browser localStorage</span>
-              </div>
-
-              <div class="telemetry-card">
-                <span class="t-label">Active Firestore Collections</span>
-                <span class="t-value font-mono">properties, leads, siteVisits, settings</span>
-                <span class="t-hint">Bi-directional realtime onSnapshot listeners</span>
-              </div>
-
-              <div class="telemetry-card">
-                <span class="t-label">Last Synchronized</span>
-                <span class="t-value">{{ formatTimestamp(realtyService.lastCloudSync()) }}</span>
-                <span class="t-hint">Realtime snapshot listener active</span>
-              </div>
-            </div>
-
-            <!-- Legacy Local Storage Purge Verification -->
-            <div class="cloud-notice-box">
-              <div class="notice-icon">🛡️</div>
-              <div class="notice-content">
-                <h4 class="notice-title">Zero Local Storage Policy Active</h4>
-                <p class="notice-text">
-                  All properties, buyers, site visits, team settings, and email automation configurations are synced directly to Firebase Firestore. Legacy browser localStorage caches are automatically purged on startup to ensure absolute data consistency.
-                </p>
-                <div class="notice-actions mt-2">
-                  <button class="btn btn-secondary btn-sm" (click)="realtyService.clearLegacyLocalStorage(); realtyService.notify('Legacy local storage caches purged successfully!', 'success')">
-                    Force Purge Legacy Browser Cache
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      }
-
-      <!-- TAB 5: EMAIL AUTOMATION -->
+      <!-- TAB 4: EMAIL AUTOMATION -->
       @if (activeTab() === 'email') {
         <div class="settings-grid">
           <div class="card glass-panel full-width">
@@ -666,7 +538,7 @@ import { FirebaseService } from '../../services/firebase.service';
                 <div class="danger-text">
                   <strong>Warning: Irreversible Action</strong>
                   <p>
-                    Clearing data deletes all properties ({{ realtyService.totalPropertiesCount() }}), CRM buyer leads ({{ realtyService.totalLeadsCount() }}), and site visits ({{ realtyService.siteVisits().length }}) directly from Google Cloud Firestore. This cannot be undone.
+                    Clearing data deletes all properties ({{ realtyService.totalPropertiesCount() }}), CRM buyer leads ({{ realtyService.totalLeadsCount() }}), and site visits ({{ realtyService.siteVisits().length }}). This cannot be undone.
                   </p>
                 </div>
               </div>
@@ -674,7 +546,7 @@ import { FirebaseService } from '../../services/firebase.service';
               <div class="danger-action-row">
                 <button class="btn btn-outline-danger" (click)="realtyService.clearAllData()">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                  <span>Permanently Clear All Listings, Leads & Visits from Cloud</span>
+                  <span>Permanently Reset All Listings, Leads & Visits</span>
                 </button>
               </div>
             </div>
@@ -1333,199 +1205,6 @@ import { FirebaseService } from '../../services/firebase.service';
       border-radius: var(--radius-full);
     }
 
-    /* Firestore Rules Guide Card */
-    .firestore-rules-guide-card {
-      padding: 20px 24px;
-      border-radius: var(--radius-md);
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-subtle);
-      margin-bottom: 22px;
-      transition: all 0.2s ease;
-    }
-
-    .firestore-rules-guide-card.rules-warning {
-      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.05));
-      border-color: rgba(239, 68, 68, 0.35);
-    }
-
-    .rules-guide-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .rules-guide-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .rules-indicator-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #94a3b8;
-    }
-
-    .rules-indicator-dot.dot-error {
-      background: #ef4444;
-      box-shadow: 0 0 8px #ef4444;
-    }
-
-    .rules-indicator-dot.dot-success {
-      background: #10b981;
-      box-shadow: 0 0 8px #10b981;
-    }
-
-    .rules-error-banner {
-      background: rgba(239, 68, 68, 0.12);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: var(--radius-sm);
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      color: #fca5a5;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-
-    .rules-steps-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-
-    .rule-step {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 0.84rem;
-      color: var(--text-main);
-    }
-
-    .step-num {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: var(--gold);
-      color: #000;
-      font-size: 0.72rem;
-      font-weight: 800;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .code-snippet-box {
-      position: relative;
-      background: #0f172a;
-      border: 1px solid #334155;
-      border-radius: var(--radius-sm);
-      padding: 12px 14px;
-      margin: 8px 0;
-    }
-
-    .code-snippet-box pre {
-      margin: 0;
-      font-family: var(--font-mono);
-      font-size: 0.8rem;
-      color: #38bdf8;
-      overflow-x: auto;
-      line-height: 1.4;
-    }
-
-    .btn-copy-rules {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 0.72rem;
-      cursor: pointer;
-    }
-
-    .btn-copy-rules:hover {
-      background: rgba(255, 255, 255, 0.2);
-    }
-
-    .rules-action-buttons {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    /* Telemetry grid */
-    .cloud-telemetry-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
-      margin-bottom: 22px;
-    }
-
-    .telemetry-card {
-      padding: 18px;
-      background: var(--bg-subtle);
-      border: 1px solid var(--border-subtle);
-      border-radius: var(--radius-md);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .t-label {
-      font-size: 0.74rem;
-      color: var(--text-secondary);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .t-value {
-      font-size: 1.05rem;
-      font-weight: 700;
-      color: var(--text-main);
-    }
-
-    .t-hint {
-      font-size: 0.74rem;
-      color: var(--text-secondary);
-    }
-
-    .cloud-notice-box {
-      display: flex;
-      gap: 16px;
-      padding: 18px 22px;
-      background: rgba(16, 185, 129, 0.06);
-      border: 1px solid rgba(16, 185, 129, 0.25);
-      border-radius: var(--radius-md);
-    }
-
-    .notice-icon {
-      font-size: 1.6rem;
-      flex-shrink: 0;
-    }
-
-    .notice-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: #059669;
-      margin: 0 0 4px;
-    }
-
-    .notice-text {
-      font-size: 0.84rem;
-      color: var(--text-secondary);
-      line-height: 1.45;
-      margin: 0;
-    }
-
     /* Email automation */
     .email-settings-form {
       display: flex;
@@ -1628,41 +1307,12 @@ export class SettingsComponent {
   public emailService = inject(EmailFollowupService);
   public firebaseService = inject(FirebaseService);
 
-  public activeTab = signal<'team' | 'data' | 'localities' | 'cloud' | 'email' | 'danger'>('team');
+  public activeTab = signal<'team' | 'data' | 'localities' | 'email' | 'danger'>('team');
   public newPreAuthEmail = '';
   public newLocalityName = '';
   public copiedLink = signal<boolean>(false);
   public copiedCode = signal<boolean>(false);
-  public copiedRules = signal<boolean>(false);
   public spaceCodeToJoin = '';
-
-  public readonly firestoreRulesSnippet = `rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
-}`;
-
-  public copyFirestoreRules(): void {
-    if (navigator && navigator.clipboard) {
-      navigator.clipboard.writeText(this.firestoreRulesSnippet).then(() => {
-        this.copiedRules.set(true);
-        this.realtyService.notify('Firestore Security Rules copied to clipboard!', 'success');
-        setTimeout(() => this.copiedRules.set(false), 3000);
-      });
-    }
-  }
-
-  public openFirebaseRules(): void {
-    window.open('https://console.firebase.google.com/project/skypearl-217d7/firestore/databases/-default-/rules', '_blank');
-  }
-
-  public retryCloudConnection(): void {
-    this.realtyService.setupFirestoreSync();
-    this.realtyService.notify('Retrying Firebase Firestore synchronization...', 'info');
-  }
 
   public inviteLink = computed(() => {
     return this.spaceService.getInviteLink();

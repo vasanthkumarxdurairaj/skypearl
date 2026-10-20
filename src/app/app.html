@@ -167,21 +167,6 @@
     <!-- Main Dynamic Content Workspace -->
     <main class="content-area">
 
-      @if (realtyService.isPermissionError()) {
-        <div class="firebase-rules-alert-banner glass-panel">
-          <div class="rules-alert-inner">
-            <span class="rules-alert-icon">⚠️</span>
-            <div class="rules-alert-text">
-              <strong>Firebase Firestore Security Rules Action Required</strong>
-              <span>Your database is currently in Locked Mode (<code>Missing or insufficient permissions</code>). Set rules in Firebase Console to allow read/write.</span>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-gold" (click)="setView('settings')" style="white-space: nowrap;">
-            <span>Fix in Settings →</span>
-          </button>
-        </div>
-      }
-
       <!-- ============================================== -->
       <!-- VIEW 1: EXECUTIVE DASHBOARD                    -->
       <!-- ============================================== -->

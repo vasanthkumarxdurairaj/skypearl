@@ -210,15 +210,15 @@ export class AuthService {
     const code = err?.code || '';
     switch (code) {
       case 'auth/popup-blocked':
-        return 'Browser blocked the Google popup window. Please allow popups for localhost or use Direct Redirect Login below.';
+        return 'Browser blocked the Google sign-in window. Please allow popups or use Direct Redirect sign-in.';
       case 'auth/popup-closed-by-user':
-        return 'Google Sign-In popup was closed before completing. Please try again.';
+        return 'Google Sign-In was cancelled. Please try again.';
       case 'auth/cancelled-popup-request':
-        return 'A sign-in attempt was already in progress. Please try again.';
+        return 'A sign-in request was already in progress. Please try again.';
       case 'auth/unauthorized-domain':
-        return 'Domain not authorized in Firebase Console. Add your current URL (e.g. localhost) to Firebase Console > Authentication > Settings > Authorized domains.';
+        return 'This domain is not authorized for Google Sign-In. Please contact your workspace administrator.';
       case 'auth/operation-not-allowed':
-        return 'Google Sign-In is disabled in Firebase Console. Please enable Google provider in Firebase Authentication > Sign-in method.';
+        return 'Google Sign-In is currently unavailable. Please contact support.';
       case 'auth/network-request-failed':
         return 'Network connection error while connecting to Google. Please check your internet connection.';
       default:
