@@ -176,6 +176,19 @@ export class SpaceService {
   }
 
   private initSpace(): void {
+    if (typeof window !== 'undefined') {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        const urlCode = searchParams.get('code') || searchParams.get('space');
+        if (urlCode) {
+          const clean = urlCode.trim().toUpperCase();
+          this.space.update(s => ({ ...s, code: clean }));
+          if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('skypearl_active_space_code', clean);
+          }
+        }
+      } catch {}
+    }
     this.setupFirestoreSpaceSync();
   }
 
@@ -213,18 +226,21 @@ export class SpaceService {
             this.applyRemoteSpace(remoteData, codeToSync);
           }
         } else {
-          // Fallback to legacy settings/agencySpace document if spaces/{code} not yet seeded
-          const legacyRef = doc(db, 'settings', 'agencySpace');
-          getDoc(legacyRef).then(legacySnap => {
-            if (legacySnap.exists()) {
-              const remoteData = legacySnap.data() as AgencySpace;
-              if (remoteData) {
-                this.applyRemoteSpace(remoteData, codeToSync);
-              }
-            } else {
-              this.saveSpace();
-            }
-          }).catch(() => {});
+          // If this space code document does not exist yet in Firestore:
+          // Keep the code in memory and seed it when the user logs in / creates it.
+          // NEVER fall back to legacy settings/agencySpace to prevent borrowing stale test identities!
+          const user = this.authService.currentUser();
+          if (user) {
+            const userEmail = (user.email || '').toLowerCase();
+            this.space.update(curr => ({
+              ...curr,
+              code: codeToSync,
+              ownerUid: curr.ownerUid || user.uid,
+              ownerEmail: curr.ownerEmail || user.email || '',
+              ownerName: curr.ownerName || user.displayName || userEmail.split('@')[0] || 'Space Owner'
+            }));
+            this.saveSpace();
+          }
         }
       }, (err) => {
         console.warn('Firestore space sync notice:', err);
@@ -507,13 +523,25 @@ export class SpaceService {
     const cleanCode = (code || '').trim().toUpperCase();
     if (!cleanCode) return false;
 
-    // Check if code matches currently loaded space
+    // 1. Persist active space code to localStorage & browser URL
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('skypearl_active_space_code', cleanCode);
+    }
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('code', cleanCode);
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+    }
+
+    // 2. Check if code matches currently loaded space
     if (this.space().code && this.space().code.toUpperCase() === cleanCode) {
       this.joinAsTeamAgent('agent');
       return true;
     }
 
-    // Attempt to load space from Firestore 'spaces' collection
+    // 3. Attempt to load space from Firestore 'spaces' collection
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
         const db = this.firebaseService.firestore;
@@ -532,8 +560,9 @@ export class SpaceService {
       }
     }
 
-    // Direct fallback
+    // 4. Fallback: Initialize with code and sync
     this.space.update(s => ({ ...s, code: cleanCode }));
+    this.setupFirestoreSpaceSync(cleanCode);
     this.joinAsTeamAgent('agent');
     return true;
   }
@@ -755,13 +784,9 @@ export class SpaceService {
         const cleaned = this.cleanForFirestore(this.space());
         const spaceCode = (this.space().code || 'SKP-CHN-4829').toUpperCase();
 
-        // 1. Save in dedicated spaces/{spaceCode} collection document
-        setDoc(doc(db, 'spaces', spaceCode), cleaned, { merge: true }).catch(() => {});
-
-        // 2. Also keep settings/agencySpace in sync
-        const legacyRef = doc(db, 'settings', 'agencySpace');
-        setDoc(legacyRef, cleaned, { merge: true }).catch((err) => {
-          console.warn('Firestore space save warning:', err);
+        // Save in dedicated spaces/{spaceCode} collection document
+        setDoc(doc(db, 'spaces', spaceCode), cleaned, { merge: true }).catch((err) => {
+          console.warn('Firestore space save notice:', err);
         });
       } catch (err) {
         console.warn('Firestore space save exception:', err);

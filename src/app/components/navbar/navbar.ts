@@ -32,15 +32,15 @@ import { FirebaseService } from '../../services/firebase.service';
         <!-- Space & Team Access Pill Group (Supports Go & Back between Agency Space & Personal Mode) -->
         @if (spaceService.activeSpaceMode() === 'agency') {
           <div class="space-pill-group">
-            <button class="space-pill" (click)="goToSettings()" title="Agency Shared Workspace • Click to invite team agents or manage access">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <button class="space-pill" (click)="goToSettings()" title="Active Space: {{ spaceService.space().name }} • Code: {{ spaceService.space().code }}">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                 <circle cx="9" cy="7" r="4"></circle>
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
               </svg>
-              <span class="space-name">Team Space</span>
-              <span class="space-badge">Invite Team</span>
+              <span class="space-name">Space:</span>
+              <span class="space-badge mono">{{ spaceService.space().code }}</span>
             </button>
             <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Personal Workspace">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>

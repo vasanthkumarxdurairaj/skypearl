@@ -242,6 +242,41 @@ import { AuthService } from '../../services/auth.service';
               }
             </div>
           </div>
+
+          <!-- SWITCH SPACE OR CREATE NEW SPACE (Multi-Tenancy) -->
+          <div class="section-card">
+            <div class="section-header">
+              <span class="section-title">Switch Agency or Create New Space</span>
+              <span class="badge-pill">Dynamic Multi-Tenancy</span>
+            </div>
+            <p class="section-desc">You can join another agency workspace with their Space Code, or create a brand new agency space where you are the Owner.</p>
+            
+            <div class="space-switch-actions" style="display: flex; flex-direction: column; gap: 10px;">
+              <div class="invite-email-row">
+                <input 
+                  type="text" 
+                  class="form-input mono flex-1" 
+                  placeholder="Enter Space Code (e.g. SKP-CHN-4829)" 
+                  [(ngModel)]="switchSpaceCodeInput" 
+                  (keyup.enter)="switchSpaceByCode()" />
+                <button class="btn btn-secondary btn-sm" (click)="switchSpaceByCode()" [disabled]="!switchSpaceCodeInput.trim()">
+                  Join Space
+                </button>
+              </div>
+
+              <div class="invite-email-row">
+                <input 
+                  type="text" 
+                  class="form-input flex-1" 
+                  placeholder="New Agency Name (e.g. Anna Nagar Realty)" 
+                  [(ngModel)]="newCustomSpaceName" 
+                  (keyup.enter)="createAnotherSpace()" />
+                <button class="btn btn-gold btn-sm" (click)="createAnotherSpace()" [disabled]="!newCustomSpaceName.trim()">
+                  + Create New Space
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Footer -->
@@ -922,8 +957,28 @@ export class SpaceSettingsModalComponent {
   public authService = inject(AuthService);
 
   public newInviteEmail = '';
+  public switchSpaceCodeInput = '';
+  public newCustomSpaceName = '';
   public copied = signal<boolean>(false);
   public codeCopied = signal<boolean>(false);
+
+  public async switchSpaceByCode(): Promise<void> {
+    const code = this.switchSpaceCodeInput.trim().toUpperCase();
+    if (!code) return;
+    const ok = await this.spaceService.joinSpaceByCode(code);
+    if (ok) {
+      this.switchSpaceCodeInput = '';
+      this.spaceService.showSpaceSettingsModal.set(false);
+    }
+  }
+
+  public createAnotherSpace(): void {
+    const name = this.newCustomSpaceName.trim();
+    if (!name) return;
+    this.spaceService.createNewSpace(name);
+    this.newCustomSpaceName = '';
+    this.spaceService.showSpaceSettingsModal.set(false);
+  }
 
   public inviteLink(): string {
     return this.spaceService.getInviteLink();

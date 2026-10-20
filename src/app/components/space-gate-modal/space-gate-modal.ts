@@ -16,8 +16,23 @@ import { AuthService } from '../../services/auth.service';
           <div class="brand-crest">
             <img src="logo.png" alt="SkyPearl Realty" class="gate-logo-img" />
           </div>
-          <h2 class="gate-title">SkyPearl <span class="gold-text">Realty</span></h2>
-          <p class="gate-subtitle">Chennai Property Management & Client CRM</p>
+          <h2 class="gate-title">SkyPearl <span class="gold-text">Space</span></h2>
+          <p class="gate-subtitle">Chennai Property Management & Agency Workspace</p>
+        </div>
+
+        <!-- ALWAYS VISIBLE SPACE IDENTITY & SPACE CODE BANNER -->
+        <div class="active-space-target-box">
+          <div class="target-space-meta">
+            <span class="target-eyebrow">ACTIVE AGENCY SPACE</span>
+            <span class="target-space-name">{{ spaceService.space().name }}</span>
+          </div>
+          <div class="target-space-code-row">
+            <span class="code-pill-label">SPACE CODE:</span>
+            <span class="code-pill-val">{{ spaceService.space().code }}</span>
+            <button type="button" class="btn-copy-code-pill" (click)="copyActiveSpaceCode()" title="Copy space code">
+              {{ codeCopied() ? '✓ Copied' : 'Copy Code' }}
+            </button>
+          </div>
         </div>
 
         <!-- STATE 1: User is NOT signed in with Google -->
@@ -51,14 +66,83 @@ import { AuthService } from '../../services/auth.service';
               </button>
             </div>
 
+            <!-- Space Code Options: Join Code or Create New Space -->
+            <div class="space-code-actions-box">
+              @if (!showCodeInput() && !showCreateSpace()) {
+                <div class="options-nav-row">
+                  <button type="button" class="btn-sub-nav" (click)="showCodeInput.set(true)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>Enter Space Code</span>
+                  </button>
+                  <span class="nav-sep">•</span>
+                  <button type="button" class="btn-sub-nav gold" (click)="showCreateSpace.set(true)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Create New Space</span>
+                  </button>
+                </div>
+              }
+
+              <!-- Join by Space Code Form -->
+              @if (showCodeInput()) {
+                <div class="sub-entry-form">
+                  <div class="sub-entry-head">
+                    <span>Enter Space Code (e.g. SKP-CHN-4829)</span>
+                    <button type="button" class="btn-close-sub" (click)="showCodeInput.set(false)">✕</button>
+                  </div>
+                  <div class="entry-flex-row">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="spaceCodeInput" 
+                      placeholder="SKP-..." 
+                      class="form-input mono flex-1" 
+                      (keyup.enter)="submitJoinCode()" />
+                    <button type="button" class="btn btn-gold btn-sm" (click)="submitJoinCode()" [disabled]="!spaceCodeInput.trim()">
+                      Connect
+                    </button>
+                  </div>
+                  @if (joinError()) {
+                    <p class="error-msg-sub">{{ joinError() }}</p>
+                  }
+                </div>
+              }
+
+              <!-- Create New Agency Space Form -->
+              @if (showCreateSpace()) {
+                <div class="sub-entry-form">
+                  <div class="sub-entry-head">
+                    <span>Create Your Agency Space</span>
+                    <button type="button" class="btn-close-sub" (click)="showCreateSpace.set(false)">✕</button>
+                  </div>
+                  <div class="entry-flex-row">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="newSpaceName" 
+                      placeholder="Space Name (e.g. Anna Nagar Realty)" 
+                      class="form-input flex-1" 
+                      (keyup.enter)="submitCreateSpace()" />
+                    <button type="button" class="btn btn-gold btn-sm" (click)="submitCreateSpace()" [disabled]="!newSpaceName.trim()">
+                      Create Space
+                    </button>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <!-- Personal Workspace Option -->
+            <div class="personal-option-box text-center">
+              <button type="button" class="btn-personal-link" (click)="spaceService.switchToPersonalMode()">
+                Work in Personal Mode →
+              </button>
+            </div>
+
             <div class="gate-trust-footer">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-              <span>Encrypted Cloud Workspace</span>
+              <span>Encrypted Multi-Tenant Cloud Workspace</span>
             </div>
           </div>
         }
 
-        <!-- STATE 2: Signed In with Google - Instant Entry & Space Code Control -->
+        <!-- STATE 2: Signed In with Google - Instant Entry & Space Control -->
         @if (authService.currentUser(); as user) {
           <div class="welcome-gate-state">
             <!-- User Verified Profile Header -->
@@ -72,18 +156,6 @@ import { AuthService } from '../../services/auth.service';
                 <span class="welcome-name">{{ user.displayName || 'Agent' }}</span>
                 <span class="welcome-email">{{ user.email }}</span>
                 <span class="badge-verified">✓ Google Authenticated</span>
-              </div>
-            </div>
-
-            <!-- Active Agency Card with Prominent Space Code -->
-            <div class="welcome-info-card">
-              <h4 class="welcome-heading">{{ spaceService.space().name }}</h4>
-              <div class="space-code-badge-wrap">
-                <span class="space-code-label">Space Code:</span>
-                <span class="space-code-val">{{ spaceService.space().code }}</span>
-                <button type="button" class="btn-copy-code" (click)="copyActiveSpaceCode()" title="Copy space code">
-                  {{ codeCopied() ? '✓ Copied' : 'Copy' }}
-                </button>
               </div>
             </div>
 
@@ -269,6 +341,84 @@ import { AuthService } from '../../services/auth.service';
       background: linear-gradient(135deg, #f5d77f, #cba86b, #b38b4d);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
+    }
+
+    /* Persistent Active Space Target & Space Code Pill */
+    .active-space-target-box {
+      background: linear-gradient(135deg, rgba(203, 168, 107, 0.12), rgba(15, 23, 42, 0.6));
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+      text-align: left;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .target-space-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-bottom: 8px;
+    }
+
+    .target-eyebrow {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    .target-space-name {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .target-space-code-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(203, 168, 107, 0.25);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+
+    .code-pill-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    .code-pill-val {
+      font-family: var(--font-mono, monospace);
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #f5d77f;
+      letter-spacing: 0.08em;
+      flex: 1;
+    }
+
+    .btn-copy-code-pill {
+      background: rgba(203, 168, 107, 0.18);
+      border: 1px solid rgba(203, 168, 107, 0.4);
+      color: var(--gold);
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-copy-code-pill:hover {
+      background: var(--gold);
+      color: #1a150b;
     }
 
     .google-section {
