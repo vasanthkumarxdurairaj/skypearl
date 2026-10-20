@@ -27,6 +27,7 @@ export interface AccessRequest {
 export interface AgencySpace {
   id: string;
   name: string;
+  code: string; // Auto-generated Space Code (e.g. SKP-CHN-4829)
   ownerUid?: string;
   ownerEmail?: string;
   ownerName?: string;
@@ -36,7 +37,11 @@ export interface AgencySpace {
   pendingRequests: AccessRequest[];
 }
 
-const STORAGE_KEY_SPACE_SETTINGS = 'skypearl_space_settings_v2';
+export function generateAutoSpaceCode(spaceName: string = 'Chennai'): string {
+  const letters = (spaceName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'CHN');
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  return `SKP-${letters}-${digits}`;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -49,11 +54,18 @@ export class SpaceService {
   public readonly showAccessModal = signal<boolean>(false);
   public readonly showSpaceSettingsModal = signal<boolean>(false);
   public readonly pendingRequestSent = signal<boolean>(false);
+
+  // Active Workspace Mode: Allows user to manage the space and "go and back" between Agency Space and Personal Workspace
+  public readonly activeSpaceMode = signal<'agency' | 'personal'>('agency');
+  public readonly hasDismissedInvite = signal<boolean>(false);
+
   private isSyncingFromRemote = false;
+  private unsubSpace?: () => void;
 
   public readonly space = signal<AgencySpace>({
     id: 'space-chennai-hq',
     name: 'SkyPearl Realty Space (Chennai Central)',
+    code: 'SKP-CHN-4829',
     ownerUid: '',
     ownerEmail: '',
     ownerName: '',
@@ -104,55 +116,86 @@ export class SpaceService {
     return m ? m.role : null;
   });
 
+  // Space Invitation detection: Checks if the logged-in user has been invited by the Owner to this space
+  public readonly pendingInvitation = computed<{
+    spaceName: string;
+    spaceCode: string;
+    ownerName: string;
+    ownerEmail: string;
+  } | null>(() => {
+    const user = this.authService.currentUser();
+    if (!user || !user.email) return null;
+    const currentSpace = this.space();
+    const userEmail = user.email.toLowerCase();
+
+    // Owner cannot invite themselves
+    if (this.isOwner()) return null;
+
+    // Check if user's email was added by the owner to allowedEmails
+    const isAllowed = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
+    if (!isAllowed) return null;
+
+    // Check if user is already an active member
+    const isActiveMember = currentSpace.members.some(
+      m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
+    );
+
+    // If invited and not yet an active member:
+    if (!isActiveMember) {
+      return {
+        spaceName: currentSpace.name,
+        spaceCode: currentSpace.code || 'SKP-CHN-4829',
+        ownerName: currentSpace.ownerName || currentSpace.ownerEmail || 'Space Owner',
+        ownerEmail: currentSpace.ownerEmail || ''
+      };
+    }
+    return null;
+  });
+
   constructor() {
+    this.evaluateAccessForUser = this.evaluateAccessForUser.bind(this);
+    this.loginWithGoogle = this.loginWithGoogle.bind(this);
+    this.acceptSpaceInvitation = this.acceptSpaceInvitation.bind(this);
+    this.dismissSpaceInvitation = this.dismissSpaceInvitation.bind(this);
+    this.switchToPersonalMode = this.switchToPersonalMode.bind(this);
+    this.returnToAgencySpace = this.returnToAgencySpace.bind(this);
+
     this.initSpace();
 
     // React to Google Authentication changes
     effect(() => {
       const user = this.authService.currentUser();
       untracked(() => {
+        this.setupFirestoreSpaceSync();
         this.evaluateAccessForUser(user);
       });
     });
   }
 
   private initSpace(): void {
-    // Load saved space settings from local storage
-    try {
-      const savedSettings = localStorage.getItem(STORAGE_KEY_SPACE_SETTINGS);
-      if (savedSettings) {
-        const parsed = JSON.parse(savedSettings);
-        this.space.set({
-          id: parsed.id || 'space-chennai-hq',
-          name: parsed.name || 'SkyPearl Realty Space (Chennai Central)',
-          ownerUid: parsed.ownerUid || '',
-          ownerEmail: parsed.ownerEmail || '',
-          ownerName: parsed.ownerName || '',
-          allowedEmails: Array.isArray(parsed.allowedEmails) ? parsed.allowedEmails : [],
-          members: Array.isArray(parsed.members) ? parsed.members : [],
-          pendingRequests: Array.isArray(parsed.pendingRequests) ? parsed.pendingRequests : []
-        });
-      }
-    } catch {}
-
-    // Setup real-time Firestore sync for team collaboration
     this.setupFirestoreSpaceSync();
   }
 
-  private setupFirestoreSpaceSync(): void {
+  public setupFirestoreSpaceSync(): void {
     if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
     try {
+      if (this.unsubSpace) {
+        this.unsubSpace();
+        this.unsubSpace = undefined;
+      }
       const db = this.firebaseService.firestore;
       const spaceDocRef = doc(db, 'settings', 'agencySpace');
-      onSnapshot(spaceDocRef, snap => {
+      this.unsubSpace = onSnapshot(spaceDocRef, snap => {
         if (snap.exists()) {
           const remoteData = snap.data() as AgencySpace;
           if (remoteData) {
             this.isSyncingFromRemote = true;
             try {
+              const currentCode = remoteData.code || this.space().code || generateAutoSpaceCode(remoteData.name || 'Chennai');
               this.space.update(curr => ({
                 ...curr,
                 name: remoteData.name || curr.name,
+                code: currentCode,
                 ownerUid: remoteData.ownerUid || curr.ownerUid,
                 ownerEmail: remoteData.ownerEmail || curr.ownerEmail,
                 ownerName: remoteData.ownerName || curr.ownerName,
@@ -160,23 +203,31 @@ export class SpaceService {
                 members: Array.isArray(remoteData.members) ? remoteData.members : curr.members,
                 pendingRequests: Array.isArray(remoteData.pendingRequests) ? remoteData.pendingRequests : curr.pendingRequests
               }));
-              localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
+              // Save generated auto code if remote didn't have one
+              if (!remoteData.code) {
+                this.saveSpace();
+              }
               // Re-evaluate current user access in-memory WITHOUT writing back to Firestore
               this.evaluateAccessForUser(this.authService.currentUser(), false);
             } finally {
               this.isSyncingFromRemote = false;
             }
           }
+        } else {
+          // Initialize document in Firestore
+          this.saveSpace();
         }
       }, (err) => {
         console.warn('Firestore space sync notice:', err);
       });
-    } catch {}
+    } catch (e) {
+      console.warn('Firestore space sync error:', e);
+    }
   }
 
   public evaluateAccessForUser(user: any, allowRemoteWrite = true): void {
     if (!user) {
-      // No Google login = No access to any data
+      // No Google login = Gate is presented
       if (this.isUnlocked()) this.isUnlocked.set(false);
       if (!this.showAccessModal()) this.showAccessModal.set(true);
       return;
@@ -204,6 +255,7 @@ export class SpaceService {
         ownerUid: user.uid,
         ownerEmail: user.email,
         ownerName: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+        code: s.code || generateAutoSpaceCode(s.name),
         members: [ownerMember, ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)]
       }));
       if (allowRemoteWrite && !this.isSyncingFromRemote) {
@@ -240,32 +292,7 @@ export class SpaceService {
       return;
     }
 
-    // 3. Was this Google email directly pre-authorized by the Owner?
-    const isPreAuthorized = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
-    if (isPreAuthorized) {
-      const alreadyMember = currentSpace.members.some(
-        m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
-      );
-      if (!alreadyMember && allowRemoteWrite && !this.isSyncingFromRemote) {
-        this.registerOrUpdateMember({
-          id: user.uid,
-          name: user.displayName || userEmail.split('@')[0],
-          email: user.email,
-          photoURL: user.photoURL,
-          role: 'agent',
-          status: 'active',
-          joinedAt: Date.now(),
-          lastActiveAt: Date.now(),
-          joinedVia: 'email_invite',
-          invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
-        });
-      }
-      if (!this.isUnlocked()) this.isUnlocked.set(true);
-      if (this.showAccessModal()) this.showAccessModal.set(false);
-      return;
-    }
-
-    // 4. Is user already an approved active member in the directory?
+    // 3. Is user already an approved active member in the directory?
     const existingMember = currentSpace.members.find(
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
@@ -278,9 +305,84 @@ export class SpaceService {
       return;
     }
 
+    // 4. Was this Google email directly pre-authorized by the Owner? (Pending acceptance by user)
+    const isPreAuthorized = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
+    if (isPreAuthorized) {
+      // User is invited! The notification bar will prompt them to Accept & Enter Space
+      if (!this.isUnlocked()) this.isUnlocked.set(false);
+      return;
+    }
+
     // 5. User is signed in with Google, but NOT approved by Owner yet!
     if (this.isUnlocked()) this.isUnlocked.set(false);
     if (!this.showAccessModal()) this.showAccessModal.set(true);
+  }
+
+  // Accept Space Invitation
+  public acceptSpaceInvitation(): void {
+    const user = this.authService.currentUser();
+    if (!user) return;
+    const userEmail = (user.email || '').toLowerCase();
+    const currentSpace = this.space();
+
+    const newMember: SpaceMember = {
+      id: user.uid,
+      name: user.displayName || userEmail.split('@')[0],
+      email: user.email || '',
+      photoURL: user.photoURL,
+      role: 'agent',
+      status: 'active',
+      joinedAt: Date.now(),
+      lastActiveAt: Date.now(),
+      joinedVia: 'email_invite',
+      invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+    };
+
+    this.space.update(s => ({
+      ...s,
+      members: [
+        newMember,
+        ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)
+      ],
+      // Ensure email is in allowedEmails
+      allowedEmails: s.allowedEmails.includes(userEmail) ? s.allowedEmails : [...s.allowedEmails, userEmail]
+    }));
+
+    this.saveSpace();
+    this.hasDismissedInvite.set(false);
+    this.activeSpaceMode.set('agency');
+    this.isUnlocked.set(true);
+    this.showAccessModal.set(false);
+  }
+
+  // Dismiss Invitation Bar
+  public dismissSpaceInvitation(): void {
+    this.hasDismissedInvite.set(true);
+  }
+
+  // Workspace Switcher: Switch to personal view
+  public switchToPersonalMode(): void {
+    this.activeSpaceMode.set('personal');
+    this.isUnlocked.set(true);
+    this.showAccessModal.set(false);
+  }
+
+  // Workspace Switcher: Return to agency space
+  public returnToAgencySpace(): void {
+    this.activeSpaceMode.set('agency');
+    this.evaluateAccessForUser(this.authService.currentUser(), false);
+  }
+
+  // Join Space by Auto Code
+  public joinSpaceByCode(code: string): boolean {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) return false;
+    const currentSpace = this.space();
+    if (currentSpace.code && currentSpace.code.toUpperCase() === cleanCode) {
+      this.acceptSpaceInvitation();
+      return true;
+    }
+    return false;
   }
 
   public async loginWithGoogle(): Promise<boolean> {
@@ -409,6 +511,28 @@ export class SpaceService {
     this.saveSpace();
   }
 
+  public updateSpaceName(newName: string): void {
+    if (!this.isOwner()) return;
+    const clean = (newName || '').trim();
+    if (!clean) return;
+    this.space.update(s => ({
+      ...s,
+      name: clean
+    }));
+    this.saveSpace();
+  }
+
+  public regenerateSpaceCode(): string {
+    if (!this.isOwner()) return this.space().code;
+    const newCode = generateAutoSpaceCode(this.space().name);
+    this.space.update(s => ({
+      ...s,
+      code: newCode
+    }));
+    this.saveSpace();
+    return newCode;
+  }
+
   public getInviteLink(): string {
     if (typeof window !== 'undefined') {
       return `${window.location.origin}${window.location.pathname}`;
@@ -459,14 +583,22 @@ export class SpaceService {
     this.saveSpace();
   }
 
+  private cleanForFirestore(obj: any): any {
+    return JSON.parse(JSON.stringify(obj, (_key, value) => (value === undefined ? null : value)));
+  }
+
   private saveSpace(): void {
     if (this.isSyncingFromRemote) return;
-    localStorage.setItem(STORAGE_KEY_SPACE_SETTINGS, JSON.stringify(this.space()));
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
         const spaceDocRef = doc(this.firebaseService.firestore, 'settings', 'agencySpace');
-        setDoc(spaceDocRef, this.space(), { merge: true }).catch(() => {});
-      } catch {}
+        const cleaned = this.cleanForFirestore(this.space());
+        setDoc(spaceDocRef, cleaned, { merge: true }).catch((err) => {
+          console.warn('Firestore space save warning:', err);
+        });
+      } catch (err) {
+        console.warn('Firestore space save exception:', err);
+      }
     }
   }
 }

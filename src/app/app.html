@@ -14,6 +14,38 @@
   </div>
 }
 
+<!-- Space Invitation Notification Bar (Visible whenever an account is invited to join an agency space) -->
+@if (spaceService.pendingInvitation(); as invite) {
+  @if (!spaceService.hasDismissedInvite()) {
+    <aside class="space-invite-notification-bar" role="alert">
+      <div class="invite-bar-content">
+        <div class="invite-left-info">
+          <span class="invite-bell-icon">🔔</span>
+          <div class="invite-text-col">
+            <span class="invite-tag">TEAM SPACE INVITATION</span>
+            <span class="invite-desc">
+              You've been invited to collaborate in <strong>{{ invite.spaceName }}</strong>
+              <span class="invite-code-chip">Code: {{ invite.spaceCode }}</span>
+              by <strong>{{ invite.ownerName || invite.ownerEmail }}</strong>
+            </span>
+          </div>
+        </div>
+        <div class="invite-action-buttons">
+          <button type="button" class="btn-accept-invite" (click)="spaceService.acceptSpaceInvitation()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Accept & Enter Space</span>
+          </button>
+          <button type="button" class="btn-dismiss-invite" (click)="spaceService.dismissSpaceInvitation()" title="Dismiss for now">
+            ✕ Dismiss
+          </button>
+        </div>
+      </div>
+    </aside>
+  }
+}
+
 @if (spaceService.isUnlocked()) {
   <div class="app-layout">
   <!-- Top Navbar -->
@@ -77,8 +109,8 @@
             class="nav-tab" 
             [class.active]="realtyService.activeView() === 'connections'"
             (click)="setView('connections')"
-            title="Connections (Matches)"
-            aria-label="Connections (Matches)">
+            title="Property Matches"
+            aria-label="Property Matches">
             <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="16 3 21 3 21 8"></polyline>
               <line x1="4" y1="20" x2="21" y2="3"></line>
@@ -86,7 +118,7 @@
               <line x1="15" y1="15" x2="21" y2="21"></line>
               <line x1="4" y1="4" x2="9" y2="9"></line>
             </svg>
-            <span class="tab-label">Connections (Matches)</span>
+            <span class="tab-label">Property Matches</span>
             <span class="tab-badge match-count-badge">{{ realtyService.highMatchesCount() }}</span>
           </button>
 
@@ -109,42 +141,26 @@
         </div>
       </div>
 
-      <!-- Quick Export Reports -->
+      <!-- Agency Space & System Settings Tab -->
       <div class="sidebar-section mt-auto">
-        <span class="section-title">Reports & Backup</span>
-        <button class="btn btn-secondary w-100 sidebar-action-btn" (click)="realtyService.exportPropertiesToCSV()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Export Properties CSV</span>
-        </button>
-
-        <button class="btn btn-secondary w-100 sidebar-action-btn mt-2" (click)="realtyService.exportLeadsToCSV()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Export Buyers CSV</span>
-        </button>
-
-        <button class="btn btn-secondary w-100 sidebar-action-btn mt-2" (click)="realtyService.exportMatchesToCSV()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="7 10 12 15 17 10"></polyline>
-            <line x1="12" y1="15" x2="12" y2="3"></line>
-          </svg>
-          <span>Export Matches CSV</span>
-        </button>
-
-        @if (realtyService.isAdmin()) {
-          <button class="btn btn-outline-danger w-100 sidebar-action-btn mt-3" (click)="realtyService.clearAllData()">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-            <span>Reset / Clean Slate</span>
+        <span class="section-title">System & Space</span>
+        <div class="nav-menu">
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'settings'"
+            (click)="setView('settings')"
+            title="Agency Space & System Settings"
+            aria-label="Settings">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span class="tab-label">Settings</span>
+            @if (spaceService.isOwner() && spaceService.space().pendingRequests.length > 0) {
+              <span class="tab-badge highlight">{{ spaceService.space().pendingRequests.length }}</span>
+            }
           </button>
-        }
+        </div>
       </div>
     </aside>
 
@@ -201,9 +217,9 @@
             </div>
 
             <div class="metric-card glass-panel highlight-metric" (click)="setView('connections')">
-              <div class="metric-label">Compatible Connections</div>
+              <div class="metric-label">Client Property Matches</div>
               <div class="metric-value">{{ realtyService.highMatchesCount() }}</div>
-              <div class="metric-hint">Scored ≥ 60% compatibility</div>
+              <div class="metric-hint">High match criteria (≥ 60%)</div>
             </div>
 
             <div class="metric-card glass-panel">
@@ -260,7 +276,7 @@
           <!-- Top Compatibility Connections -->
           <div class="glass-panel feed-panel">
             <div class="feed-header">
-              <h3 class="feed-title">Strongest Buyer & Property Connections</h3>
+              <h3 class="feed-title">Top Buyer & Property Matches</h3>
               <button class="btn-text-link" (click)="setView('connections')">Explore All Matches →</button>
             </div>
             <div class="feed-list">
@@ -292,7 +308,7 @@
                 </div>
               } @empty {
                 <div class="empty-feed-card text-center p-4">
-                  <p class="text-muted mb-2">No connections yet. Add properties and buyers to activate automatic AI matching.</p>
+                  <p class="text-muted mb-2">No matching properties found yet. Add properties and buyers to view property matches.</p>
                   <button class="btn btn-sm btn-gold" (click)="openAddLead()">+ Add Buyer Requirement</button>
                 </div>
               }
@@ -869,9 +885,9 @@
       @if (realtyService.activeView() === 'connections') {
         <div class="section-header-row">
           <div>
-            <div class="eyebrow-chip">COMPATIBILITY ENGINE · CHENNAI</div>
-            <h2 class="view-title">Connections & Fit Intelligence</h2>
-            <p class="view-desc">Scored buyer–property connections across Chennai with explainable fit reasons and 1-click WhatsApp communication</p>
+            <div class="eyebrow-chip">BUYER & PROPERTY MATCHES · CHENNAI</div>
+            <h2 class="view-title">Buyer & Property Matches</h2>
+            <p class="view-desc">Matched buyer requirements and property inventory across Chennai with verified criteria and direct WhatsApp outreach</p>
           </div>
           <div class="header-action-group">
             <button class="btn btn-gold" (click)="realtyService.exportMatchesToCSV()">
@@ -899,13 +915,13 @@
             </select>
 
             <select class="toolbar-select" [ngModel]="selectedMatchThreshold()" (ngModelChange)="selectedMatchThreshold.set($event)">
-              <option [ngValue]="0">All Compatibility Scores</option>
+              <option [ngValue]="0">All Match Scores</option>
               <option [ngValue]="50">50%+ Match</option>
-              <option [ngValue]="70">70%+ Match (High Fit)</option>
-              <option [ngValue]="85">85%+ Match (Super Fit)</option>
+              <option [ngValue]="70">70%+ Match (High Match)</option>
+              <option [ngValue]="85">85%+ Match (Best Match)</option>
             </select>
           </div>
-          <span class="match-count-badge">{{ filteredCompatibilityMatches().length }} active connections</span>
+          <span class="match-count-badge">{{ filteredCompatibilityMatches().length }} matched properties</span>
         </div>
 
         <!-- Matches Cards Grid -->
@@ -918,7 +934,7 @@
                   <span>BUYER: <strong>{{ m.buyer.name }}</strong> ({{ m.buyer.phone }})</span>
                 </div>
                 <div class="score-badge" [class.score-super]="m.score >= 80" [class.score-good]="m.score >= 60 && m.score < 80">
-                  {{ m.score }}% FIT
+                  {{ m.score }}% MATCH
                 </div>
               </div>
 
@@ -1031,6 +1047,12 @@
         </div>
       }
 
+      <!-- ============================================== -->
+      <!-- VIEW 6: AGENCY SPACE & SYSTEM SETTINGS         -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'settings') {
+        <app-settings />
+      }
 
     </main>
 

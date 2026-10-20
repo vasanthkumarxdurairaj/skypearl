@@ -17,7 +17,7 @@ import { AuthService } from '../../services/auth.service';
             <img src="logo.png" alt="SkyPearl Build Real Estate" class="gate-logo-img" />
           </div>
           <h2 class="gate-title">SkyPearl <span class="gold-text">Space</span></h2>
-          <p class="gate-subtitle">Chennai Agency Property Intelligence • Private Space</p>
+          <p class="gate-subtitle">Chennai Real Estate Agency • Private Workspace</p>
         </div>
 
         <!-- STATE 1: User is NOT signed in with Google -->
@@ -64,7 +64,7 @@ import { AuthService } from '../../services/auth.service';
 
             <div class="gate-trust-footer">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              <span>Zero Guest Access • Verified Agent Tracking • Encrypted</span>
+              <span>Private Broker Access • Team Workspace • Secure</span>
             </div>
           </div>
         }
@@ -88,32 +88,66 @@ import { AuthService } from '../../services/auth.service';
               </div>
             </div>
 
-            <div class="pending-explanation">
-              <p>
-                This space is private and managed by the Owner
-                <strong>{{ spaceService.space().ownerName || spaceService.space().ownerEmail || 'Space Owner' }}</strong>.
-                Access must be granted directly by the Owner.
-              </p>
-            </div>
-
-            <!-- Request Access Action -->
-            <div class="option-box text-center">
-              @if (spaceService.pendingRequestSent() || isAlreadyRequested(user.uid, user.email)) {
-                <div class="request-sent-card">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                  </svg>
-                  <div>
-                    <strong>Request Pending Owner Approval</strong>
-                    <p>Your access request was delivered to the space Owner. You will be admitted as soon as the Owner approves your Google account.</p>
-                  </div>
-                </div>
-              } @else {
-                <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.requestAccessFromOwner()">
-                  <span>Request Access from Space Owner</span>
+            <!-- If user has an invitation pending, show one-click Accept button -->
+            @if (spaceService.pendingInvitation(); as invite) {
+              <div class="invite-found-card">
+                <div class="invite-found-badge">🎉 INVITATION READY</div>
+                <h4 class="invite-found-title">You're Invited to Join {{ invite.spaceName }}</h4>
+                <p class="invite-found-desc">Owner {{ invite.ownerName || invite.ownerEmail }} has authorized your Google account.</p>
+                <div class="invite-code-preview">Space Code: <strong>{{ invite.spaceCode }}</strong></div>
+                <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.acceptSpaceInvitation()">
+                  ✓ Accept Invitation & Enter Space
                 </button>
-                <p class="request-hint">Sends an instant access request directly to the Owner's dashboard.</p>
-              }
+              </div>
+            } @else {
+              <div class="pending-explanation">
+                <p>
+                  This space is private and managed by the Owner
+                  <strong>{{ spaceService.space().ownerName || spaceService.space().ownerEmail || 'Space Owner' }}</strong>.
+                  Access must be granted directly by the Owner or via Space Code.
+                </p>
+              </div>
+
+              <!-- Request Access Action -->
+              <div class="option-box text-center">
+                @if (spaceService.pendingRequestSent() || isAlreadyRequested(user.uid, user.email)) {
+                  <div class="request-sent-card">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5">
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    <div>
+                      <strong>Request Pending Owner Approval</strong>
+                      <p>Your access request was delivered to the space Owner. You will be admitted as soon as the Owner approves your Google account.</p>
+                    </div>
+                  </div>
+                } @else {
+                  <button type="button" class="btn btn-gold btn-block btn-lg" (click)="spaceService.requestAccessFromOwner()">
+                    <span>Request Access from Space Owner</span>
+                  </button>
+                  <p class="request-hint">Sends an instant access request directly to the Owner's dashboard.</p>
+                }
+              </div>
+
+              <!-- Enter Space Auto Code -->
+              <div class="code-entry-box">
+                <div class="code-entry-label">Have an Agency Space Auto Code?</div>
+                <div class="code-entry-row">
+                  <input type="text" [(ngModel)]="spaceCodeInput" placeholder="e.g. SKP-CHN-4829" class="input-code" (keyup.enter)="submitSpaceCode()" />
+                  <button type="button" class="btn btn-gold btn-sm" (click)="submitSpaceCode()" [disabled]="!spaceCodeInput.trim()">
+                    Join
+                  </button>
+                </div>
+                @if (codeError()) {
+                  <span class="code-error-text">{{ codeError() }}</span>
+                }
+              </div>
+            }
+
+            <!-- Personal Workspace Option -->
+            <div class="personal-option-box text-center">
+              <button type="button" class="btn-personal-link" (click)="spaceService.switchToPersonalMode()">
+                Or Continue in Personal Workspace Mode →
+              </button>
             </div>
 
             <div class="signout-row">
@@ -461,6 +495,116 @@ import { AuthService } from '../../services/auth.service';
       text-align: left;
     }
 
+    /* Invite Ready Card */
+    .invite-found-card {
+      background: linear-gradient(135deg, rgba(203, 168, 107, 0.15), rgba(20, 24, 34, 0.8));
+      border: 1px solid var(--gold);
+      border-radius: var(--radius-lg);
+      padding: 18px 16px;
+      margin-bottom: 16px;
+      text-align: center;
+      box-shadow: 0 4px 20px rgba(203, 168, 107, 0.15);
+    }
+
+    .invite-found-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      background: rgba(203, 168, 107, 0.2);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      margin-bottom: 8px;
+    }
+
+    .invite-found-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #fff;
+      margin: 0 0 4px 0;
+    }
+
+    .invite-found-desc {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      margin: 0 0 10px 0;
+    }
+
+    .invite-code-preview {
+      font-size: 0.8rem;
+      color: var(--gold);
+      font-family: var(--font-mono);
+      margin-bottom: 14px;
+    }
+
+    /* Code Entry Box */
+    .code-entry-box {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px dashed var(--border-subtle);
+      text-align: left;
+    }
+
+    .code-entry-label {
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .code-entry-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .input-code {
+      flex: 1;
+      background: var(--bg-tertiary);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-main);
+      padding: 7px 12px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .input-code:focus {
+      outline: none;
+      border-color: var(--gold);
+    }
+
+    .code-error-text {
+      display: block;
+      color: #f87171;
+      font-size: 0.72rem;
+      margin-top: 5px;
+    }
+
+    /* Personal Mode Option */
+    .personal-option-box {
+      margin-top: 14px;
+      padding-top: 10px;
+    }
+
+    .btn-personal-link {
+      background: none;
+      border: none;
+      color: #60a5fa;
+      font-size: 0.78rem;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color 0.15s ease;
+    }
+
+    .btn-personal-link:hover {
+      color: #93c5fd;
+    }
+
     /* Mobile Responsive Optimizations */
     @media (max-width: 640px) {
       .space-gate-backdrop {
@@ -488,10 +632,21 @@ export class SpaceGateModalComponent {
   public authService = inject(AuthService);
 
   public errorMessage = signal<string | null>(null);
+  public spaceCodeInput = '';
+  public codeError = signal<string | null>(null);
 
   public isAlreadyRequested(uid: string, email?: string | null): boolean {
     const list = this.spaceService.space().pendingRequests;
     return list.some(r => r.uid === uid || (!!email && r.email.toLowerCase() === email.toLowerCase()));
+  }
+
+  public submitSpaceCode(): void {
+    this.codeError.set(null);
+    if (!this.spaceCodeInput.trim()) return;
+    const ok = this.spaceService.joinSpaceByCode(this.spaceCodeInput);
+    if (!ok) {
+      this.codeError.set('Invalid Space Code. Please check with your Space Owner.');
+    }
   }
 
   public async loginWithGoogle(): Promise<void> {

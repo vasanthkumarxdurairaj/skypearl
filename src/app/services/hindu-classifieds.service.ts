@@ -43,8 +43,6 @@ export interface HinduClassifiedItem {
   isCloudSynced?: boolean;
 }
 
-const STORAGE_KEY_CLASSIFIEDS = 'skypearl_hindu_classifieds_live_v3';
-
 @Injectable({
   providedIn: 'root'
 })
@@ -110,18 +108,8 @@ export class HinduClassifiedsService {
   }
 
   private initData(): void {
-    try {
-      localStorage.removeItem(STORAGE_KEY_CLASSIFIEDS);
-    } catch {}
-
-    // Initialize with clean EMPTY array - Pure live data only (no hardcoded items)
+    // Pure live data from Firebase Firestore
     this.classifieds.set([]);
-  }
-
-  private persistLocal(): void {
-    try {
-      localStorage.setItem(STORAGE_KEY_CLASSIFIEDS, JSON.stringify(this.classifieds()));
-    } catch {}
   }
 
   private cleanForFirestore(obj: any): any {
@@ -159,22 +147,7 @@ export class HinduClassifiedsService {
 
           // Sort by publishedAt descending
           remoteItems.sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0));
-
-          // Merge with any local-only items not yet on remote
-          const remoteIdSet = new Set(remoteItems.map(r => r.id));
-          const currentLocal = this.classifieds();
-          const localOnly = currentLocal.filter(l => !remoteIdSet.has(l.id));
-
-          const merged = [...remoteItems, ...localOnly];
-          this.classifieds.set(merged);
-          this.persistLocal();
-
-          // Push any local items to Firestore
-          if (localOnly.length > 0) {
-            localOnly.forEach(item => {
-              setDoc(doc(db, 'hindu_classifieds', item.id), this.cleanForFirestore(item), { merge: true }).catch(() => {});
-            });
-          }
+          this.classifieds.set(remoteItems);
         }
       }, err => {
         console.warn('Cloud sync note for hindu_classifieds (resilient mode):', err);
@@ -257,7 +230,6 @@ export class HinduClassifiedsService {
 
     if (toAdd.length > 0) {
       this.classifieds.update(list => [...toAdd, ...list]);
-      this.persistLocal();
     }
 
     return newCount;
@@ -332,7 +304,6 @@ export class HinduClassifiedsService {
       };
 
       this.classifieds.update(list => [newItem, ...list]);
-      this.persistLocal();
 
       // Save to Firebase Firestore
       if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
@@ -502,13 +473,11 @@ export class HinduClassifiedsService {
     };
 
     this.classifieds.update(list => [newItem, ...list]);
-    this.persistLocal();
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       setDoc(doc(this.firebaseService.firestore, 'hindu_classifieds', newItem.id), this.cleanForFirestore(newItem), { merge: true })
         .then(() => {
           this.classifieds.update(list => list.map(c => c.id === newItem.id ? { ...c, isCloudSynced: true } : c));
-          this.persistLocal();
         })
         .catch(err => {
           console.warn('Firestore write notice:', err);
@@ -615,7 +584,6 @@ export class HinduClassifiedsService {
         return c;
       })
     );
-    this.persistLocal();
 
     const updated = this.classifieds().find(c => c.id === id);
     if (updated && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
@@ -633,7 +601,6 @@ export class HinduClassifiedsService {
 
     const current = this.classifieds();
     this.classifieds.set([]);
-    this.persistLocal();
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       const db = this.firebaseService.firestore;
@@ -650,7 +617,6 @@ export class HinduClassifiedsService {
    */
   public deleteClassified(id: string): void {
     this.classifieds.update(list => list.filter(c => c.id !== id));
-    this.persistLocal();
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       deleteDoc(doc(this.firebaseService.firestore, 'hindu_classifieds', id)).catch(() => {});

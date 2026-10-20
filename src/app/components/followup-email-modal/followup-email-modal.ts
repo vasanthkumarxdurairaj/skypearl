@@ -47,7 +47,7 @@ import { RealtyService } from '../../services/realty.service';
 
           <!-- Quick Template Selector -->
           <div class="form-group mb-3">
-            <label class="form-label">Select Smart Template</label>
+            <label class="form-label">Select Email Template</label>
             <div class="template-chips-row">
               <button 
                 type="button" 

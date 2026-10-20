@@ -1,7 +1,7 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { FirebaseService } from './firebase.service';
 import { LeadCRM, PropertyListing } from '../models/realty.model';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 export interface EmailAutomationSettings {
   provider: 'emailjs' | 'mailto' | 'firebase';
@@ -12,8 +12,6 @@ export interface EmailAutomationSettings {
   senderEmail: string;
   autoLogFollowUp: boolean;
 }
-
-const STORAGE_KEY_EMAIL_CONFIG = 'skypearl_email_automation_config_v1';
 
 const DEFAULT_EMAIL_SETTINGS: EmailAutomationSettings = {
   provider: 'mailto',
@@ -33,29 +31,42 @@ export type FollowUpTemplateType = 'property_matches' | 'site_visit' | 'negotiat
 export class EmailFollowupService {
   private firebaseService = inject(FirebaseService);
 
-  public readonly emailSettings = signal<EmailAutomationSettings>(this.loadSettings());
+  public readonly emailSettings = signal<EmailAutomationSettings>({ ...DEFAULT_EMAIL_SETTINGS });
   public readonly isSending = signal<boolean>(false);
   public readonly lastSendStatus = signal<{ success: boolean; message: string } | null>(null);
 
   constructor() {
-    this.loadSettings();
+    this.setupFirestoreSync();
   }
 
-  private loadSettings(): EmailAutomationSettings {
-    if (typeof localStorage === 'undefined') return { ...DEFAULT_EMAIL_SETTINGS };
+  private setupFirestoreSync(): void {
+    if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_EMAIL_CONFIG);
-      if (saved) {
-        return { ...DEFAULT_EMAIL_SETTINGS, ...JSON.parse(saved) };
-      }
+      const db = this.firebaseService.firestore;
+      const ref = doc(db, 'settings', 'emailAutomation');
+      onSnapshot(ref, snap => {
+        if (snap.exists()) {
+          const data = snap.data() as EmailAutomationSettings;
+          if (data) {
+            this.emailSettings.set({ ...DEFAULT_EMAIL_SETTINGS, ...data });
+          }
+        }
+      });
     } catch {}
-    return { ...DEFAULT_EMAIL_SETTINGS };
   }
 
   public saveSettings(settings: EmailAutomationSettings): void {
     this.emailSettings.set(settings);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY_EMAIL_CONFIG, JSON.stringify(settings));
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const ref = doc(this.firebaseService.firestore, 'settings', 'emailAutomation');
+        const cleaned = JSON.parse(JSON.stringify(settings, (_k, v) => v === undefined ? null : v));
+        setDoc(ref, cleaned, { merge: true }).catch((err) => {
+          console.warn('Firestore email settings save warning:', err);
+        });
+      } catch (err) {
+        console.warn('Firestore email settings save exception:', err);
+      }
     }
   }
 
@@ -103,7 +114,7 @@ export class EmailFollowupService {
 
 Thank you for connecting with SkyPearl Realty.
 
-Based on your requirement for a ${bhk} property in ${localities} (Budget: ${budgetRange}), we have curated the following high-compatibility verified options for you:
+Based on your requirement for a ${bhk} property in ${localities} (Budget: ${budgetRange}), we have curated the following verified matching properties for you:
 
 ${matchesList}
 Would you be available for an exclusive site visit this weekend? Please let us know your preferred day and time, and we will arrange access.

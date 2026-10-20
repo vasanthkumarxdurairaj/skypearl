@@ -8,6 +8,7 @@ import { VisitModalComponent } from './components/visit-modal/visit-modal';
 import { SpaceGateModalComponent } from './components/space-gate-modal/space-gate-modal';
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
+import { SettingsComponent } from './components/settings/settings';
 import { RealtyService } from './services/realty.service';
 import { SpaceService } from './services/space.service';
 import { 
@@ -30,7 +31,8 @@ import {
     VisitModalComponent,
     SpaceGateModalComponent,
     SpaceSettingsModalComponent,
-    FollowUpEmailModalComponent
+    FollowUpEmailModalComponent,
+    SettingsComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -213,7 +215,7 @@ export class App {
   });
 
   // Navigation View Selection
-  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits'): void {
+  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'settings'): void {
     this.realtyService.activeView.set(view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -292,8 +294,7 @@ export class App {
 
   // Site Visit Actions
   public markVisitCompleted(visit: SiteVisit): void {
-    visit.status = 'Completed';
-    this.realtyService.notify(`Visit for ${visit.leadName} marked completed.`, 'success');
+    this.realtyService.updateVisitStatus(visit.id, 'Completed');
   }
 
   public getLeadsByStage(stage: LeadStage): LeadCRM[] {

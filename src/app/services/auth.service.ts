@@ -37,7 +37,6 @@ export class AuthService {
       photoURL: user.photoURL || undefined
     };
     this.currentUser.set(appUser);
-    localStorage.setItem('skypearl_demo_user', JSON.stringify(appUser));
   }
 
   private initAuthListener(): void {
@@ -61,19 +60,6 @@ export class AuthService {
         }
       });
     } else {
-      // Local session check
-      const savedUser = localStorage.getItem('skypearl_demo_user');
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed?.uid && parsed?.email) {
-            this.currentUser.set(parsed);
-            return;
-          }
-        } catch {
-          localStorage.removeItem('skypearl_demo_user');
-        }
-      }
       this.currentUser.set(null);
     }
   }
@@ -96,7 +82,6 @@ export class AuthService {
           photoURL: undefined
         };
         this.currentUser.set(user);
-        localStorage.setItem('skypearl_demo_user', JSON.stringify(user));
         return true;
       }
     } catch (err: any) {
@@ -127,7 +112,6 @@ export class AuthService {
           displayName: displayName || email.split('@')[0]
         };
         this.currentUser.set(user);
-        localStorage.setItem('skypearl_demo_user', JSON.stringify(user));
         return true;
       }
     } catch (err: any) {
@@ -241,6 +225,5 @@ export class AuthService {
       await signOut(this.firebaseService.auth);
     }
     this.currentUser.set(null);
-    localStorage.removeItem('skypearl_demo_user');
   }
 }

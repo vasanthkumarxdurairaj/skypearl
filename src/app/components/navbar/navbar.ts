@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RealtyService } from '../../services/realty.service';
 import { SpaceService } from '../../services/space.service';
 import { AuthService } from '../../services/auth.service';
+import { FirebaseService } from '../../services/firebase.service';
 
 @Component({
   selector: 'app-navbar',
@@ -17,7 +18,7 @@ import { AuthService } from '../../services/auth.service';
           </div>
           <div class="brand-text">
             <div class="brand-title">SkyPearl <span class="gold-text">Realty</span></div>
-            <div class="brand-subtitle">CHENNAI PROPERTY INTELLIGENCE</div>
+            <div class="brand-subtitle">CHENNAI REAL ESTATE BROKERAGE</div>
           </div>
         </div>
 
@@ -28,18 +29,42 @@ import { AuthService } from '../../services/auth.service';
           <span class="city-badge">{{ realtyService.localities().length }} Localities</span>
         </div>
 
-        <!-- Space & Team Access Pill -->
-        <button class="space-pill" (click)="spaceService.showSpaceSettingsModal.set(true)" title="Manage Agency Space & Team Access">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <circle cx="18" cy="5" r="3"></circle>
-            <circle cx="6" cy="12" r="3"></circle>
-            <circle cx="18" cy="19" r="3"></circle>
-            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-          </svg>
-          <span class="space-name">Space: Chennai</span>
-          <span class="space-badge">Team Access</span>
-        </button>
+        <!-- Space & Team Access Pill Group (Supports Go & Back between Agency Space & Personal Mode) -->
+        @if (spaceService.activeSpaceMode() === 'agency') {
+          <div class="space-pill-group">
+            <button class="space-pill" (click)="goToSettings()" [title]="'Agency Space: ' + spaceService.space().name + ' • Auto Code: ' + spaceService.space().code">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <circle cx="18" cy="5" r="3"></circle>
+                <circle cx="6" cy="12" r="3"></circle>
+                <circle cx="18" cy="19" r="3"></circle>
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+              </svg>
+              <span class="space-name">Space: {{ spaceService.space().code }}</span>
+              <span class="space-badge">Manage</span>
+            </button>
+            <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Personal Workspace">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span>Personal</span>
+            </button>
+          </div>
+        } @else {
+          <div class="space-pill-group personal-active">
+            <div class="space-pill personal" title="You are currently in Personal Workspace mode">
+              <span class="personal-dot"></span>
+              <span class="space-name">Personal Workspace</span>
+            </div>
+            <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" [title]="'Return to ' + spaceService.space().name + ' (' + spaceService.space().code + ')'">
+              <span>↩ Return to Space</span>
+            </button>
+          </div>
+        }
+
+        <!-- Live Firebase Cloud Status Pill -->
+        <div class="cloud-pill" (click)="goToSettings()" [class.cloud-connected]="realtyService.isCloudConnected() || firebaseService.isConnected()" [title]="(realtyService.isCloudConnected() || firebaseService.isConnected()) ? 'Directly synced to Firebase Cloud. Zero local storage.' : 'Connecting to Firebase Cloud...'">
+          <span class="cloud-pulse-dot"></span>
+          <span class="cloud-label">{{ (realtyService.isCloudConnected() || firebaseService.isConnected()) ? 'Cloud Live' : 'Connecting Cloud' }}</span>
+        </div>
       </div>
 
       <div class="nav-right">
@@ -337,14 +362,33 @@ import { AuthService } from '../../services/auth.service';
     }
 
     /* Space & Invite Pill */
-    .space-pill {
+    .space-pill-group {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 4px;
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-full);
-      padding: 4px 11px;
+      padding: 2px 4px 2px 2px;
+      transition: all 0.2s ease;
+    }
+
+    .space-pill-group:hover {
+      border-color: rgba(203, 168, 107, 0.4);
+    }
+
+    .space-pill-group.personal-active {
+      border-color: rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .space-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: transparent;
+      border: none;
+      padding: 3px 8px;
       font-size: 0.73rem;
       font-weight: 600;
       color: var(--text-secondary);
@@ -353,8 +397,6 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .space-pill:hover {
-      border-color: var(--gold);
-      background: var(--gold-surface);
       color: var(--gold);
     }
 
@@ -369,6 +411,90 @@ import { AuthService } from '../../services/auth.service';
       font-weight: 700;
       padding: 1px 7px;
       border-radius: var(--radius-full);
+    }
+
+    .space-mode-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      background: rgba(203, 168, 107, 0.12);
+      color: var(--gold);
+      font-size: 0.67rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .space-mode-btn:hover {
+      background: rgba(203, 168, 107, 0.25);
+      border-color: var(--gold);
+      transform: translateY(-1px);
+    }
+
+    .space-mode-btn.return-btn {
+      background: linear-gradient(135deg, #d4af37, #b8860b);
+      color: #0b0f17;
+      font-weight: 800;
+      border: none;
+      box-shadow: 0 2px 8px rgba(203, 168, 107, 0.3);
+    }
+
+    .space-mode-btn.return-btn:hover {
+      background: linear-gradient(135deg, #dfbc4d, #c59317);
+      color: #000;
+      box-shadow: 0 4px 12px rgba(203, 168, 107, 0.5);
+    }
+
+    .personal-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #3b82f6;
+      box-shadow: 0 0 6px #3b82f6;
+    }
+
+    /* Cloud Status Pill */
+    .cloud-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: var(--radius-full);
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #059669;
+      letter-spacing: 0.01em;
+      transition: all 0.2s ease;
+    }
+
+    .cloud-pill:not(.cloud-connected) {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.25);
+      color: #d97706;
+    }
+
+    .cloud-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 6px #10b981;
+      animation: cloud-pulse 2s infinite ease-in-out;
+    }
+
+    .cloud-pill:not(.cloud-connected) .cloud-pulse-dot {
+      background: #f59e0b;
+      box-shadow: 0 0 6px #f59e0b;
+    }
+
+    @keyframes cloud-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
     }
 
     .btn-google-nav {
@@ -823,8 +949,15 @@ import { AuthService } from '../../services/auth.service';
       }
 
       .space-pill .space-name,
-      .space-pill .space-badge {
+      .space-pill .space-badge,
+      .cloud-pill .cloud-label {
         display: none !important;
+      }
+
+      .cloud-pill {
+        padding: 6px !important;
+        min-width: 28px !important;
+        justify-content: center !important;
       }
 
       .nav-right {
@@ -896,6 +1029,7 @@ export class NavbarComponent {
   public realtyService = inject(RealtyService);
   public spaceService = inject(SpaceService);
   public authService = inject(AuthService);
+  public firebaseService = inject(FirebaseService);
 
   public openPropertyModal = output<void>();
   public openLeadModal = output<void>();
@@ -943,9 +1077,16 @@ export class NavbarComponent {
     this.showAgentMenu.set(false);
   }
 
-  public openSpaceSettings(): void {
-    this.spaceService.showSpaceSettingsModal.set(true);
+  public goToSettings(): void {
+    this.realtyService.activeView.set('settings');
     this.showAgentMenu.set(false);
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+
+  public openSpaceSettings(): void {
+    this.goToSettings();
   }
 
   public formatJoinedVia(via: string): string {
