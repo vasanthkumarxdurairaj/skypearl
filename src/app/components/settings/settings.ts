@@ -296,7 +296,7 @@ import { FirebaseService } from '../../services/firebase.service';
               </div>
               <div class="identity-row">
                 <span class="label">Primary Owner</span>
-                <span class="val">{{ spaceService.space().ownerName || 'Dinesh Murugan' }} ({{ spaceService.space().ownerEmail || 'dineshmurugan518@gmail.com' }})</span>
+                <span class="val">{{ spaceService.space().ownerName || 'Agency Owner' }} @if (spaceService.space().ownerEmail) { ({{ spaceService.space().ownerEmail }}) }</span>
               </div>
               <div class="identity-row">
                 <span class="label">Your Role</span>

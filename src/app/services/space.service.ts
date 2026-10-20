@@ -83,7 +83,6 @@ export class SpaceService {
     const ownerEmail = (currentSpace.ownerEmail || '').toLowerCase();
     return (
       (!!user.email && userEmail === ownerEmail) ||
-      userEmail.startsWith('dineshmurugan518') ||
       (!!user.uid && user.uid === currentSpace.ownerUid) ||
       currentSpace.members.some(m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.role === 'owner')
     );
@@ -274,7 +273,6 @@ export class SpaceService {
     if (
       (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
       (currentSpace.ownerUid && currentSpace.ownerUid === user.uid) ||
-      userEmail.startsWith('dineshmurugan518') ||
       currentSpace.members.some(m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.role === 'owner')
     ) {
       const isAlreadyRegisteredOwner = currentSpace.members.some(
@@ -283,7 +281,7 @@ export class SpaceService {
       if (!isAlreadyRegisteredOwner && allowRemoteWrite && !this.isSyncingFromRemote) {
         this.registerOrUpdateMember({
           id: user.uid,
-          name: user.displayName || currentSpace.ownerName || 'Dinesh Murugan',
+          name: user.displayName || currentSpace.ownerName || userEmail.split('@')[0] || 'Space Owner',
           email: user.email,
           photoURL: user.photoURL,
           role: 'owner',
@@ -342,7 +340,7 @@ export class SpaceService {
     const user = this.authService.currentUser();
     if (!user) return;
     const userEmail = (user.email || '').toLowerCase();
-    const isOwnerAccount = userEmail.startsWith('dineshmurugan518') || this.isOwner();
+    const isOwnerAccount = this.isOwner();
     const role: 'owner' | 'admin' | 'agent' = isOwnerAccount ? 'owner' : preferredRole;
 
     const newMember: SpaceMember = {
