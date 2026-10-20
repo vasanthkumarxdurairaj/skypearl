@@ -58,7 +58,7 @@ import { AuthService } from '../../services/auth.service';
           </div>
         }
 
-        <!-- STATE 2: Signed In with Google - Instant Entry -->
+        <!-- STATE 2: Signed In with Google - Instant Entry & Space Code Control -->
         @if (authService.currentUser(); as user) {
           <div class="welcome-gate-state">
             <!-- User Verified Profile Header -->
@@ -71,15 +71,20 @@ import { AuthService } from '../../services/auth.service';
               <div class="welcome-user-details">
                 <span class="welcome-name">{{ user.displayName || 'Agent' }}</span>
                 <span class="welcome-email">{{ user.email }}</span>
+                <span class="badge-verified">✓ Google Authenticated</span>
               </div>
             </div>
 
-            <!-- Clean Agency Heading -->
+            <!-- Active Agency Card with Prominent Space Code -->
             <div class="welcome-info-card">
               <h4 class="welcome-heading">{{ spaceService.space().name }}</h4>
-              <p class="welcome-subtext">
-                Chennai property inventory, buyers CRM & brokerage deals.
-              </p>
+              <div class="space-code-badge-wrap">
+                <span class="space-code-label">Space Code:</span>
+                <span class="space-code-val">{{ spaceService.space().code }}</span>
+                <button type="button" class="btn-copy-code" (click)="copyActiveSpaceCode()" title="Copy space code">
+                  {{ codeCopied() ? '✓ Copied' : 'Copy' }}
+                </button>
+              </div>
             </div>
 
             <!-- Primary 1-Click Action -->
@@ -94,6 +99,68 @@ import { AuthService } from '../../services/auth.service';
                   <polyline points="12 5 19 12 12 19"></polyline>
                 </svg>
               </button>
+            </div>
+
+            <!-- Space Code Options: Join Code or Create New Space -->
+            <div class="space-code-actions-box">
+              @if (!showCodeInput() && !showCreateSpace()) {
+                <div class="options-nav-row">
+                  <button type="button" class="btn-sub-nav" (click)="showCodeInput.set(true)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    <span>Enter Space Code</span>
+                  </button>
+                  <span class="nav-sep">•</span>
+                  <button type="button" class="btn-sub-nav gold" (click)="showCreateSpace.set(true)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Create New Space</span>
+                  </button>
+                </div>
+              }
+
+              <!-- Join by Space Code Form -->
+              @if (showCodeInput()) {
+                <div class="sub-entry-form">
+                  <div class="sub-entry-head">
+                    <span>Enter Space Code (e.g. SKP-CHN-4829)</span>
+                    <button type="button" class="btn-close-sub" (click)="showCodeInput.set(false)">✕</button>
+                  </div>
+                  <div class="entry-flex-row">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="spaceCodeInput" 
+                      placeholder="SKP-..." 
+                      class="form-input mono flex-1" 
+                      (keyup.enter)="submitJoinCode()" />
+                    <button type="button" class="btn btn-gold btn-sm" (click)="submitJoinCode()" [disabled]="!spaceCodeInput.trim()">
+                      Join
+                    </button>
+                  </div>
+                  @if (joinError()) {
+                    <p class="error-msg-sub">{{ joinError() }}</p>
+                  }
+                </div>
+              }
+
+              <!-- Create New Agency Space Form -->
+              @if (showCreateSpace()) {
+                <div class="sub-entry-form">
+                  <div class="sub-entry-head">
+                    <span>Create Your Agency Space</span>
+                    <button type="button" class="btn-close-sub" (click)="showCreateSpace.set(false)">✕</button>
+                  </div>
+                  <div class="entry-flex-row">
+                    <input 
+                      type="text" 
+                      [(ngModel)]="newSpaceName" 
+                      placeholder="Space Name (e.g. Anna Nagar Realty)" 
+                      class="form-input flex-1" 
+                      (keyup.enter)="submitCreateSpace()" />
+                    <button type="button" class="btn btn-gold btn-sm" (click)="submitCreateSpace()" [disabled]="!newSpaceName.trim()">
+                      Create & Enter
+                    </button>
+                  </div>
+                </div>
+              }
             </div>
 
             <!-- Personal Workspace Option -->
@@ -392,6 +459,131 @@ import { AuthService } from '../../services/auth.service';
       margin: 8px 0 0;
     }
 
+    /* Space Code Badge */
+    .space-code-badge-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+      background: rgba(203, 168, 107, 0.12);
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      border-radius: 999px;
+      padding: 4px 12px;
+    }
+
+    .space-code-label {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+
+    .space-code-val {
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--gold);
+      font-size: 0.88rem;
+      letter-spacing: 0.06em;
+    }
+
+    .btn-copy-code {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(203, 168, 107, 0.25);
+      color: var(--text-main);
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-copy-code:hover {
+      background: var(--gold);
+      color: #1a150b;
+    }
+
+    /* Space Code Actions */
+    .space-code-actions-box {
+      margin-top: 14px;
+    }
+
+    .options-nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 4px 0;
+    }
+
+    .btn-sub-nav {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: color 0.15s ease;
+    }
+
+    .btn-sub-nav:hover {
+      color: var(--text-main);
+    }
+
+    .btn-sub-nav.gold {
+      color: var(--gold);
+    }
+
+    .btn-sub-nav.gold:hover {
+      filter: brightness(1.2);
+    }
+
+    .nav-sep {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .sub-entry-form {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 12px 14px;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .sub-entry-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .btn-close-sub {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .entry-flex-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .error-msg-sub {
+      margin: 6px 0 0;
+      font-size: 0.74rem;
+      color: #f87171;
+    }
+
     .signout-row {
       text-align: center;
       margin-top: 20px;
@@ -484,6 +676,38 @@ export class SpaceGateModalComponent {
   public authService = inject(AuthService);
 
   public errorMessage = signal<string | null>(null);
+  public showCodeInput = signal<boolean>(false);
+  public showCreateSpace = signal<boolean>(false);
+  public spaceCodeInput = '';
+  public newSpaceName = '';
+  public joinError = signal<string | null>(null);
+  public codeCopied = signal<boolean>(false);
+
+  public copyActiveSpaceCode(): void {
+    const code = this.spaceService.space().code || 'SKP-CHN-4829';
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(code).then(() => {
+        this.codeCopied.set(true);
+        setTimeout(() => this.codeCopied.set(false), 2000);
+      });
+    }
+  }
+
+  public async submitJoinCode(): Promise<void> {
+    const code = this.spaceCodeInput.trim().toUpperCase();
+    if (!code) return;
+    this.joinError.set(null);
+    const success = await this.spaceService.joinSpaceByCode(code);
+    if (!success) {
+      this.joinError.set(`Space code "${code}" could not be verified.`);
+    }
+  }
+
+  public submitCreateSpace(): void {
+    const name = this.newSpaceName.trim();
+    if (!name) return;
+    this.spaceService.createNewSpace(name);
+  }
 
   public async loginWithGoogle(): Promise<void> {
     this.errorMessage.set(null);

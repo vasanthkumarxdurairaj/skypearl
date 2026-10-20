@@ -295,6 +295,10 @@ import { FirebaseService } from '../../services/firebase.service';
                 <span class="val font-semibold">{{ spaceService.space().name }}</span>
               </div>
               <div class="identity-row">
+                <span class="label">Space Code</span>
+                <span class="val font-mono" style="font-weight: 700; color: var(--gold); letter-spacing: 0.06em;">{{ spaceService.space().code }}</span>
+              </div>
+              <div class="identity-row">
                 <span class="label">Primary Owner</span>
                 <span class="val">{{ spaceService.space().ownerName || 'Agency Owner' }} @if (spaceService.space().ownerEmail) { ({{ spaceService.space().ownerEmail }}) }</span>
               </div>
@@ -1692,10 +1696,10 @@ service cloud.firestore {
     }
   }
 
-  public joinByCode(): void {
+  public async joinByCode(): Promise<void> {
     const code = this.spaceCodeToJoin.trim();
     if (!code) return;
-    const success = this.spaceService.joinSpaceByCode(code);
+    const success = await this.spaceService.joinSpaceByCode(code);
     if (success) {
       this.realtyService.notify('Successfully joined space!', 'success');
       this.spaceCodeToJoin = '';

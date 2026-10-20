@@ -147,13 +147,22 @@ import { AuthService } from '../../services/auth.service';
             </div>
           }
 
-          <!-- SHAREABLE DIRECT INVITE LINK -->
+          <!-- SHAREABLE SPACE CODE & DIRECT INVITE LINK -->
           <div class="section-card">
             <div class="section-header">
-              <span class="section-title">Invite Team Agents & Brokers</span>
-              <span class="badge-pill">WhatsApp & Direct Link</span>
+              <span class="section-title">Space Code & Direct Join Link</span>
+              <span class="badge-pill">Space Code</span>
             </div>
-            <p class="section-desc">Share an invite directly on WhatsApp or copy your team join link. When agents open the link, they enter directly.</p>
+            <div class="space-code-display-box" style="display: flex; align-items: center; justify-content: space-between; background: rgba(203, 168, 107, 0.1); border: 1px dashed rgba(203, 168, 107, 0.4); border-radius: 8px; padding: 10px 14px; margin-bottom: 12px;">
+              <div>
+                <span style="font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--gold); display: block; font-weight: 700;">Agency Space Code</span>
+                <span style="font-family: monospace; font-size: 1.15rem; font-weight: 800; color: var(--text-main); letter-spacing: 0.08em;">{{ spaceService.space().code }}</span>
+              </div>
+              <button type="button" class="btn btn-xs btn-outline-subtle" (click)="copySpaceCode()">
+                {{ codeCopied() ? '✓ Copied' : 'Copy Code' }}
+              </button>
+            </div>
+            <p class="section-desc">Share an invite directly on WhatsApp or copy your team join link with code. When agents open the link, they enter directly.</p>
             <div class="modal-invite-actions">
               <button type="button" class="btn btn-whatsapp btn-sm" (click)="shareOnWhatsApp()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
@@ -914,6 +923,7 @@ export class SpaceSettingsModalComponent {
 
   public newInviteEmail = '';
   public copied = signal<boolean>(false);
+  public codeCopied = signal<boolean>(false);
 
   public inviteLink(): string {
     return this.spaceService.getInviteLink();
@@ -923,6 +933,13 @@ export class SpaceSettingsModalComponent {
     navigator.clipboard.writeText(this.inviteLink());
     this.copied.set(true);
     setTimeout(() => this.copied.set(false), 2500);
+  }
+
+  public copySpaceCode(): void {
+    const code = this.spaceService.space().code || 'SKP-CHN-4829';
+    navigator.clipboard.writeText(code);
+    this.codeCopied.set(true);
+    setTimeout(() => this.codeCopied.set(false), 2500);
   }
 
   public shareOnWhatsApp(): void {
