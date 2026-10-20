@@ -48,10 +48,15 @@ export class RealtyService {
   public readonly notification = signal<{ message: string; type: 'success' | 'info' | 'error' } | null>(null);
 
   // Cloud Sync & Connection State (Firebase Firestore)
-  public readonly isCloudConnected = signal<boolean>(true);
+  public readonly isCloudConnected = signal<boolean>(false);
   public readonly isCloudLoading = signal<boolean>(false);
   public readonly lastCloudSync = signal<number | null>(null);
   public readonly cloudSyncError = signal<string | null>(null);
+
+  public readonly isPermissionError = computed<boolean>(() => {
+    const err = (this.cloudSyncError() || '').toLowerCase();
+    return err.includes('permission') || err.includes('insufficient');
+  });
 
   private unsubProperties?: () => void;
   private unsubLeads?: () => void;
@@ -255,10 +260,12 @@ export class RealtyService {
       }, err => {
         console.warn('Firestore properties sync notice:', err.message);
         this.cloudSyncError.set(err.message);
+        this.isCloudConnected.set(false);
         this.isCloudLoading.set(false);
       });
     } catch (e: any) {
       console.warn('Firestore properties setup notice:', e);
+      this.isCloudConnected.set(false);
       this.isCloudLoading.set(false);
     }
 
@@ -281,9 +288,11 @@ export class RealtyService {
       }, err => {
         console.warn('Firestore leads sync notice:', err.message);
         this.cloudSyncError.set(err.message);
+        this.isCloudConnected.set(false);
       });
     } catch (e: any) {
       console.warn('Firestore leads setup notice:', e);
+      this.isCloudConnected.set(false);
     }
 
     // 3. Site Visits Listener (Direct Cloud Sync)
@@ -305,9 +314,11 @@ export class RealtyService {
       }, err => {
         console.warn('Firestore site visits sync notice:', err.message);
         this.cloudSyncError.set(err.message);
+        this.isCloudConnected.set(false);
       });
     } catch (e: any) {
       console.warn('Firestore visits setup notice:', e);
+      this.isCloudConnected.set(false);
     }
 
     // 4. Team Custom Locations Sync Listener (Direct Cloud Sync)

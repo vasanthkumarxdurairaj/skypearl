@@ -61,9 +61,20 @@ import { FirebaseService } from '../../services/firebase.service';
         }
 
         <!-- Live Firebase Cloud Status Pill -->
-        <div class="cloud-pill" (click)="goToSettings()" [class.cloud-connected]="realtyService.isCloudConnected() || firebaseService.isConnected()" [title]="(realtyService.isCloudConnected() || firebaseService.isConnected()) ? 'Directly synced to Firebase Cloud. Zero local storage.' : 'Connecting to Firebase Cloud...'">
+        <div class="cloud-pill" (click)="goToSettings()" 
+             [class.cloud-connected]="realtyService.isCloudConnected() && !realtyService.isPermissionError()" 
+             [class.cloud-error]="realtyService.isPermissionError()"
+             [title]="realtyService.isPermissionError() ? 'Firestore Security Rules are blocking access. Click to view quick fix.' : (realtyService.isCloudConnected() ? 'Directly synced to Firebase Cloud. Zero local storage.' : 'Connecting to Firebase Cloud...')">
           <span class="cloud-pulse-dot"></span>
-          <span class="cloud-label">{{ (realtyService.isCloudConnected() || firebaseService.isConnected()) ? 'Cloud Live' : 'Connecting Cloud' }}</span>
+          <span class="cloud-label">
+            @if (realtyService.isPermissionError()) {
+              Rules Action Needed
+            } @else if (realtyService.isCloudConnected()) {
+              Cloud Live
+            } @else {
+              Connecting Cloud
+            }
+          </span>
         </div>
       </div>
 
@@ -490,6 +501,18 @@ import { FirebaseService } from '../../services/firebase.service';
     .cloud-pill:not(.cloud-connected) .cloud-pulse-dot {
       background: #f59e0b;
       box-shadow: 0 0 6px #f59e0b;
+    }
+
+    .cloud-pill.cloud-error {
+      background: rgba(239, 68, 68, 0.12) !important;
+      border-color: rgba(239, 68, 68, 0.4) !important;
+      color: #ef4444 !important;
+      cursor: pointer;
+    }
+
+    .cloud-pill.cloud-error .cloud-pulse-dot {
+      background: #ef4444 !important;
+      box-shadow: 0 0 6px #ef4444 !important;
     }
 
     @keyframes cloud-pulse {

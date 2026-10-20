@@ -454,6 +454,66 @@ import { FirebaseService } from '../../services/firebase.service';
               </span>
             </div>
 
+            <!-- Firestore Security Rules Card -->
+            <div class="firestore-rules-guide-card glass-panel" [class.rules-warning]="realtyService.isPermissionError()">
+              <div class="rules-guide-header">
+                <div class="rules-guide-title">
+                  <span class="rules-indicator-dot" [class.dot-error]="realtyService.isPermissionError()" [class.dot-success]="realtyService.isCloudConnected() && !realtyService.isPermissionError()"></span>
+                  <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700;">Cloud Firestore Security Rules Status</h4>
+                </div>
+                <span class="badge" [ngClass]="realtyService.isPermissionError() ? 'badge-danger' : (realtyService.isCloudConnected() ? 'badge-success' : 'badge-warn')">
+                  {{ realtyService.isPermissionError() ? 'RULES ACTION REQUIRED' : (realtyService.isCloudConnected() ? 'PERMISSIONS ACTIVE' : 'CHECKING RULES') }}
+                </span>
+              </div>
+
+              <div class="rules-guide-body mt-2">
+                @if (realtyService.isPermissionError()) {
+                  <div class="rules-error-banner mb-3">
+                    <strong>⚠️ Database in Locked Mode:</strong>
+                    <span>Your Cloud Firestore database was created with locked rules (<code>allow read, write: if false;</code>). Firebase is rejecting client read and write attempts.</span>
+                  </div>
+                }
+
+                <p class="rules-desc" style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+                  To allow this web app to store, read, and synchronize real estate properties, client leads, and team spaces across all browsers, your Firestore database requires open or authenticated read/write rules.
+                </p>
+
+                <div class="rules-steps-list">
+                  <div class="rule-step">
+                    <span class="step-num">1</span>
+                    <span>In your Firebase Console, click the <strong>Rules</strong> tab (shown right next to Data).</span>
+                  </div>
+                  <div class="rule-step">
+                    <span class="step-num">2</span>
+                    <span>Paste this rule into the rules editor:</span>
+                  </div>
+                </div>
+
+                <div class="code-snippet-box">
+                  <pre><code>{{ firestoreRulesSnippet }}</code></pre>
+                  <button type="button" class="btn btn-xs btn-copy-rules" (click)="copyFirestoreRules()">
+                    {{ copiedRules() ? '✓ Copied!' : 'Copy Rules' }}
+                  </button>
+                </div>
+
+                <div class="rule-step mt-2">
+                  <span class="step-num">3</span>
+                  <span>Click the blue <strong>"Publish"</strong> button in Firebase Console. Once published, click "Retry Sync" below.</span>
+                </div>
+
+                <div class="rules-action-buttons mt-3">
+                  <button type="button" class="btn btn-primary btn-sm" (click)="openFirebaseRules()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                    <span>Open Firebase Console Rules Tab ↗</span>
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-sm" (click)="retryCloudConnection()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l6 5.67"/></svg>
+                    <span>Retry Sync</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
             <div class="cloud-telemetry-grid">
               <div class="telemetry-card">
                 <span class="t-label">Firebase Project ID</span>
@@ -1189,6 +1249,134 @@ import { FirebaseService } from '../../services/firebase.service';
       border-radius: var(--radius-full);
     }
 
+    /* Firestore Rules Guide Card */
+    .firestore-rules-guide-card {
+      padding: 20px 24px;
+      border-radius: var(--radius-md);
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-subtle);
+      margin-bottom: 22px;
+      transition: all 0.2s ease;
+    }
+
+    .firestore-rules-guide-card.rules-warning {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.05));
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+
+    .rules-guide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .rules-guide-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .rules-indicator-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #94a3b8;
+    }
+
+    .rules-indicator-dot.dot-error {
+      background: #ef4444;
+      box-shadow: 0 0 8px #ef4444;
+    }
+
+    .rules-indicator-dot.dot-success {
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+    }
+
+    .rules-error-banner {
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: var(--radius-sm);
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: #fca5a5;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .rules-steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .rule-step {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.84rem;
+      color: var(--text-main);
+    }
+
+    .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #000;
+      font-size: 0.72rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .code-snippet-box {
+      position: relative;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: var(--radius-sm);
+      padding: 12px 14px;
+      margin: 8px 0;
+    }
+
+    .code-snippet-box pre {
+      margin: 0;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      color: #38bdf8;
+      overflow-x: auto;
+      line-height: 1.4;
+    }
+
+    .btn-copy-rules {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 0.72rem;
+      cursor: pointer;
+    }
+
+    .btn-copy-rules:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .rules-action-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
     /* Telemetry grid */
     .cloud-telemetry-grid {
       display: grid;
@@ -1361,7 +1549,36 @@ export class SettingsComponent {
   public newLocalityName = '';
   public copiedLink = signal<boolean>(false);
   public copiedCode = signal<boolean>(false);
+  public copiedRules = signal<boolean>(false);
   public spaceCodeToJoin = '';
+
+  public readonly firestoreRulesSnippet = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`;
+
+  public copyFirestoreRules(): void {
+    if (navigator && navigator.clipboard) {
+      navigator.clipboard.writeText(this.firestoreRulesSnippet).then(() => {
+        this.copiedRules.set(true);
+        this.realtyService.notify('Firestore Security Rules copied to clipboard!', 'success');
+        setTimeout(() => this.copiedRules.set(false), 3000);
+      });
+    }
+  }
+
+  public openFirebaseRules(): void {
+    window.open('https://console.firebase.google.com/project/skypearl-217d7/firestore/databases/-default-/rules', '_blank');
+  }
+
+  public retryCloudConnection(): void {
+    this.realtyService.setupFirestoreSync();
+    this.realtyService.notify('Retrying Firebase Firestore synchronization...', 'info');
+  }
 
   public inviteLink = computed(() => {
     return this.spaceService.getInviteLink();
