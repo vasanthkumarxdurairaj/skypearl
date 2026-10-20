@@ -1288,14 +1288,138 @@ import { FirebaseService } from '../../services/firebase.service';
     }
 
     @media (max-width: 768px) {
+      .settings-workspace {
+        padding: 0;
+      }
+
+      .settings-header {
+        padding: 16px 14px;
+        margin-bottom: 14px;
+      }
+
+      .settings-title {
+        font-size: 1.22rem;
+        line-height: 1.3;
+        margin-bottom: 6px;
+      }
+
+      .settings-desc {
+        font-size: 0.78rem;
+        line-height: 1.45;
+        margin-bottom: 14px;
+      }
+
+      .settings-subtabs {
+        gap: 2px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+      }
+
+      .settings-subtabs::-webkit-scrollbar {
+        display: none;
+      }
+
+      .subtab-btn {
+        padding: 9px 12px;
+        font-size: 0.78rem;
+        gap: 6px;
+      }
+
       .settings-grid {
         grid-template-columns: 1fr;
+        gap: 14px;
       }
+
+      .card {
+        padding: 16px 14px;
+      }
+
+      .card-title {
+        font-size: 1.05rem;
+      }
+
+      .card-subtitle {
+        font-size: 0.74rem;
+        line-height: 1.4;
+      }
+
+      .invite-hero-actions {
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 16px;
+      }
+
+      .btn-hero {
+        width: 100%;
+        min-width: 100%;
+        font-size: 0.88rem;
+        padding: 12px 16px;
+      }
+
+      .copy-input-row,
+      .email-input-row,
+      .loc-input-row {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .copy-input-row .btn,
+      .email-input-row .btn,
+      .loc-input-row .btn {
+        width: 100%;
+        justify-content: center;
+        min-height: 40px;
+      }
+
+      .invite-link-row {
+        padding: 12px;
+        margin-bottom: 16px;
+      }
+
+      .invite-link-text {
+        font-size: 0.76rem;
+      }
+
+      .invite-link-hint {
+        font-size: 0.74rem;
+      }
+
+      .request-card {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+        padding: 12px;
+      }
+
+      .req-btns {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        width: 100%;
+      }
+
+      .req-btns .btn {
+        flex: 1 1 calc(50% - 4px);
+        justify-content: center;
+        min-height: 36px;
+      }
+
       .form-row {
         flex-direction: column;
       }
+
       .checkbox-label {
         margin-top: 4px;
+      }
+
+      .export-cards-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+
+      .export-box {
+        flex-direction: column;
+        padding: 14px;
       }
     }
   `]

@@ -140,6 +140,31 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-main);
   font-weight: 700;
   letter-spacing: -0.025em;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+p {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: break-word;
+}
+
+span, label, strong, b, em, small {
+  overflow-wrap: break-word;
+}
+
+/* Universal Mobile Typography Auto-Adjust */
+@media (max-width: 768px) {
+  html, body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  p, span, label, strong, b, em, small, h1, h2, h3, h4, h5, h6 {
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
 }
 
 /* Glassmorphism / Surface Panel */
