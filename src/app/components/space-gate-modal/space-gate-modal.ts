@@ -243,8 +243,13 @@ import { AuthService } from '../../services/auth.service';
             </div>
 
             <div class="signout-row">
-              <button type="button" class="btn-link" (click)="authService.logout()">
-                ← Sign in with a different account
+              <button type="button" class="btn-signout-gate" (click)="authService.logout()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Sign out / Switch Account</span>
               </button>
             </div>
           </div>
@@ -637,8 +642,8 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .btn-copy-code {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(203, 168, 107, 0.25);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
       color: var(--text-main);
       font-size: 0.68rem;
       font-weight: 600;
@@ -698,9 +703,9 @@ import { AuthService } from '../../services/auth.service';
     }
 
     .sub-entry-form {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 12px;
       padding: 12px 14px;
       animation: fadeIn 0.2s ease;
     }
@@ -736,20 +741,32 @@ import { AuthService } from '../../services/auth.service';
 
     .signout-row {
       text-align: center;
-      margin-top: 20px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border-subtle);
     }
 
-    .btn-link {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
+    .btn-signout-gate {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      padding: 7px 16px;
+      color: var(--text-secondary);
       font-size: 0.78rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: all 0.2s ease;
     }
 
-    .btn-link:hover {
-      color: var(--gold);
-      text-decoration: underline;
+    .btn-signout-gate:hover {
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #ef4444;
+      transform: translateY(-1px);
     }
 
     .error-banner {

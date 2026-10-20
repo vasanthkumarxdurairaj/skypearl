@@ -28,6 +28,7 @@ body.light-theme {
   --primary-glow: rgba(16, 27, 42, 0.12);
 
   --gold: #b28b4c;
+  --gold-accent: #b28b4c;
   --gold-hover: #987236;
   --gold-surface: #fbf6ec;
   --gold-border: #ebd7af;
@@ -82,6 +83,7 @@ body.dark-theme {
   --primary-glow: rgba(203, 168, 107, 0.28);
 
   --gold: #cba86b;
+  --gold-accent: #cba86b;
   --gold-hover: #dfbc7e;
   --gold-surface: rgba(203, 168, 107, 0.12);
   --gold-border: rgba(203, 168, 107, 0.35);
@@ -244,6 +246,25 @@ body.dark-theme .btn-primary {
   color: #be123c;
 }
 
+.btn-outline-danger {
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-outline-danger:hover {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: #ef4444;
+  color: #f87171;
+  transform: translateY(-1px);
+}
+
 .btn-outline {
   background: transparent;
   color: var(--text-secondary);
@@ -336,7 +357,8 @@ body.dark-theme .badge-viewer, body.dark-theme .badge-agent {
   color: var(--text-muted);
 }
 
-.form-control {
+.form-control,
+.form-input {
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -348,7 +370,8 @@ body.dark-theme .badge-viewer, body.dark-theme .badge-agent {
   outline: none;
 }
 
-.form-control:focus {
+.form-control:focus,
+.form-input:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px var(--border-focus);
 }

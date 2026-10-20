@@ -51,7 +51,14 @@ import { AuthService } from '../../services/auth.service';
               </div>
               <div class="user-email">{{ authService.currentUser()?.email }}</div>
             </div>
-            <button class="btn btn-xs btn-outline-danger btn-signout-top" (click)="logout()">Sign Out</button>
+            <button class="btn btn-xs btn-outline-danger btn-signout-top" (click)="logout()" title="Sign out of Google account">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Sign Out</span>
+            </button>
           </div>
 
           <!-- Space Ownership Info (if viewing user is not owner) -->
@@ -483,6 +490,15 @@ import { AuthService } from '../../services/auth.service';
 
     .btn-signout-top {
       margin-left: auto;
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.74rem;
+      font-weight: 600;
+      transition: all 0.2s ease;
     }
 
     .owner-info-notice {
