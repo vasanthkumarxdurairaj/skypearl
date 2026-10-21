@@ -904,10 +904,10 @@ export class SpaceService {
 
   public getInviteLink(): string {
     const code = this.space().code || 'SKP-CHN-4829';
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.location?.origin) {
       return `${window.location.origin}/?join=true&code=${encodeURIComponent(code)}`;
     }
-    return `https://skypearl.netlify.app/?join=true&code=${encodeURIComponent(code)}`;
+    return `/?join=true&code=${encodeURIComponent(code)}`;
   }
 
   public getWhatsAppInviteUrl(): string {
