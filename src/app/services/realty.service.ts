@@ -244,7 +244,6 @@ export class RealtyService {
     return doc(db, 'spaces', spaceKey, subCol, id);
   }
 
-  private hasCheckedMigration = false;
   private currentSubscribedSpaceKey = '';
 
   /**
@@ -292,12 +291,7 @@ export class RealtyService {
         });
         remoteProps.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
 
-        // One-time migration for legacy HQ space (SKP-CHN-4829)
-        if (spaceKey === 'SKP-CHN-4829' && remoteProps.length === 0 && !this.hasCheckedMigration) {
-          this.migrateLegacyRootData(spaceKey);
-        } else {
-          this.properties.set(remoteProps);
-        }
+        this.properties.set(remoteProps);
         this.isCloudConnected.set(true);
         this.isCloudLoading.set(false);
         this.lastCloudSync.set(Date.now());
@@ -384,62 +378,7 @@ export class RealtyService {
     }
   }
 
-  private async migrateLegacyRootData(spaceKey: string): Promise<void> {
-    if (this.hasCheckedMigration) return;
-    this.hasCheckedMigration = true;
-    const db = this.firebaseService.firestore;
-    if (!db) return;
 
-    try {
-      const { getDocs } = await import('firebase/firestore');
-
-      // 1. Check legacy root properties
-      const rootPropSnap = await getDocs(collection(db, 'properties'));
-      if (!rootPropSnap.empty) {
-        console.log(`Migrating ${rootPropSnap.size} legacy properties into space ${spaceKey}...`);
-        for (const docSnap of rootPropSnap.docs) {
-          const data = docSnap.data();
-          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
-            await setDoc(doc(db, 'spaces', spaceKey, 'properties', docSnap.id), {
-              ...data,
-              spaceCode: spaceKey
-            }, { merge: true });
-          }
-        }
-      }
-
-      // 2. Check legacy root leads
-      const rootLeadSnap = await getDocs(collection(db, 'leads'));
-      if (!rootLeadSnap.empty) {
-        console.log(`Migrating ${rootLeadSnap.size} legacy leads into space ${spaceKey}...`);
-        for (const docSnap of rootLeadSnap.docs) {
-          const data = docSnap.data();
-          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
-            await setDoc(doc(db, 'spaces', spaceKey, 'leads', docSnap.id), {
-              ...data,
-              spaceCode: spaceKey
-            }, { merge: true });
-          }
-        }
-      }
-
-      // 3. Check legacy root siteVisits
-      const rootVisitSnap = await getDocs(collection(db, 'siteVisits'));
-      if (!rootVisitSnap.empty) {
-        for (const docSnap of rootVisitSnap.docs) {
-          const data = docSnap.data();
-          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
-            await setDoc(doc(db, 'spaces', spaceKey, 'siteVisits', docSnap.id), {
-              ...data,
-              spaceCode: spaceKey
-            }, { merge: true });
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Legacy root migration notice:', e);
-    }
-  }
 
   // Add new location directly to Cloud (Firebase Firestore)
   public async addLocation(name: string): Promise<boolean> {
