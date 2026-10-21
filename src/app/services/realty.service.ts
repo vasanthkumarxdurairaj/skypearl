@@ -125,13 +125,15 @@ export class RealtyService {
     this.initTheme();
     this.setupFirestoreSync();
 
-    // Dynamically react to Google login or Space unlock changes
+    // Dynamically react to Google login, Space code, or Space mode changes
     effect(() => {
       const googleUser = this.authService.currentUser();
       const isUnlocked = this.spaceService.isUnlocked();
+      const spaceCode = this.spaceService.space().code;
+      const spaceMode = this.spaceService.activeSpaceMode();
 
       untracked(() => {
-        // Automatically re-establish cloud listeners whenever user logs in or auth state changes
+        // Automatically re-establish cloud listeners whenever user logs in or active space changes
         this.setupFirestoreSync();
 
         if (googleUser && isUnlocked) {
@@ -220,8 +222,33 @@ export class RealtyService {
   }
 
   /**
-   * Direct Cloud Data Sync via Firebase Firestore.
-   * Firestore is the single authoritative source of truth. Zero localStorage data caching.
+   * Resolves the active space storage key (e.g. 'SKP-CHN-4829', 'SKP-VAZ-9414', or 'personal-{uid}')
+   */
+  public getActiveSpaceKey(): string {
+    if (this.spaceService.activeSpaceMode() === 'personal') {
+      const user = this.authService.currentUser();
+      return `personal-${user?.uid || 'solo'}`;
+    }
+    const currentCode = (this.spaceService.space().code || 'SKP-CHN-4829').trim().toUpperCase();
+    return currentCode || 'SKP-CHN-4829';
+  }
+
+  public getSpaceDoc(subCol: 'properties' | 'leads' | 'siteVisits' | 'settings', id: string) {
+    const db = this.firebaseService.firestore;
+    if (!db) return null;
+    const spaceKey = this.getActiveSpaceKey();
+    if (subCol === 'settings') {
+      return doc(db, 'spaces', spaceKey, 'settings', id);
+    }
+    return doc(db, 'spaces', spaceKey, subCol, id);
+  }
+
+  private hasCheckedMigration = false;
+  private currentSubscribedSpaceKey = '';
+
+  /**
+   * Direct Cloud Data Sync via Firebase Firestore with Space-Level Isolation.
+   * Every space (/spaces/{spaceKey}) maintains its own independent inventory, buyer leads, and visits.
    */
   public setupFirestoreSync(): void {
     if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) {
@@ -230,6 +257,15 @@ export class RealtyService {
       return;
     }
     const db = this.firebaseService.firestore;
+    const spaceKey = this.getActiveSpaceKey();
+
+    // If active space changed, reset in-memory datasets so no cross-space contamination occurs
+    if (this.currentSubscribedSpaceKey && this.currentSubscribedSpaceKey !== spaceKey) {
+      this.properties.set([]);
+      this.leads.set([]);
+      this.siteVisits.set([]);
+    }
+    this.currentSubscribedSpaceKey = spaceKey;
 
     // Immediately mark cloud as live since Firestore instance is initialized and active
     this.isCloudConnected.set(true);
@@ -241,20 +277,26 @@ export class RealtyService {
     if (this.unsubVisits) { this.unsubVisits(); this.unsubVisits = undefined; }
     if (this.unsubLocations) { this.unsubLocations(); this.unsubLocations = undefined; }
 
-    // 1. Properties Collection Listener (Direct Cloud Sync)
+    // 1. Properties Subcollection Listener: /spaces/{spaceKey}/properties
     try {
-      const propCol = collection(db, 'properties');
+      const propCol = collection(db, 'spaces', spaceKey, 'properties');
       this.unsubProperties = onSnapshot(propCol, snapshot => {
         const remoteProps: PropertyListing[] = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data() as PropertyListing;
           const propId = docSnap.id || data?.id || '';
           if (propId && !this.isLegacyMockId(propId)) {
-            remoteProps.push({ ...data, id: propId });
+            remoteProps.push({ ...data, id: propId, spaceCode: spaceKey });
           }
         });
         remoteProps.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-        this.properties.set(remoteProps);
+
+        // One-time migration for legacy HQ space (SKP-CHN-4829)
+        if (spaceKey === 'SKP-CHN-4829' && remoteProps.length === 0 && !this.hasCheckedMigration) {
+          this.migrateLegacyRootData(spaceKey);
+        } else {
+          this.properties.set(remoteProps);
+        }
         this.isCloudConnected.set(true);
         this.isCloudLoading.set(false);
         this.lastCloudSync.set(Date.now());
@@ -270,16 +312,16 @@ export class RealtyService {
       this.isCloudLoading.set(false);
     }
 
-    // 2. Leads Collection Listener (Direct Cloud Sync)
+    // 2. Leads Subcollection Listener: /spaces/{spaceKey}/leads
     try {
-      const leadCol = collection(db, 'leads');
+      const leadCol = collection(db, 'spaces', spaceKey, 'leads');
       this.unsubLeads = onSnapshot(leadCol, snapshot => {
         const remoteLeads: LeadCRM[] = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data() as LeadCRM;
           const leadId = docSnap.id || data?.id || '';
           if (leadId && !this.isLegacyMockId(leadId)) {
-            remoteLeads.push({ ...data, id: leadId });
+            remoteLeads.push({ ...data, id: leadId, spaceCode: spaceKey });
           }
         });
         remoteLeads.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
@@ -296,16 +338,16 @@ export class RealtyService {
       this.isCloudConnected.set(false);
     }
 
-    // 3. Site Visits Listener (Direct Cloud Sync)
+    // 3. Site Visits Subcollection Listener: /spaces/{spaceKey}/siteVisits
     try {
-      const visitCol = collection(db, 'siteVisits');
+      const visitCol = collection(db, 'spaces', spaceKey, 'siteVisits');
       this.unsubVisits = onSnapshot(visitCol, snapshot => {
         const remoteVisits: SiteVisit[] = [];
         snapshot.forEach(docSnap => {
           const data = docSnap.data() as SiteVisit;
           const visitId = docSnap.id || data?.id || '';
           if (visitId && !this.isLegacyMockId(visitId)) {
-            remoteVisits.push({ ...data, id: visitId });
+            remoteVisits.push({ ...data, id: visitId, spaceCode: spaceKey });
           }
         });
         remoteVisits.sort((a, b) => (b.scheduledTime || 0) - (a.scheduledTime || 0));
@@ -322,9 +364,9 @@ export class RealtyService {
       this.isCloudConnected.set(false);
     }
 
-    // 4. Team Custom Locations Sync Listener (Direct Cloud Sync)
+    // 4. Team Custom Locations Sync Listener: /spaces/{spaceKey}/settings/agencyLocations
     try {
-      const locDocRef = doc(db, 'settings', 'agencyLocations');
+      const locDocRef = doc(db, 'spaces', spaceKey, 'settings', 'agencyLocations');
       this.unsubLocations = onSnapshot(locDocRef, snap => {
         if (snap.exists()) {
           const data = snap.data();
@@ -338,6 +380,63 @@ export class RealtyService {
       });
     } catch (e: any) {
       console.warn('Firestore locations setup error:', e);
+    }
+  }
+
+  private async migrateLegacyRootData(spaceKey: string): Promise<void> {
+    if (this.hasCheckedMigration) return;
+    this.hasCheckedMigration = true;
+    const db = this.firebaseService.firestore;
+    if (!db) return;
+
+    try {
+      const { getDocs } = await import('firebase/firestore');
+
+      // 1. Check legacy root properties
+      const rootPropSnap = await getDocs(collection(db, 'properties'));
+      if (!rootPropSnap.empty) {
+        console.log(`Migrating ${rootPropSnap.size} legacy properties into space ${spaceKey}...`);
+        for (const docSnap of rootPropSnap.docs) {
+          const data = docSnap.data();
+          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
+            await setDoc(doc(db, 'spaces', spaceKey, 'properties', docSnap.id), {
+              ...data,
+              spaceCode: spaceKey
+            }, { merge: true });
+          }
+        }
+      }
+
+      // 2. Check legacy root leads
+      const rootLeadSnap = await getDocs(collection(db, 'leads'));
+      if (!rootLeadSnap.empty) {
+        console.log(`Migrating ${rootLeadSnap.size} legacy leads into space ${spaceKey}...`);
+        for (const docSnap of rootLeadSnap.docs) {
+          const data = docSnap.data();
+          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
+            await setDoc(doc(db, 'spaces', spaceKey, 'leads', docSnap.id), {
+              ...data,
+              spaceCode: spaceKey
+            }, { merge: true });
+          }
+        }
+      }
+
+      // 3. Check legacy root siteVisits
+      const rootVisitSnap = await getDocs(collection(db, 'siteVisits'));
+      if (!rootVisitSnap.empty) {
+        for (const docSnap of rootVisitSnap.docs) {
+          const data = docSnap.data();
+          if (docSnap.id && !this.isLegacyMockId(docSnap.id)) {
+            await setDoc(doc(db, 'spaces', spaceKey, 'siteVisits', docSnap.id), {
+              ...data,
+              spaceCode: spaceKey
+            }, { merge: true });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Legacy root migration notice:', e);
     }
   }
 
@@ -363,10 +462,12 @@ export class RealtyService {
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
         const db = this.firebaseService.firestore;
-        await setDoc(doc(db, 'settings', 'agencyLocations'), {
+        const spaceKey = this.getActiveSpaceKey();
+        await setDoc(doc(db, 'spaces', spaceKey, 'settings', 'agencyLocations'), {
           list: customOnly,
           updatedAt: Date.now(),
-          updatedBy: this.activeAgent().name
+          updatedBy: this.activeAgent().name,
+          spaceCode: spaceKey
         }, { merge: true });
         this.lastCloudSync.set(Date.now());
       } catch (err: any) {
@@ -380,7 +481,7 @@ export class RealtyService {
 
   // Clear all data (Clean Slate utility)
   public async clearAllData(): Promise<void> {
-    if (!confirm('Are you sure you want to permanently clear all listings, leads, and site visits? This cannot be undone.')) {
+    if (!confirm('Are you sure you want to permanently clear all listings, leads, and site visits in this workspace? This cannot be undone.')) {
       return;
     }
 
@@ -391,16 +492,17 @@ export class RealtyService {
     }
 
     try {
-      const propDeletes = this.properties().map(p => deleteDoc(doc(db, 'properties', p.id)));
-      const leadDeletes = this.leads().map(l => deleteDoc(doc(db, 'leads', l.id)));
-      const visitDeletes = this.siteVisits().map(v => deleteDoc(doc(db, 'siteVisits', v.id)));
+      const spaceKey = this.getActiveSpaceKey();
+      const propDeletes = this.properties().map(p => deleteDoc(doc(db, 'spaces', spaceKey, 'properties', p.id)));
+      const leadDeletes = this.leads().map(l => deleteDoc(doc(db, 'spaces', spaceKey, 'leads', l.id)));
+      const visitDeletes = this.siteVisits().map(v => deleteDoc(doc(db, 'spaces', spaceKey, 'siteVisits', v.id)));
 
       await Promise.all([...propDeletes, ...leadDeletes, ...visitDeletes]);
       this.properties.set([]);
       this.leads.set([]);
       this.siteVisits.set([]);
       this.lastCloudSync.set(Date.now());
-      this.notify('All inventory, leads, and site visits permanently cleared.', 'info');
+      this.notify(`All inventory, leads, and site visits in workspace ${spaceKey} permanently cleared.`, 'info');
     } catch (err: any) {
       console.error('Clear data error:', err);
       this.notify(`Operation Error: ${err.message}`, 'error');
@@ -460,17 +562,20 @@ export class RealtyService {
 
       if (savedProp) {
         if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'properties', existingId), this.cleanForFirestore(savedProp), { merge: true })
-            .then(() => {
-              this.isCloudConnected.set(true);
-              this.lastCloudSync.set(Date.now());
-              this.notify('Property listing updated successfully!', 'success');
-            })
-            .catch(err => {
-              console.error('Save property error:', err);
-              this.cloudSyncError.set(err.message);
-              this.notify(`Save Notice: ${err.message}`, 'error');
-            });
+          const propDoc = this.getSpaceDoc('properties', existingId);
+          if (propDoc) {
+            setDoc(propDoc, this.cleanForFirestore(savedProp), { merge: true })
+              .then(() => {
+                this.isCloudConnected.set(true);
+                this.lastCloudSync.set(Date.now());
+                this.notify('Property listing updated successfully!', 'success');
+              })
+              .catch(err => {
+                console.error('Save property error:', err);
+                this.cloudSyncError.set(err.message);
+                this.notify(`Save Notice: ${err.message}`, 'error');
+              });
+          }
         } else {
           this.notify('Property listing updated successfully!', 'success');
         }
@@ -484,7 +589,8 @@ export class RealtyService {
               locality: savedProp!.locality
             };
             if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-              setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+              const visitDoc = this.getSpaceDoc('siteVisits', v.id);
+              if (visitDoc) setDoc(visitDoc, this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
             }
             return updatedVisit;
           }
@@ -505,8 +611,10 @@ export class RealtyService {
       propertyData.builtUpAreaSqFt || 1200
     );
 
+    const spaceKey = this.getActiveSpaceKey();
     const newProp: PropertyListing = {
       id: 'prop-' + now.toString(36),
+      spaceCode: spaceKey,
       title: propertyData.title || `${propertyData.bhk || 2} BHK ${propertyData.propertyType || 'Apartment'} in ${propertyData.locality || 'Chennai'}`,
       propertyType: propertyData.propertyType || 'Apartment',
       transactionType: propertyData.transactionType || 'Sale',
@@ -585,17 +693,20 @@ export class RealtyService {
     this.properties.update(list => [newProp, ...list]);
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      setDoc(doc(this.firebaseService.firestore, 'properties', newProp.id), this.cleanForFirestore(newProp), { merge: true })
-        .then(() => {
-          this.isCloudConnected.set(true);
-          this.lastCloudSync.set(Date.now());
-          this.notify('Property listing added to inventory!', 'success');
-        })
-        .catch(err => {
-          console.error('New property error:', err);
-          this.cloudSyncError.set(err.message);
-          this.notify(`Save Notice: ${err.message}`, 'error');
-        });
+      const propDoc = this.getSpaceDoc('properties', newProp.id);
+      if (propDoc) {
+        setDoc(propDoc, this.cleanForFirestore(newProp), { merge: true })
+          .then(() => {
+            this.isCloudConnected.set(true);
+            this.lastCloudSync.set(Date.now());
+            this.notify('Property listing added to inventory!', 'success');
+          })
+          .catch(err => {
+            console.error('New property error:', err);
+            this.cloudSyncError.set(err.message);
+            this.notify(`Save Notice: ${err.message}`, 'error');
+          });
+      }
     } else {
       this.notify('Property listing added to SkyPearl Inventory!', 'success');
     }
@@ -624,7 +735,8 @@ export class RealtyService {
           updatedAt: Date.now()
         };
         if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+          const leadDoc = this.getSpaceDoc('leads', lead.id);
+          if (leadDoc) setDoc(leadDoc, this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
         }
         return updatedLead;
       } else if (!isMatch && hasProp) {
@@ -634,7 +746,8 @@ export class RealtyService {
           updatedAt: Date.now()
         };
         if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+          const leadDoc = this.getSpaceDoc('leads', lead.id);
+          if (leadDoc) setDoc(leadDoc, this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
         }
         return updatedLead;
       }
@@ -658,7 +771,8 @@ export class RealtyService {
           updatedAt: Date.now()
         };
         if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'leads', lead.id), this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
+          const leadDoc = this.getSpaceDoc('leads', lead.id);
+          if (leadDoc) setDoc(leadDoc, this.cleanForFirestore(updatedLead), { merge: true }).catch(() => {});
         }
         return updatedLead;
       }
@@ -674,7 +788,8 @@ export class RealtyService {
           feedbackNotes: (v.feedbackNotes ? v.feedbackNotes + ' • ' : '') + 'Listing unlisted/removed from inventory'
         };
         if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+          const visitDoc = this.getSpaceDoc('siteVisits', v.id);
+          if (visitDoc) setDoc(visitDoc, this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
         }
         return updatedVisit;
       }
@@ -682,17 +797,20 @@ export class RealtyService {
     }));
 
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      deleteDoc(doc(this.firebaseService.firestore, 'properties', id))
-        .then(() => {
-          this.isCloudConnected.set(true);
-          this.lastCloudSync.set(Date.now());
-          this.notify('Property listing deleted from inventory.', 'info');
-        })
-        .catch(err => {
-          console.error('Delete property error:', err);
-          this.cloudSyncError.set(err.message);
-          this.notify(`Delete Error: ${err.message}`, 'error');
-        });
+      const propDoc = this.getSpaceDoc('properties', id);
+      if (propDoc) {
+        deleteDoc(propDoc)
+          .then(() => {
+            this.isCloudConnected.set(true);
+            this.lastCloudSync.set(Date.now());
+            this.notify('Property listing deleted from inventory.', 'info');
+          })
+          .catch(err => {
+            console.error('Delete property error:', err);
+            this.cloudSyncError.set(err.message);
+            this.notify(`Delete Error: ${err.message}`, 'error');
+          });
+      }
     } else {
       this.notify('Property listing deleted from inventory.', 'info');
     }
@@ -741,16 +859,18 @@ export class RealtyService {
               leadName: savedLead!.name,
               leadPhone: savedLead!.phone
             };
-            if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-              setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+            const visitDoc = this.getSpaceDoc('siteVisits', v.id);
+            if (visitDoc) {
+              setDoc(visitDoc, this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
             }
             return updatedVisit;
           }
           return v;
         }));
 
-        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'leads', existingId), this.cleanForFirestore(savedLead), { merge: true })
+        const leadDoc = this.getSpaceDoc('leads', existingId);
+        if (leadDoc) {
+          setDoc(leadDoc, this.cleanForFirestore(savedLead), { merge: true })
             .then(() => {
               this.isCloudConnected.set(true);
               this.lastCloudSync.set(Date.now());
@@ -776,8 +896,10 @@ export class RealtyService {
       ? Math.round(dealVal * 100000) 
       : Math.round(dealVal * 100000 * 0.02);
 
+    const spaceKey = this.getActiveSpaceKey();
     const newLead: LeadCRM = {
       id: 'lead-' + now.toString(36),
+      spaceCode: spaceKey,
       name: leadData.name || 'Client',
       phone: leadData.phone || '',
       altPhone: leadData.altPhone,
@@ -842,8 +964,9 @@ export class RealtyService {
 
     this.leads.update(list => [newLead, ...list]);
 
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      setDoc(doc(this.firebaseService.firestore, 'leads', newLead.id), this.cleanForFirestore(newLead), { merge: true })
+    const leadDoc = this.getSpaceDoc('leads', newLead.id);
+    if (leadDoc) {
+      setDoc(leadDoc, this.cleanForFirestore(newLead), { merge: true })
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
@@ -905,8 +1028,9 @@ export class RealtyService {
 
     this.leads.update(list => list.map(l => l.id === leadId ? updatedLead : l));
 
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      setDoc(doc(this.firebaseService.firestore, 'leads', leadId), this.cleanForFirestore(updatedLead), { merge: true })
+    const leadDoc = this.getSpaceDoc('leads', leadId);
+    if (leadDoc) {
+      setDoc(leadDoc, this.cleanForFirestore(updatedLead), { merge: true })
         .then(() => {
           this.lastCloudSync.set(Date.now());
         })
@@ -931,16 +1055,18 @@ export class RealtyService {
           status: 'Cancelled',
           feedbackNotes: (v.feedbackNotes ? v.feedbackNotes + ' • ' : '') + 'Lead record removed from CRM'
         };
-        if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-          setDoc(doc(this.firebaseService.firestore, 'siteVisits', v.id), this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
+        const visitDoc = this.getSpaceDoc('siteVisits', v.id);
+        if (visitDoc) {
+          setDoc(visitDoc, this.cleanForFirestore(updatedVisit), { merge: true }).catch(() => {});
         }
         return updatedVisit;
       }
       return v;
     }));
 
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      deleteDoc(doc(this.firebaseService.firestore, 'leads', id))
+    const leadDoc = this.getSpaceDoc('leads', id);
+    if (leadDoc) {
+      deleteDoc(leadDoc)
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
@@ -973,20 +1099,19 @@ export class RealtyService {
       })
     );
 
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      const updated = this.leads().find(l => l.id === leadId);
-      if (updated) {
-        setDoc(doc(this.firebaseService.firestore, 'leads', leadId), this.cleanForFirestore(updated), { merge: true })
-          .then(() => {
-            this.isCloudConnected.set(true);
-            this.lastCloudSync.set(Date.now());
-            this.notify(`Lead stage updated to "${stage}"`, 'info');
-          })
-          .catch(err => {
-            console.error('Update lead stage error:', err);
-            this.cloudSyncError.set(err.message);
-          });
-      }
+    const updated = this.leads().find(l => l.id === leadId);
+    const leadDoc = this.getSpaceDoc('leads', leadId);
+    if (updated && leadDoc) {
+      setDoc(leadDoc, this.cleanForFirestore(updated), { merge: true })
+        .then(() => {
+          this.isCloudConnected.set(true);
+          this.lastCloudSync.set(Date.now());
+          this.notify(`Lead stage updated to "${stage}"`, 'info');
+        })
+        .catch(err => {
+          console.error('Update lead stage error:', err);
+          this.cloudSyncError.set(err.message);
+        });
     } else {
       this.notify(`Lead stage updated to ${stage}`, 'info');
     }
@@ -1135,8 +1260,10 @@ export class RealtyService {
     const actorName = this.activeAgent().name || 'Agent';
     const actorUid = this.activeAgent().uid || 'agent';
 
+    const spaceKey = this.getActiveSpaceKey();
     const newVisit: SiteVisit = {
       id: 'visit-' + Date.now().toString(36),
+      spaceCode: spaceKey,
       propertyId: visitData.propertyId || '',
       propertyTitle: visitData.propertyTitle || 'Property Visit',
       locality: visitData.locality || 'OMR',
@@ -1168,8 +1295,9 @@ export class RealtyService {
       );
     }
 
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      setDoc(doc(this.firebaseService.firestore, 'siteVisits', newVisit.id), this.cleanForFirestore(newVisit), { merge: true })
+    const visitDoc = this.getSpaceDoc('siteVisits', newVisit.id);
+    if (visitDoc) {
+      setDoc(visitDoc, this.cleanForFirestore(newVisit), { merge: true })
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());
@@ -1228,8 +1356,9 @@ export class RealtyService {
         }
       }
 
-      if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-        setDoc(doc(this.firebaseService.firestore, 'siteVisits', visitId), this.cleanForFirestore(v), { merge: true })
+      const visitDoc = this.getSpaceDoc('siteVisits', visitId);
+      if (visitDoc) {
+        setDoc(visitDoc, this.cleanForFirestore(v), { merge: true })
           .then(() => {
             this.isCloudConnected.set(true);
             this.lastCloudSync.set(Date.now());
@@ -1247,8 +1376,9 @@ export class RealtyService {
 
   public deleteVisit(id: string): void {
     this.siteVisits.update(list => list.filter(v => v.id !== id));
-    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
-      deleteDoc(doc(this.firebaseService.firestore, 'siteVisits', id))
+    const visitDoc = this.getSpaceDoc('siteVisits', id);
+    if (visitDoc) {
+      deleteDoc(visitDoc)
         .then(() => {
           this.isCloudConnected.set(true);
           this.lastCloudSync.set(Date.now());

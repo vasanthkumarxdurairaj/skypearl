@@ -190,6 +190,7 @@ export interface PropertyListing {
   updatedByEmail?: string;
   createdAt: number;
   updatedAt: number;
+  spaceCode?: string;
   isDuplicate?: boolean;
   duplicateOfId?: string;
   viewCount: number;
@@ -262,6 +263,7 @@ export interface LeadCRM {
   updatedByEmail?: string;
   createdAt?: number;
   updatedAt?: number;
+  spaceCode?: string;
 }
 
 export interface CompatibilityMatch {
@@ -286,6 +288,7 @@ export interface SiteVisit {
   status: 'Scheduled' | 'Completed' | 'Cancelled' | 'Rescheduled';
   feedbackNotes?: string;
   interestLevel: 'Hot' | 'Warm' | 'Cold' | 'Not Interested';
+  spaceCode?: string;
 }
 
 

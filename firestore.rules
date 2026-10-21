@@ -2,19 +2,49 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Properties: Anyone can view listings; authenticated agents can create/update; only owner/admin can delete
-    match /properties/{propId} {
-      allow read: if true;
-      allow write: if true; // Set to `if request.auth != null` when ready for strict auth
+    // Spaces: Multi-Tenant Agency Spaces & Subcollections
+    match /spaces/{spaceCode} {
+      allow read, write: if true;
+
+      // Isolated properties per space: /spaces/{spaceCode}/properties/{propId}
+      match /properties/{propId} {
+        allow read, write: if true;
+      }
+
+      // Isolated CRM buyer/tenant leads per space: /spaces/{spaceCode}/leads/{leadId}
+      match /leads/{leadId} {
+        allow read, write: if true;
+      }
+
+      // Isolated site visits per space: /spaces/{spaceCode}/siteVisits/{visitId}
+      match /siteVisits/{visitId} {
+        allow read, write: if true;
+      }
+
+      // Space-specific custom settings & locations: /spaces/{spaceCode}/settings/{settingId}
+      match /settings/{settingId} {
+        allow read, write: if true;
+      }
     }
 
-    // Leads / Buyers: Accessible to agency workspace
+    // Real-Time Cross-Device User Invites
+    match /user_invites/{email} {
+      allow read, write: if true;
+    }
+
+    // Properties: Legacy root collection
+    match /properties/{propId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Leads / Buyers: Legacy root collection
     match /leads/{leadId} {
       allow read: if true;
       allow write: if true;
     }
 
-    // Site Visits: Scheduled customer property visits
+    // Site Visits: Legacy root collection
     match /siteVisits/{visitId} {
       allow read: if true;
       allow write: if true;
