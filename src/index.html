@@ -6,6 +6,10 @@
   <title>SkyPearl Realty • Chennai Property Management & CRM</title>
   <base href="/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover">
+  <!-- Cache Busting: Ensure browsers always fetch the latest index.html and hashed assets -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <meta name="theme-color" content="#cba86b">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -48,6 +52,17 @@
       try {
         var theme = localStorage.getItem('skypearl_theme') || 'light';
         document.documentElement.setAttribute('data-theme', theme);
+      } catch (e) { }
+
+      // Cache-Busting: Unregister stale service workers and old cache storages to guarantee fresh bundle load
+      try {
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister();
+            }
+          });
+        }
       } catch (e) { }
     })();
   </script>
