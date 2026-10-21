@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject, effect, untracked } from '@angular/core';
 import { AuthService } from './auth.service';
 import { FirebaseService } from './firebase.service';
-import { doc, setDoc, onSnapshot, getDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, deleteDoc } from 'firebase/firestore';
 
 export interface SpaceMember {
   id: string; // Google UID
@@ -78,7 +78,7 @@ export class SpaceService {
     const user = this.authService.currentUser();
     const currentSpace = this.space();
     if (!user) return false;
-    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) return true;
+    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) return false;
     const userEmail = (user.email || '').toLowerCase();
     const ownerEmail = (currentSpace.ownerEmail || '').toLowerCase();
     return (
@@ -170,7 +170,7 @@ export class SpaceService {
       const user = this.authService.currentUser();
       untracked(() => {
         this.setupFirestoreSpaceSync();
-        this.evaluateAccessForUser(user);
+        this.evaluateAccessForUser(user).catch(err => console.warn('evaluateAccess notice:', err));
       });
     });
   }
@@ -230,7 +230,7 @@ export class SpaceService {
           // Keep the code in memory and seed it when the user logs in / creates it.
           // NEVER fall back to legacy settings/agencySpace to prevent borrowing stale test identities!
           const user = this.authService.currentUser();
-          if (user) {
+          if (user && codeToSync !== 'SKP-CHN-4829') {
             const userEmail = (user.email || '').toLowerCase();
             this.space.update(curr => ({
               ...curr,
@@ -271,13 +271,74 @@ export class SpaceService {
         localStorage.setItem('skypearl_active_space_code', currentCode);
       }
 
-      this.evaluateAccessForUser(this.authService.currentUser(), false);
+      this.evaluateAccessForUser(this.authService.currentUser(), false).catch(() => {});
     } finally {
       this.isSyncingFromRemote = false;
     }
   }
 
-  public evaluateAccessForUser(user: any, allowRemoteWrite = true): void {
+  public async checkForUserInvitations(userEmail: string): Promise<{ spaceCode: string; spaceName: string; ownerName?: string; ownerEmail?: string } | null> {
+    if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return null;
+    try {
+      const db = this.firebaseService.firestore;
+      const cleanEmail = (userEmail || '').trim().toLowerCase();
+      if (!cleanEmail) return null;
+      const inviteSnap = await getDoc(doc(db, 'user_invites', cleanEmail));
+      if (inviteSnap.exists()) {
+        const data = inviteSnap.data();
+        if (data && data['spaceCode']) {
+          return {
+            spaceCode: data['spaceCode'],
+            spaceName: data['spaceName'] || 'Agency Space',
+            ownerName: data['ownerName'],
+            ownerEmail: data['ownerEmail']
+          };
+        }
+      }
+    } catch (err) {
+      console.warn('Check user invites notice:', err);
+    }
+    return null;
+  }
+
+  public async loadSpaceByCode(code: string): Promise<boolean> {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) return false;
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('skypearl_active_space_code', cleanCode);
+    }
+    if (typeof window !== 'undefined' && window.history?.replaceState) {
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.set('code', cleanCode);
+        window.history.replaceState({}, '', url.toString());
+      } catch {}
+    }
+
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        const snap = await getDoc(doc(db, 'spaces', cleanCode));
+        if (snap.exists()) {
+          const remoteData = snap.data() as AgencySpace;
+          if (remoteData) {
+            this.applyRemoteSpace(remoteData, cleanCode);
+            this.setupFirestoreSpaceSync(cleanCode);
+            return true;
+          }
+        }
+      } catch (err) {
+        console.warn('Error loading space by code:', err);
+      }
+    }
+
+    this.space.update(s => ({ ...s, code: cleanCode }));
+    this.setupFirestoreSpaceSync(cleanCode);
+    return true;
+  }
+
+  public async evaluateAccessForUser(user: any, allowRemoteWrite = true): Promise<void> {
     if (!user) {
       // No Google login = Gate is presented
       if (this.isUnlocked()) this.isUnlocked.set(false);
@@ -285,40 +346,29 @@ export class SpaceService {
       return;
     }
 
-    const currentSpace = this.space();
     const userEmail = (user.email || '').toLowerCase();
 
-    // 1. First user who logs in when no owner exists becomes Space Creator / Owner
-    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) {
-      const ownerMember: SpaceMember = {
-        id: user.uid,
-        name: user.displayName || userEmail.split('@')[0] || 'Space Owner',
-        email: user.email,
-        photoURL: user.photoURL,
-        role: 'owner',
-        status: 'active',
-        joinedAt: Date.now(),
-        lastActiveAt: Date.now(),
-        joinedVia: 'creator'
-      };
-
-      this.space.update(s => ({
-        ...s,
-        ownerUid: user.uid,
-        ownerEmail: user.email,
-        ownerName: user.displayName || userEmail.split('@')[0] || 'Space Owner',
-        code: s.code || generateAutoSpaceCode(s.name),
-        members: [ownerMember, ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)]
-      }));
-      if (allowRemoteWrite && !this.isSyncingFromRemote) {
-        this.saveSpace();
-      }
-      if (!this.isUnlocked()) this.isUnlocked.set(true);
-      if (this.showAccessModal()) this.showAccessModal.set(false);
-      return;
+    // 1. Check if user opened a specific space code in URL
+    let urlCode: string | null = null;
+    if (typeof window !== 'undefined') {
+      try {
+        const searchParams = new URLSearchParams(window.location.search);
+        urlCode = searchParams.get('code') || searchParams.get('space');
+        if (urlCode) urlCode = urlCode.trim().toUpperCase();
+      } catch {}
     }
 
-    // 2. Is this user the Space Owner / Creator?
+    // 2. Check if an owner directly authorized this user by Gmail
+    const inviteInfo = await this.checkForUserInvitations(userEmail);
+    if (inviteInfo && inviteInfo.spaceCode && (!urlCode || urlCode === inviteInfo.spaceCode)) {
+      if (this.space().code.toUpperCase() !== inviteInfo.spaceCode.toUpperCase()) {
+        await this.loadSpaceByCode(inviteInfo.spaceCode);
+      }
+    }
+
+    const currentSpace = this.space();
+
+    // 3. Is this user already the Space Owner / Creator of the currently loaded space?
     if (
       (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
       (currentSpace.ownerUid && currentSpace.ownerUid === user.uid) ||
@@ -340,12 +390,16 @@ export class SpaceService {
           joinedVia: 'creator'
         });
       }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
+        localStorage.setItem('skypearl_active_space_code', currentSpace.code);
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
-    // 3. Is user already an approved active member in the directory?
+    // 4. Is user already an active member in this space's directory?
     const existingMember = currentSpace.members.find(
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
@@ -353,35 +407,58 @@ export class SpaceService {
       if (allowRemoteWrite && !this.isSyncingFromRemote) {
         this.updateMemberLastActive(user.uid);
       }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
+        localStorage.setItem('skypearl_active_space_code', currentSpace.code);
+      }
       if (!this.isUnlocked()) this.isUnlocked.set(true);
       if (this.showAccessModal()) this.showAccessModal.set(false);
       return;
     }
 
-    // 4. Was this Google email directly pre-authorized or invited via link / code?
-    let hasValidCodeParam = false;
-    if (typeof window !== 'undefined') {
-      try {
-        const searchParams = new URLSearchParams(window.location.search);
-        const codeInUrl = searchParams.get('code');
-        if (codeInUrl && currentSpace.code && codeInUrl.trim().toUpperCase() === currentSpace.code.trim().toUpperCase()) {
-          hasValidCodeParam = true;
-        }
-      } catch {}
-    }
-    const hasJoinParam = typeof window !== 'undefined' && 
-      (window.location.search.includes('join') || window.location.search.includes('invite') || window.location.search.includes('space') || hasValidCodeParam);
-    const isPreAuthorized = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
+    // 5. Was this Google email directly pre-authorized or invited by the Owner?
+    // "if the owner add by gmail then no authorization need to be approve because owner only gave access the user show accept the invitation and use that space"
+    const isPreAuthorizedByOwner = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail) || (inviteInfo?.spaceCode === currentSpace.code);
 
-    if (hasJoinParam || isPreAuthorized) {
-      // Auto-admit directly into the team workspace!
-      this.joinAsTeamAgent('agent');
+    if (isPreAuthorizedByOwner) {
+      const hasDirectJoinUrl = typeof window !== 'undefined' && 
+        (window.location.search.includes('join') || window.location.search.includes('invite'));
+
+      if (hasDirectJoinUrl) {
+        // Direct invite link clicked = accept invitation and enter immediately!
+        this.acceptSpaceInvitation();
+        return;
+      }
+
+      // Present the official invitation card to the user so they can click "Accept Invitation & Enter Space"
+      // NO OWNER APPROVAL REQUIRED because owner already authorized this Gmail!
+      if (this.isUnlocked()) this.isUnlocked.set(false);
+      if (!this.showAccessModal()) this.showAccessModal.set(true);
       return;
     }
 
-    // 5. User is signed in with Google, but not yet joined
-    if (this.isUnlocked()) this.isUnlocked.set(false);
-    if (!this.showAccessModal()) this.showAccessModal.set(true);
+    // 6. Did the user open a specific space code in URL?
+    if (urlCode && urlCode !== currentSpace.code) {
+      // User is visiting another space via code
+      if (this.isUnlocked()) this.isUnlocked.set(false);
+      if (!this.showAccessModal()) this.showAccessModal.set(true);
+      return;
+    }
+
+    // 7. Check if user already has an existing space saved from previous login
+    const savedUserSpace = typeof localStorage !== 'undefined' ? localStorage.getItem('skypearl_user_space_' + user.uid) : null;
+    if (savedUserSpace && savedUserSpace !== currentSpace.code) {
+      const switched = await this.loadSpaceByCode(savedUserSpace);
+      if (switched) return;
+    }
+
+    // 8. BRAND NEW USER:
+    // "check every new user is initially redirect to the new space only"
+    // User is signed in with Google, has no invitation to any space, and is not an owner or member of any space.
+    // Automatically create a new space for them as Owner and redirect them to it!
+    const userName = user.displayName ? user.displayName.split(' ')[0] : 'My';
+    const newSpaceName = `${userName}'s Agency Space`;
+    this.createNewSpace(newSpaceName);
   }
 
   // 1-Click Join Agency Workspace for Non-Tech Team Members
@@ -405,11 +482,15 @@ export class SpaceService {
     };
 
     this.registerOrUpdateMember(newMember);
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('skypearl_user_space_' + user.uid, this.space().code);
+      localStorage.setItem('skypearl_active_space_code', this.space().code);
+    }
     this.isUnlocked.set(true);
     this.showAccessModal.set(false);
   }
 
-  // Accept Space Invitation
+  // Accept Space Invitation - Pre-Authorized by Owner (NO APPROVAL NEEDED)
   public acceptSpaceInvitation(): void {
     const user = this.authService.currentUser();
     if (!user) return;
@@ -422,7 +503,7 @@ export class SpaceService {
       email: user.email || '',
       photoURL: user.photoURL,
       role: 'agent',
-      status: 'active',
+      status: 'active', // Active immediately, NO owner approval needed!
       joinedAt: Date.now(),
       lastActiveAt: Date.now(),
       joinedVia: 'email_invite',
@@ -435,11 +516,26 @@ export class SpaceService {
         newMember,
         ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)
       ],
+      // Remove from pendingRequests if previously submitted
+      pendingRequests: s.pendingRequests.filter(r => r.uid !== user.uid && r.email?.toLowerCase() !== userEmail),
       // Ensure email is in allowedEmails
-      allowedEmails: s.allowedEmails.includes(userEmail) ? s.allowedEmails : [...s.allowedEmails, userEmail]
+      allowedEmails: s.allowedEmails.some(e => e.toLowerCase() === userEmail) ? s.allowedEmails : [...s.allowedEmails, userEmail]
     }));
 
     this.saveSpace();
+
+    // Clean up user_invites entry in Firestore
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        deleteDoc(doc(this.firebaseService.firestore, 'user_invites', userEmail)).catch(() => {});
+      } catch {}
+    }
+
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('skypearl_active_space_code', currentSpace.code);
+      localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
+    }
+
     this.hasDismissedInvite.set(false);
     this.activeSpaceMode.set('agency');
     this.isUnlocked.set(true);
@@ -501,6 +597,9 @@ export class SpaceService {
 
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('skypearl_active_space_code', newCode);
+      if (user?.uid) {
+        localStorage.setItem('skypearl_user_space_' + user.uid, newCode);
+      }
     }
     if (typeof window !== 'undefined' && window.history?.replaceState) {
       try {
@@ -655,6 +754,24 @@ export class SpaceService {
       };
     });
     this.saveSpace();
+
+    // Register cross-device invitation index in Firestore so the invited agent is auto-routed to this space
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        const currentSpace = this.space();
+        setDoc(doc(db, 'user_invites', cleanEmail), {
+          spaceCode: currentSpace.code,
+          spaceName: currentSpace.name,
+          ownerEmail: currentSpace.ownerEmail,
+          ownerName: currentSpace.ownerName,
+          invitedAt: Date.now()
+        }, { merge: true }).catch(err => console.warn('Could not set user_invites:', err));
+      } catch (err) {
+        console.warn('Could not index user invite:', err);
+      }
+    }
+
     return true;
   }
 
@@ -667,6 +784,14 @@ export class SpaceService {
       members: s.members.filter(m => m.email.toLowerCase() !== cleanEmail || m.role === 'owner')
     }));
     this.saveSpace();
+
+    // Remove user_invites entry from Firestore
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        deleteDoc(doc(db, 'user_invites', cleanEmail)).catch(() => {});
+      } catch {}
+    }
   }
 
   public revokeMemberAccess(memberId: string): void {

@@ -286,17 +286,53 @@ import { AuthService } from '../../services/auth.service';
                 </div>
               </div>
 
-              <!-- Grand 1-Click Launch Button -->
-              <button 
-                type="button" 
-                class="btn-launch-workspace" 
-                (click)="spaceService.joinAsTeamAgent()">
-                <span>Enter Workspace</span>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </button>
+              <!-- Pre-Authorized Team Invitation Spotlight (Zero Approval Needed) -->
+              @if (spaceService.pendingInvitation(); as invite) {
+                <div class="team-invite-spotlight-box">
+                  <div class="invite-spotlight-top">
+                    <div class="invite-preauth-badge">
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                      <span>PRE-AUTHORIZED BY OWNER</span>
+                    </div>
+                    <span class="instant-access-tag">Zero Approval Needed • Instant Access</span>
+                  </div>
+
+                  <div class="invite-spotlight-details">
+                    <span class="invite-sub-label">INVITATION TO JOIN</span>
+                    <h3 class="invite-agency-title">{{ invite.spaceName }}</h3>
+                    <p class="invite-agency-desc">
+                      The space owner (<strong>{{ invite.ownerName || invite.ownerEmail }}</strong>) has added your Gmail address (<span class="gold-text">{{ user.email }}</span>) to this agency workspace. Click below to accept the invitation and enter immediately.
+                    </p>
+                    <div class="invite-code-pill">
+                      <span class="code-label">Space Code:</span>
+                      <strong class="code-value">{{ invite.spaceCode }}</strong>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="button" 
+                    class="btn-accept-hero" 
+                    (click)="spaceService.acceptSpaceInvitation()">
+                    <span>Accept Invitation & Enter Space</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              } @else {
+                <!-- Grand 1-Click Launch Button -->
+                <button 
+                  type="button" 
+                  class="btn-launch-workspace" 
+                  (click)="spaceService.joinAsTeamAgent()">
+                  <span>Enter Workspace</span>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                    <polyline points="12 5 19 12 12 19"></polyline>
+                  </svg>
+                </button>
+              }
 
               <!-- Space Code Options if Switching Space -->
               <div class="workspace-mode-switcher">
@@ -1067,6 +1103,118 @@ import { AuthService } from '../../services/auth.service';
       transform: translateY(-2px);
       box-shadow: 0 12px 32px rgba(203, 168, 107, 0.5);
       filter: brightness(1.06);
+    }
+
+    /* Pre-Authorized Team Invitation Spotlight */
+    .team-invite-spotlight-box {
+      background: linear-gradient(135deg, rgba(203, 168, 107, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%);
+      border: 1.5px solid rgba(203, 168, 107, 0.45);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+      animation: fadeIn 0.3s ease;
+    }
+
+    .invite-spotlight-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .invite-preauth-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(16, 185, 129, 0.18);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+    }
+
+    .instant-access-tag {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .invite-spotlight-details {
+      margin-bottom: 18px;
+    }
+
+    .invite-sub-label {
+      font-size: 0.65rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .invite-agency-title {
+      font-size: 1.22rem;
+      font-weight: 800;
+      color: var(--text-main);
+      margin: 0 0 8px;
+    }
+
+    .invite-agency-desc {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.5;
+      margin: 0 0 12px;
+    }
+
+    .invite-code-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      padding: 4px 10px;
+      font-size: 0.78rem;
+    }
+
+    .code-label {
+      color: var(--text-muted);
+    }
+
+    .code-value {
+      color: var(--gold);
+      font-family: monospace;
+      letter-spacing: 0.05em;
+    }
+
+    .btn-accept-hero {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+      font-weight: 800;
+      font-size: 1.05rem;
+      padding: 15px 22px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 8px 24px rgba(16, 185, 129, 0.35);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .btn-accept-hero:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(16, 185, 129, 0.5);
+      filter: brightness(1.08);
     }
 
     /* Refined Sign Out Button */
