@@ -1,7 +1,8 @@
 import { Injectable, signal, computed, inject, effect, untracked } from '@angular/core';
 import { AuthService } from './auth.service';
 import { FirebaseService } from './firebase.service';
-import { doc, setDoc, onSnapshot, getDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, onSnapshot, getDoc, deleteDoc, collection } from 'firebase/firestore';
+import { sanitizeForFirestore } from '../utils/firestore-sanitizer';
 
 export interface SpaceMember {
   id: string; // Google UID
@@ -14,6 +15,22 @@ export interface SpaceMember {
   lastActiveAt?: number;
   joinedVia: 'creator' | 'email_invite' | 'approved_request';
   invitedBy?: string;
+}
+
+export interface SpaceInvite {
+  id: string; // ${spaceCode}_${cleanEmail}
+  spaceCode: string;
+  spaceName: string;
+  email: string;
+  role: 'admin' | 'agent';
+  ownerName?: string;
+  ownerEmail?: string;
+  invitedByUid?: string;
+  invitedByName?: string;
+  invitedByEmail?: string;
+  status: 'pending' | 'accepted' | 'declined' | 'revoked';
+  invitedAt: number;
+  acceptedAt?: number;
 }
 
 export interface AccessRequest {
@@ -37,6 +54,18 @@ export interface AgencySpace {
   pendingRequests: AccessRequest[];
 }
 
+export interface SpaceSummary {
+  code: string;
+  name: string;
+  role: 'owner' | 'admin' | 'agent';
+  ownerEmail?: string;
+  ownerName?: string;
+  memberCount?: number;
+}
+
+export const COMMON_AGENCY_SPACE_CODE = 'SKP-CHN-4829';
+export const COMMON_AGENCY_SPACE_NAME = 'SkyPearl Realty Space (Chennai Central)';
+
 export function generateAutoSpaceCode(spaceName: string = 'Chennai'): string {
   const letters = (spaceName.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3) || 'CHN');
   const digits = Math.floor(1000 + Math.random() * 9000);
@@ -54,6 +83,7 @@ export class SpaceService {
   public readonly showAccessModal = signal<boolean>(false);
   public readonly showSpaceSettingsModal = signal<boolean>(false);
   public readonly pendingRequestSent = signal<boolean>(false);
+  public readonly isSpaceLoading = signal<boolean>(false);
 
   // Active Workspace Mode: Allows user to manage the space and "go and back" between Agency Space and Personal Workspace
   public readonly activeSpaceMode = signal<'agency' | 'personal'>('agency');
@@ -63,16 +93,28 @@ export class SpaceService {
     spaceName: string;
     ownerName?: string;
     ownerEmail?: string;
+    status?: string;
+    role?: 'admin' | 'agent';
   } | null>(null);
+
+  // User available spaces list for quick switching
+  public readonly availableSpaces = signal<SpaceSummary[]>([
+    {
+      code: COMMON_AGENCY_SPACE_CODE,
+      name: COMMON_AGENCY_SPACE_NAME,
+      role: 'agent'
+    }
+  ]);
 
   private isSyncingFromRemote = false;
   private unsubSpace?: () => void;
+  private unsubMembers?: () => void;
   private unsubUserInvite?: () => void;
 
   public readonly space = signal<AgencySpace>({
     id: 'space-chennai-hq',
-    name: 'SkyPearl Realty Space (Chennai Central)',
-    code: 'SKP-CHN-4829',
+    name: COMMON_AGENCY_SPACE_NAME,
+    code: COMMON_AGENCY_SPACE_CODE,
     ownerUid: '',
     ownerEmail: '',
     ownerName: '',
@@ -85,13 +127,15 @@ export class SpaceService {
     const user = this.authService.currentUser();
     const currentSpace = this.space();
     if (!user) return false;
-    if (!currentSpace.ownerEmail && !currentSpace.ownerUid) return false;
     const userEmail = (user.email || '').toLowerCase();
     const ownerEmail = (currentSpace.ownerEmail || '').toLowerCase();
+
     return (
-      (!!user.email && userEmail === ownerEmail) ||
-      (!!user.uid && user.uid === currentSpace.ownerUid) ||
-      currentSpace.members.some(m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.role === 'owner')
+      (!!ownerEmail && userEmail === ownerEmail) ||
+      (!!currentSpace.ownerUid && user.uid === currentSpace.ownerUid) ||
+      currentSpace.members.some(
+        m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.role === 'owner'
+      )
     );
   });
 
@@ -107,8 +151,8 @@ export class SpaceService {
     if (this.isOwner()) {
       return {
         id: user.uid,
-        name: user.displayName || 'Space Owner',
-        email: user.email || 'owner@skypearl.in',
+        name: user.displayName || currentSpace.ownerName || 'Space Owner',
+        email: user.email || currentSpace.ownerEmail || 'owner@skypearl.in',
         photoURL: user.photoURL,
         role: 'owner',
         status: 'active',
@@ -126,12 +170,26 @@ export class SpaceService {
     return m ? m.role : null;
   });
 
+  // Emails pre-authorized by owner that have not yet completed first sign-in
+  public readonly authorizedPendingEmails = computed<string[]>(() => {
+    const currentSpace = this.space();
+    const activeEmails = new Set(
+      currentSpace.members
+        .filter(m => !!m.email)
+        .map(m => m.email.toLowerCase())
+    );
+    return (currentSpace.allowedEmails || []).filter(
+      e => !!e && !activeEmails.has(e.toLowerCase())
+    );
+  });
+
   // Space Invitation detection: Checks if the logged-in user has been invited by the Owner to a space
   public readonly pendingInvitation = computed<{
     spaceName: string;
     spaceCode: string;
     ownerName: string;
     ownerEmail: string;
+    role?: string;
   } | null>(() => {
     const user = this.authService.currentUser();
     if (!user || !user.email) return null;
@@ -148,7 +206,8 @@ export class SpaceService {
           spaceName: directInvite.spaceName || 'Agency Space',
           spaceCode: directInvite.spaceCode,
           ownerName: directInvite.ownerName || directInvite.ownerEmail || 'Space Owner',
-          ownerEmail: directInvite.ownerEmail || ''
+          ownerEmail: directInvite.ownerEmail || '',
+          role: directInvite.role || 'agent'
         };
       }
     }
@@ -164,9 +223,10 @@ export class SpaceService {
     if (!isActiveMember) {
       return {
         spaceName: currentSpace.name,
-        spaceCode: currentSpace.code || 'SKP-CHN-4829',
+        spaceCode: currentSpace.code || COMMON_AGENCY_SPACE_CODE,
         ownerName: currentSpace.ownerName || currentSpace.ownerEmail || 'Space Owner',
-        ownerEmail: currentSpace.ownerEmail || ''
+        ownerEmail: currentSpace.ownerEmail || '',
+        role: 'agent'
       };
     }
     return null;
@@ -179,6 +239,7 @@ export class SpaceService {
     this.dismissSpaceInvitation = this.dismissSpaceInvitation.bind(this);
     this.switchToPersonalMode = this.switchToPersonalMode.bind(this);
     this.returnToAgencySpace = this.returnToAgencySpace.bind(this);
+    this.switchSpace = this.switchSpace.bind(this);
 
     this.initSpace();
 
@@ -186,7 +247,10 @@ export class SpaceService {
     effect(() => {
       const user = this.authService.currentUser();
       untracked(() => {
-        this.setupUserInviteListener(user?.email || '');
+        if (user?.email) {
+          this.setupUserInviteListener(user.email);
+          this.loadUserSpacesFromFirestore(user.email);
+        }
         this.setupFirestoreSpaceSync();
         this.evaluateAccessForUser(user).catch(err => console.warn('evaluateAccess notice:', err));
       });
@@ -194,20 +258,139 @@ export class SpaceService {
   }
 
   private initSpace(): void {
+    let initialCode = COMMON_AGENCY_SPACE_CODE;
+
     if (typeof window !== 'undefined') {
       try {
         const searchParams = new URLSearchParams(window.location.search);
         const urlCode = searchParams.get('code') || searchParams.get('space');
-        if (urlCode) {
-          const clean = urlCode.trim().toUpperCase();
-          this.space.update(s => ({ ...s, code: clean }));
+        if (urlCode && urlCode.trim()) {
+          initialCode = urlCode.trim().toUpperCase();
           if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('skypearl_active_space_code', clean);
+            localStorage.setItem('skypearl_active_space_code', initialCode);
+          }
+        } else if (typeof localStorage !== 'undefined') {
+          const stored = localStorage.getItem('skypearl_active_space_code');
+          if (stored && stored.trim()) {
+            initialCode = stored.trim().toUpperCase();
           }
         }
       } catch {}
     }
-    this.setupFirestoreSpaceSync();
+
+    // Immediately update space code signal so it matches sync code from millisecond 0
+    this.space.update(s => ({
+      ...s,
+      code: initialCode,
+      name: initialCode === COMMON_AGENCY_SPACE_CODE ? COMMON_AGENCY_SPACE_NAME : s.name
+    }));
+
+    this.loadCachedAvailableSpaces();
+    this.setupFirestoreSpaceSync(initialCode);
+  }
+
+  private loadCachedAvailableSpaces(): void {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      const raw = localStorage.getItem('skypearl_available_spaces');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure common space is always included
+          if (!parsed.some(s => s.code?.toUpperCase() === COMMON_AGENCY_SPACE_CODE)) {
+            parsed.unshift({
+              code: COMMON_AGENCY_SPACE_CODE,
+              name: COMMON_AGENCY_SPACE_NAME,
+              role: 'agent'
+            });
+          }
+          this.availableSpaces.set(parsed);
+          return;
+        }
+      }
+    } catch {}
+  }
+
+  public recordSpaceInAvailableList(spaceItem: SpaceSummary): void {
+    this.availableSpaces.update(list => {
+      const cleanCode = (spaceItem.code || '').trim().toUpperCase();
+      if (!cleanCode) return list;
+
+      const filtered = list.filter(s => s.code?.toUpperCase() !== cleanCode);
+      const updated = [{ ...spaceItem, code: cleanCode }, ...filtered];
+
+      // Always guarantee Common Agency Space exists in the list
+      if (!updated.some(s => s.code?.toUpperCase() === COMMON_AGENCY_SPACE_CODE)) {
+        updated.push({
+          code: COMMON_AGENCY_SPACE_CODE,
+          name: COMMON_AGENCY_SPACE_NAME,
+          role: 'agent'
+        });
+      }
+
+      if (typeof localStorage !== 'undefined') {
+        try {
+          localStorage.setItem('skypearl_available_spaces', JSON.stringify(updated));
+        } catch {}
+      }
+      return updated;
+    });
+  }
+
+  public async recordSpaceInUserRegistry(userEmail: string, spaceItem: SpaceSummary): Promise<void> {
+    if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    try {
+      const db = this.firebaseService.firestore;
+      const userSpaceRef = doc(db, 'user_spaces', cleanEmail);
+      const snap = await getDoc(userSpaceRef);
+      let existingSpaces: SpaceSummary[] = [];
+
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data['spaces'])) {
+          existingSpaces = data['spaces'];
+        }
+      }
+
+      const cleanCode = spaceItem.code.trim().toUpperCase();
+      const filtered = existingSpaces.filter(s => s.code?.toUpperCase() !== cleanCode);
+      const merged = [{ ...spaceItem, code: cleanCode }, ...filtered];
+
+      await setDoc(userSpaceRef, {
+        email: cleanEmail,
+        activeSpaceCode: this.space().code,
+        spaces: merged,
+        updatedAt: Date.now()
+      }, { merge: true });
+    } catch (err) {
+      console.warn('recordSpaceInUserRegistry error:', err);
+    }
+  }
+
+  public async loadUserSpacesFromFirestore(userEmail: string): Promise<void> {
+    if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return;
+    const cleanEmail = (userEmail || '').trim().toLowerCase();
+    if (!cleanEmail) return;
+
+    try {
+      const db = this.firebaseService.firestore;
+      const snap = await getDoc(doc(db, 'user_spaces', cleanEmail));
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data['spaces'])) {
+          for (const s of data['spaces']) {
+            if (s && s.code) {
+              this.recordSpaceInAvailableList(s);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('loadUserSpacesFromFirestore error:', err);
+    }
   }
 
   public setupFirestoreSpaceSync(targetCode?: string): void {
@@ -217,10 +400,17 @@ export class SpaceService {
         this.unsubSpace();
         this.unsubSpace = undefined;
       }
+      if (this.unsubMembers) {
+        this.unsubMembers();
+        this.unsubMembers = undefined;
+      }
       const db = this.firebaseService.firestore;
 
-      // 1. Resolve active space code: explicit targetCode > URL parameter > localStorage > in-memory fallback
+      // 1. Resolve active space code: explicit targetCode > in-memory space code > URL parameter > localStorage > COMMON_AGENCY_SPACE_CODE
       let codeToSync = (targetCode || '').trim().toUpperCase();
+      if (!codeToSync && this.space().code) {
+        codeToSync = this.space().code.trim().toUpperCase();
+      }
       if (!codeToSync && typeof window !== 'undefined') {
         const searchParams = new URLSearchParams(window.location.search);
         const urlCode = searchParams.get('code') || searchParams.get('space');
@@ -231,39 +421,102 @@ export class SpaceService {
         if (storedCode) codeToSync = storedCode.trim().toUpperCase();
       }
       if (!codeToSync) {
-        codeToSync = (this.space().code || 'SKP-CHN-4829').toUpperCase();
+        codeToSync = COMMON_AGENCY_SPACE_CODE;
       }
 
-      // Check specific space document in 'spaces' collection
+      this.isSpaceLoading.set(true);
       const spaceDocRef = doc(db, 'spaces', codeToSync);
 
       this.unsubSpace = onSnapshot(spaceDocRef, snap => {
+        this.isSpaceLoading.set(false);
         if (snap.exists()) {
           const remoteData = snap.data() as AgencySpace;
           if (remoteData) {
             this.applyRemoteSpace(remoteData, codeToSync);
           }
         } else {
-          // If this space code document does not exist yet in Firestore:
-          // Keep the code in memory and seed it when the user logs in / creates it.
-          // NEVER fall back to legacy settings/agencySpace to prevent borrowing stale test identities!
+          // If document does not exist yet in Firestore:
+          // Keep common space code persistent and seed it so it exists for all team members
           const user = this.authService.currentUser();
-          if (user && codeToSync !== 'SKP-CHN-4829') {
-            const userEmail = (user.email || '').toLowerCase();
-            this.space.update(curr => ({
-              ...curr,
-              code: codeToSync,
-              ownerUid: curr.ownerUid || user.uid,
-              ownerEmail: curr.ownerEmail || user.email || '',
-              ownerName: curr.ownerName || user.displayName || userEmail.split('@')[0] || 'Space Owner'
-            }));
-            this.saveSpace();
+          const userEmail = (user?.email || '').toLowerCase();
+          const isCommon = codeToSync === COMMON_AGENCY_SPACE_CODE;
+
+          const seededMember: SpaceMember | null = user ? {
+            id: user.uid,
+            name: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+            email: user.email || '',
+            photoURL: user.photoURL,
+            role: 'owner',
+            status: 'active',
+            joinedAt: Date.now(),
+            lastActiveAt: Date.now(),
+            joinedVia: 'creator'
+          } : null;
+
+          const seededSpace: AgencySpace = {
+            id: isCommon ? 'space-chennai-hq' : 'space-' + Date.now().toString(36),
+            name: isCommon ? COMMON_AGENCY_SPACE_NAME : (this.space().name || 'Agency Space'),
+            code: codeToSync,
+            ownerUid: user?.uid || '',
+            ownerEmail: user?.email || '',
+            ownerName: user?.displayName || (userEmail ? userEmail.split('@')[0] : 'Space Owner'),
+            allowedEmails: user?.email ? [userEmail] : [],
+            members: seededMember ? [seededMember] : [],
+            pendingRequests: []
+          };
+
+          this.space.set(seededSpace);
+          this.saveSpace();
+
+          // Authoritatively store initial creator in member subcollection
+          if (user && seededMember) {
+            setDoc(doc(db, 'spaces', codeToSync, 'members', user.uid), sanitizeForFirestore(seededMember), { merge: true }).catch(() => {});
           }
         }
       }, (err) => {
+        this.isSpaceLoading.set(false);
         console.warn('Firestore space sync notice:', err);
       });
+
+      // 2. Authoritatively synchronize subcollection: /spaces/{codeToSync}/members
+      try {
+        const membersColRef = collection(db, 'spaces', codeToSync, 'members');
+        this.unsubMembers = onSnapshot(membersColRef, snap => {
+          if (!snap.empty) {
+            const subMembers: SpaceMember[] = [];
+            snap.forEach(docSnap => {
+              const m = docSnap.data() as SpaceMember;
+              if (m && (m.id || docSnap.id)) {
+                subMembers.push({
+                  ...m,
+                  id: m.id || docSnap.id
+                });
+              }
+            });
+            if (subMembers.length > 0) {
+              this.space.update(s => {
+                const mergedMap = new Map<string, SpaceMember>();
+                for (const existing of s.members) {
+                  mergedMap.set(existing.id, existing);
+                }
+                for (const sub of subMembers) {
+                  mergedMap.set(sub.id, sub);
+                }
+                return {
+                  ...s,
+                  members: Array.from(mergedMap.values())
+                };
+              });
+            }
+          }
+        }, err => {
+          console.warn('Member subcollection listener notice:', err);
+        });
+      } catch (err) {
+        console.warn('Member subcollection setup notice:', err);
+      }
     } catch (e) {
+      this.isSpaceLoading.set(false);
       console.warn('Firestore space sync error:', e);
     }
   }
@@ -271,7 +524,7 @@ export class SpaceService {
   private applyRemoteSpace(remoteData: AgencySpace, activeCode: string): void {
     this.isSyncingFromRemote = true;
     try {
-      const currentCode = remoteData.code || activeCode || this.space().code || generateAutoSpaceCode(remoteData.name || 'Chennai');
+      const currentCode = (remoteData.code || activeCode || this.space().code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
       this.space.update(curr => ({
         ...curr,
         id: remoteData.id || curr.id,
@@ -288,6 +541,14 @@ export class SpaceService {
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('skypearl_active_space_code', currentCode);
       }
+
+      this.recordSpaceInAvailableList({
+        code: currentCode,
+        name: remoteData.name || this.space().name,
+        role: this.currentRole() || 'agent',
+        ownerEmail: remoteData.ownerEmail,
+        memberCount: (remoteData.members || []).length
+      });
 
       this.evaluateAccessForUser(this.authService.currentUser(), false).catch(() => {});
     } finally {
@@ -315,7 +576,8 @@ export class SpaceService {
               spaceCode: data['spaceCode'],
               spaceName: data['spaceName'] || 'Agency Space',
               ownerName: data['ownerName'],
-              ownerEmail: data['ownerEmail']
+              ownerEmail: data['ownerEmail'],
+              status: data['status'] || 'pending'
             });
             this.hasDismissedInvite.set(false);
             return;
@@ -330,7 +592,7 @@ export class SpaceService {
     }
   }
 
-  public async checkForUserInvitations(userEmail: string): Promise<{ spaceCode: string; spaceName: string; ownerName?: string; ownerEmail?: string } | null> {
+  public async checkForUserInvitations(userEmail: string): Promise<{ spaceCode: string; spaceName: string; ownerName?: string; ownerEmail?: string; status?: string } | null> {
     if (!this.firebaseService.firestore || this.firebaseService.isDemoMode()) return null;
     try {
       const db = this.firebaseService.firestore;
@@ -344,7 +606,8 @@ export class SpaceService {
             spaceCode: data['spaceCode'],
             spaceName: data['spaceName'] || 'Agency Space',
             ownerName: data['ownerName'],
-            ownerEmail: data['ownerEmail']
+            ownerEmail: data['ownerEmail'],
+            status: data['status'] || 'pending'
           };
         }
       }
@@ -411,17 +674,28 @@ export class SpaceService {
       } catch {}
     }
 
-    // 2. Check if an owner directly authorized this user by Gmail
+    // 2. Load user's known spaces from user_spaces
+    await this.loadUserSpacesFromFirestore(userEmail);
+
+    // 3. Check if owner directly authorized this user by Gmail via user_invites
     const inviteInfo = await this.checkForUserInvitations(userEmail);
-    if (inviteInfo && inviteInfo.spaceCode && (!urlCode || urlCode === inviteInfo.spaceCode)) {
-      if (this.space().code.toUpperCase() !== inviteInfo.spaceCode.toUpperCase()) {
+    if (inviteInfo && inviteInfo.spaceCode) {
+      this.recordSpaceInAvailableList({
+        code: inviteInfo.spaceCode,
+        name: inviteInfo.spaceName || 'Agency Space',
+        role: 'agent',
+        ownerEmail: inviteInfo.ownerEmail
+      });
+
+      // If user came without explicit URL code, auto-route to invited space
+      if (!urlCode && this.space().code.toUpperCase() !== inviteInfo.spaceCode.toUpperCase()) {
         await this.loadSpaceByCode(inviteInfo.spaceCode);
       }
     }
 
     const currentSpace = this.space();
 
-    // 3. Is this user already the Space Owner / Creator of the currently loaded space?
+    // 4. Is this user the Space Owner / Creator of the currently loaded space?
     if (
       (currentSpace.ownerEmail && currentSpace.ownerEmail.toLowerCase() === userEmail) ||
       (currentSpace.ownerUid && currentSpace.ownerUid === user.uid) ||
@@ -443,6 +717,23 @@ export class SpaceService {
           joinedVia: 'creator'
         });
       }
+
+      this.recordSpaceInAvailableList({
+        code: currentSpace.code,
+        name: currentSpace.name,
+        role: 'owner',
+        ownerEmail: user.email
+      });
+
+      if (user.email) {
+        this.recordSpaceInUserRegistry(user.email, {
+          code: currentSpace.code,
+          name: currentSpace.name,
+          role: 'owner',
+          ownerEmail: user.email
+        });
+      }
+
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
         localStorage.setItem('skypearl_active_space_code', currentSpace.code);
@@ -452,7 +743,39 @@ export class SpaceService {
       return;
     }
 
-    // 4. Is user already an active member in this space's directory?
+    // 5. Special handling for Common Agency Space (SKP-CHN-4829) with unassigned owner:
+    // First user to claim or manage the common space becomes Owner
+    if (currentSpace.code === COMMON_AGENCY_SPACE_CODE && !currentSpace.ownerEmail && !currentSpace.ownerUid) {
+      if (allowRemoteWrite && !this.isSyncingFromRemote) {
+        this.space.update(curr => ({
+          ...curr,
+          ownerUid: user.uid,
+          ownerEmail: user.email || '',
+          ownerName: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+          allowedEmails: curr.allowedEmails.includes(userEmail) ? curr.allowedEmails : [...curr.allowedEmails, userEmail]
+        }));
+        this.registerOrUpdateMember({
+          id: user.uid,
+          name: user.displayName || userEmail.split('@')[0] || 'Space Owner',
+          email: user.email,
+          photoURL: user.photoURL,
+          role: 'owner',
+          status: 'active',
+          joinedAt: Date.now(),
+          lastActiveAt: Date.now(),
+          joinedVia: 'creator'
+        });
+      }
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
+        localStorage.setItem('skypearl_active_space_code', currentSpace.code);
+      }
+      if (!this.isUnlocked()) this.isUnlocked.set(true);
+      if (this.showAccessModal()) this.showAccessModal.set(false);
+      return;
+    }
+
+    // 6. Is user already an active member in this space's directory?
     const existingMember = currentSpace.members.find(
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
@@ -460,6 +783,12 @@ export class SpaceService {
       if (allowRemoteWrite && !this.isSyncingFromRemote) {
         this.updateMemberLastActive(user.uid);
       }
+      this.recordSpaceInAvailableList({
+        code: currentSpace.code,
+        name: currentSpace.name,
+        role: existingMember.role,
+        ownerEmail: currentSpace.ownerEmail
+      });
       if (typeof localStorage !== 'undefined') {
         localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
         localStorage.setItem('skypearl_active_space_code', currentSpace.code);
@@ -469,52 +798,29 @@ export class SpaceService {
       return;
     }
 
-    // 5. Was this Google email directly pre-authorized or invited by the Owner?
-    // "if the owner add by gmail then no authorization need to be approve because owner only gave access the user show accept the invitation and use that space"
+    // 7. Was this Google email directly pre-authorized or invited by the Owner?
+    // Owner authorized by email = immediate access, no approval required!
     const isPreAuthorizedByOwner = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail) || (inviteInfo?.spaceCode === currentSpace.code);
 
     if (isPreAuthorizedByOwner) {
-      const hasDirectJoinUrl = typeof window !== 'undefined' && 
-        (window.location.search.includes('join') || window.location.search.includes('invite'));
-
-      if (hasDirectJoinUrl) {
-        // Direct invite link clicked = accept invitation and enter immediately!
-        this.acceptSpaceInvitation();
-        return;
-      }
-
-      // Present the official invitation card to the user so they can click "Accept Invitation & Enter Space"
-      // NO OWNER APPROVAL REQUIRED because owner already authorized this Gmail!
-      if (this.isUnlocked()) this.isUnlocked.set(false);
-      if (!this.showAccessModal()) this.showAccessModal.set(true);
+      // Auto-activate member so they join seamlessly
+      this.acceptSpaceInvitation();
       return;
     }
 
-    // 6. Did the user open a specific space code in URL?
-    if (urlCode && urlCode !== currentSpace.code) {
-      // User is visiting another space via code
-      if (this.isUnlocked()) this.isUnlocked.set(false);
-      if (!this.showAccessModal()) this.showAccessModal.set(true);
+    // 8. If this is the Common Agency Space, allow 1-click team join
+    if (currentSpace.code === COMMON_AGENCY_SPACE_CODE) {
+      this.joinAsTeamAgent('agent');
       return;
     }
 
-    // 7. Check if user already has an existing space saved from previous login
-    const savedUserSpace = typeof localStorage !== 'undefined' ? localStorage.getItem('skypearl_user_space_' + user.uid) : null;
-    if (savedUserSpace && savedUserSpace !== currentSpace.code) {
-      const switched = await this.loadSpaceByCode(savedUserSpace);
-      if (switched) return;
-    }
-
-    // 8. BRAND NEW USER:
-    // "check every new user is initially redirect to the new space only"
-    // User is signed in with Google, has no invitation to any space, and is not an owner or member of any space.
-    // Automatically create a new space for them as Owner and redirect them to it!
-    const userName = user.displayName ? user.displayName.split(' ')[0] : 'My';
-    const newSpaceName = `${userName}'s Agency Space`;
-    this.createNewSpace(newSpaceName);
+    // 9. Visiting a private custom space where user is not yet authorized:
+    // Present access modal for approval or code entry
+    if (this.isUnlocked()) this.isUnlocked.set(false);
+    if (!this.showAccessModal()) this.showAccessModal.set(true);
   }
 
-  // 1-Click Join Agency Workspace for Non-Tech Team Members
+  // 1-Click Join Agency Workspace for Team Members
   public joinAsTeamAgent(preferredRole: 'agent' | 'admin' = 'agent'): void {
     const user = this.authService.currentUser();
     if (!user) return;
@@ -535,6 +841,23 @@ export class SpaceService {
     };
 
     this.registerOrUpdateMember(newMember);
+
+    this.recordSpaceInAvailableList({
+      code: this.space().code,
+      name: this.space().name,
+      role,
+      ownerEmail: this.space().ownerEmail
+    });
+
+    if (user.email) {
+      this.recordSpaceInUserRegistry(user.email, {
+        code: this.space().code,
+        name: this.space().name,
+        role,
+        ownerEmail: this.space().ownerEmail
+      });
+    }
+
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('skypearl_user_space_' + user.uid, this.space().code);
       localStorage.setItem('skypearl_active_space_code', this.space().code);
@@ -548,11 +871,12 @@ export class SpaceService {
     const user = this.authService.currentUser();
     if (!user) return;
     const userEmail = (user.email || '').toLowerCase();
-    const invite = this.pendingInvitation();
+    const invite = this.pendingInvitation() || this.activeUserInvite();
 
     // If invitation is for another space, switch to that space first
-    if (invite && invite.spaceCode && invite.spaceCode.toUpperCase() !== this.space().code.toUpperCase()) {
-      await this.loadSpaceByCode(invite.spaceCode);
+    const targetCode = (invite?.spaceCode || this.space().code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
+    if (targetCode !== this.space().code.toUpperCase()) {
+      await this.loadSpaceByCode(targetCode);
     }
 
     const currentSpace = this.space();
@@ -576,27 +900,57 @@ export class SpaceService {
         newMember,
         ...s.members.filter(m => m.id !== user.uid && m.email?.toLowerCase() !== userEmail)
       ],
-      // Remove from pendingRequests if previously submitted
       pendingRequests: s.pendingRequests.filter(r => r.uid !== user.uid && r.email?.toLowerCase() !== userEmail),
-      // Ensure email is in allowedEmails
       allowedEmails: s.allowedEmails.some(e => e.toLowerCase() === userEmail) ? s.allowedEmails : [...s.allowedEmails, userEmail]
     }));
 
     this.saveSpace();
 
-    // Clean up user_invites entry in Firestore
+    // Mark invitation as accepted in Firestore (Both space_invites and legacy user_invites)
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
-        deleteDoc(doc(this.firebaseService.firestore, 'user_invites', userEmail)).catch(() => {});
+        const db = this.firebaseService.firestore;
+        const inviteId = `${currentSpace.code}_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+        // 1. Update space_invites unique record
+        setDoc(doc(db, 'space_invites', inviteId), {
+          status: 'accepted',
+          acceptedAt: Date.now(),
+          acceptedByUid: user.uid,
+          acceptedByEmail: userEmail
+        }, { merge: true }).catch(() => {});
+
+        // 2. Update legacy user_invites
+        setDoc(doc(db, 'user_invites', userEmail), {
+          status: 'accepted',
+          acceptedAt: Date.now(),
+          spaceCode: currentSpace.code,
+          spaceName: currentSpace.name
+        }, { merge: true }).catch(() => {});
+
+        // 3. Authoritative write to /spaces/{spaceCode}/members/{uid}
+        setDoc(doc(db, 'spaces', currentSpace.code, 'members', user.uid), sanitizeForFirestore(newMember), { merge: true }).catch(() => {});
+
+        this.recordSpaceInUserRegistry(userEmail, {
+          code: currentSpace.code,
+          name: currentSpace.name,
+          role: 'agent',
+          ownerEmail: currentSpace.ownerEmail
+        });
       } catch {}
     }
-
-    this.activeUserInvite.set(null);
 
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('skypearl_active_space_code', currentSpace.code);
       localStorage.setItem('skypearl_user_space_' + user.uid, currentSpace.code);
     }
+
+    this.recordSpaceInAvailableList({
+      code: currentSpace.code,
+      name: currentSpace.name,
+      role: 'agent',
+      ownerEmail: currentSpace.ownerEmail
+    });
 
     this.hasDismissedInvite.set(false);
     this.activeSpaceMode.set('agency');
@@ -622,7 +976,32 @@ export class SpaceService {
     this.evaluateAccessForUser(this.authService.currentUser(), false);
   }
 
-  // Create Brand New Agency Space (Makes caller the Owner)
+  // Switch to any space cleanly by space code
+  public async switchSpace(code: string): Promise<boolean> {
+    const cleanCode = (code || '').trim().toUpperCase();
+    if (!cleanCode) return false;
+
+    this.activeSpaceMode.set('agency');
+    const ok = await this.loadSpaceByCode(cleanCode);
+    if (ok) {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('skypearl_active_space_code', cleanCode);
+      }
+      const user = this.authService.currentUser();
+      if (user?.email && this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+        try {
+          const db = this.firebaseService.firestore;
+          setDoc(doc(db, 'user_spaces', user.email.toLowerCase()), {
+            activeSpaceCode: cleanCode,
+            updatedAt: Date.now()
+          }, { merge: true }).catch(() => {});
+        } catch {}
+      }
+    }
+    return ok;
+  }
+
+  // Create Brand New Agency Space (Explicit User Action Only)
   public createNewSpace(spaceName: string): AgencySpace {
     const user = this.authService.currentUser();
     const cleanName = (spaceName || '').trim() || 'SkyPearl Agency Space';
@@ -669,6 +1048,22 @@ export class SpaceService {
         url.searchParams.set('code', newCode);
         window.history.replaceState({}, '', url.toString());
       } catch {}
+    }
+
+    this.recordSpaceInAvailableList({
+      code: newCode,
+      name: cleanName,
+      role: 'owner',
+      ownerEmail: user?.email || ''
+    });
+
+    if (userEmail) {
+      this.recordSpaceInUserRegistry(userEmail, {
+        code: newCode,
+        name: cleanName,
+        role: 'owner',
+        ownerEmail: user?.email || ''
+      });
     }
 
     this.activeSpaceMode.set('agency');
@@ -802,7 +1197,7 @@ export class SpaceService {
     this.saveSpace();
   }
 
-  public grantEmailAccess(email: string, _role: 'admin' | 'agent' = 'agent'): boolean {
+  public grantEmailAccess(email: string, role: 'admin' | 'agent' = 'agent'): boolean {
     if (!this.isOwner()) return false;
     const cleanEmail = email.trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) return false;
@@ -817,18 +1212,52 @@ export class SpaceService {
     });
     this.saveSpace();
 
-    // Register cross-device invitation index in Firestore so the invited agent is auto-routed to this space
+    // Register in Firestore:
+    // 1. Unique /space_invites/{spaceCode_email}
+    // 2. Backward-compatible /user_invites/{cleanEmail}
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
         const db = this.firebaseService.firestore;
         const currentSpace = this.space();
+        const user = this.authService.currentUser();
+        const inviteId = `${currentSpace.code}_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+        const invitePayload: SpaceInvite = {
+          id: inviteId,
+          spaceCode: currentSpace.code,
+          spaceName: currentSpace.name,
+          email: cleanEmail,
+          role,
+          ownerName: currentSpace.ownerName,
+          ownerEmail: currentSpace.ownerEmail,
+          invitedByUid: user?.uid,
+          invitedByName: user?.displayName || currentSpace.ownerName || 'Space Owner',
+          invitedByEmail: user?.email || currentSpace.ownerEmail || '',
+          status: 'pending',
+          invitedAt: Date.now()
+        };
+
+        // 1. Authoritative write to space_invites
+        setDoc(doc(db, 'space_invites', inviteId), sanitizeForFirestore(invitePayload), { merge: true })
+          .catch(err => console.warn('Could not set space_invites:', err));
+
+        // 2. Backward-compatible write to user_invites
         setDoc(doc(db, 'user_invites', cleanEmail), {
           spaceCode: currentSpace.code,
           spaceName: currentSpace.name,
           ownerEmail: currentSpace.ownerEmail,
           ownerName: currentSpace.ownerName,
-          invitedAt: Date.now()
+          invitedAt: Date.now(),
+          status: 'pending',
+          role
         }, { merge: true }).catch(err => console.warn('Could not set user_invites:', err));
+
+        this.recordSpaceInUserRegistry(cleanEmail, {
+          code: currentSpace.code,
+          name: currentSpace.name,
+          role,
+          ownerEmail: currentSpace.ownerEmail
+        });
       } catch (err) {
         console.warn('Could not index user invite:', err);
       }
@@ -847,19 +1276,37 @@ export class SpaceService {
     }));
     this.saveSpace();
 
-    // Remove user_invites entry from Firestore
+    // Remove user_invites and space_invites entry from Firestore
     if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
       try {
         const db = this.firebaseService.firestore;
+        const currentSpace = this.space();
         deleteDoc(doc(db, 'user_invites', cleanEmail)).catch(() => {});
+        const inviteId = `${currentSpace.code}_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        deleteDoc(doc(db, 'space_invites', inviteId)).catch(() => {});
       } catch {}
     }
   }
 
-  public revokeMemberAccess(memberId: string): void {
-    if (!this.isOwner()) return;
+  public revokeMemberAccess(memberId: string): { success: boolean; message?: string } {
+    if (!this.isOwner()) {
+      return { success: false, message: 'Only workspace owners can revoke access.' };
+    }
+    const currentSpace = this.space();
+    const target = currentSpace.members.find(m => m.id === memberId);
+    if (!target) {
+      return { success: false, message: 'Member not found.' };
+    }
+
+    // Safeguard: Never allow revoking the last owner
+    if (target.role === 'owner') {
+      const ownerCount = currentSpace.members.filter(m => m.role === 'owner').length;
+      if (ownerCount <= 1) {
+        return { success: false, message: 'Cannot revoke the last owner of this workspace.' };
+      }
+    }
+
     this.space.update(s => {
-      const target = s.members.find(m => m.id === memberId);
       const filteredMembers = s.members.filter(m => m.id !== memberId || m.role === 'owner');
       const filteredEmails = target ? s.allowedEmails.filter(e => e.toLowerCase() !== target.email.toLowerCase()) : s.allowedEmails;
       return {
@@ -869,15 +1316,59 @@ export class SpaceService {
       };
     });
     this.saveSpace();
+
+    // Delete from Firestore subcollection and invitation index
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        const spaceCode = (currentSpace.code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
+        deleteDoc(doc(db, 'spaces', spaceCode, 'members', memberId)).catch(() => {});
+        if (target.email) {
+          const cleanEmail = target.email.toLowerCase();
+          deleteDoc(doc(db, 'user_invites', cleanEmail)).catch(() => {});
+          const inviteId = `${spaceCode}_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '_')}`;
+          deleteDoc(doc(db, 'space_invites', inviteId)).catch(() => {});
+        }
+      } catch {}
+    }
+
+    return { success: true };
   }
 
-  public updateMemberRole(memberId: string, role: 'admin' | 'agent'): void {
-    if (!this.isOwner()) return;
+  public updateMemberRole(memberId: string, role: 'admin' | 'agent'): { success: boolean; message?: string } {
+    if (!this.isOwner()) {
+      return { success: false, message: 'Only workspace owners can modify roles.' };
+    }
+    const currentSpace = this.space();
+    const target = currentSpace.members.find(m => m.id === memberId);
+    if (!target) {
+      return { success: false, message: 'Member not found.' };
+    }
+
+    // Safeguard: Never downgrade the last owner
+    if (target.role === 'owner') {
+      const ownerCount = currentSpace.members.filter(m => m.role === 'owner').length;
+      if (ownerCount <= 1) {
+        return { success: false, message: 'Cannot downgrade the last owner of this workspace.' };
+      }
+    }
+
     this.space.update(s => ({
       ...s,
       members: s.members.map(m => (m.id === memberId && m.role !== 'owner' ? { ...m, role } : m))
     }));
     this.saveSpace();
+
+    // Update in member subcollection
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        const spaceCode = (currentSpace.code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
+        setDoc(doc(db, 'spaces', spaceCode, 'members', memberId), { role }, { merge: true }).catch(() => {});
+      } catch {}
+    }
+
+    return { success: true };
   }
 
   public updateSpaceName(newName: string): void {
@@ -889,6 +1380,13 @@ export class SpaceService {
       name: clean
     }));
     this.saveSpace();
+
+    this.recordSpaceInAvailableList({
+      code: this.space().code,
+      name: clean,
+      role: 'owner',
+      ownerEmail: this.space().ownerEmail
+    });
   }
 
   public regenerateSpaceCode(): string {
@@ -899,11 +1397,19 @@ export class SpaceService {
       code: newCode
     }));
     this.saveSpace();
+
+    this.recordSpaceInAvailableList({
+      code: newCode,
+      name: this.space().name,
+      role: 'owner',
+      ownerEmail: this.space().ownerEmail
+    });
+
     return newCode;
   }
 
   public getInviteLink(): string {
-    const code = this.space().code || 'SKP-CHN-4829';
+    const code = this.space().code || COMMON_AGENCY_SPACE_CODE;
     if (typeof window !== 'undefined' && window.location?.origin) {
       return `${window.location.origin}/?join=true&code=${encodeURIComponent(code)}`;
     }
@@ -930,18 +1436,31 @@ export class SpaceService {
         return s; // No change, avoid re-saving
       }
       changed = true;
+      const updatedMember: SpaceMember = {
+        ...member,
+        lastActiveAt: Date.now(),
+        joinedAt: existing ? existing.joinedAt : member.joinedAt
+      };
       const updatedList = [
-        {
-          ...member,
-          lastActiveAt: Date.now(),
-          joinedAt: existing ? existing.joinedAt : member.joinedAt
-        },
+        updatedMember,
         ...s.members.filter(m => m.id !== member.id && m.email?.toLowerCase() !== member.email?.toLowerCase())
       ];
       return { ...s, members: updatedList };
     });
     if (changed) {
       this.saveSpace();
+
+      // Write to authoritative subcollection /spaces/{spaceCode}/members/{member.id}
+      if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+        try {
+          const db = this.firebaseService.firestore;
+          const spaceCode = (this.space().code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
+          const target = this.space().members.find(m => m.id === member.id);
+          if (target) {
+            setDoc(doc(db, 'spaces', spaceCode, 'members', member.id), sanitizeForFirestore(target), { merge: true }).catch(() => {});
+          }
+        } catch {}
+      }
     }
   }
 
@@ -956,11 +1475,21 @@ export class SpaceService {
       ...s,
       members: s.members.map(m => (m.id === uid ? { ...m, lastActiveAt: Date.now() } : m))
     }));
-    this.saveSpace();
+    
+    // Authoritatively write ONLY to member record in subcollection, preventing root document churn
+    if (this.firebaseService.firestore && !this.firebaseService.isDemoMode()) {
+      try {
+        const db = this.firebaseService.firestore;
+        const spaceCode = (this.space().code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
+        setDoc(doc(db, 'spaces', spaceCode, 'members', uid), {
+          lastActiveAt: Date.now()
+        }, { merge: true }).catch(() => {});
+      } catch {}
+    }
   }
 
   private cleanForFirestore(obj: any): any {
-    return JSON.parse(JSON.stringify(obj, (_key, value) => (value === undefined ? null : value)));
+    return sanitizeForFirestore(obj);
   }
 
   private saveSpace(): void {
@@ -969,7 +1498,7 @@ export class SpaceService {
       try {
         const db = this.firebaseService.firestore;
         const cleaned = this.cleanForFirestore(this.space());
-        const spaceCode = (this.space().code || 'SKP-CHN-4829').toUpperCase();
+        const spaceCode = (this.space().code || COMMON_AGENCY_SPACE_CODE).toUpperCase();
 
         // Save in dedicated spaces/{spaceCode} collection document
         setDoc(doc(db, 'spaces', spaceCode), cleaned, { merge: true }).catch((err) => {

@@ -2,69 +2,157 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Spaces: Multi-Tenant Agency Spaces & Subcollections
+    // Core Helper Functions for Authentication & Role-Based Access Control
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUserEmail(email) {
+      return isAuthenticated() && 
+             request.auth.token.email != null && 
+             request.auth.token.email.lower() == email.lower();
+    }
+
+    // Space Membership & Role verification
+    function isSpaceMember(spaceCode) {
+      return isAuthenticated() && (
+        // 1. Authoritative member subcollection check
+        exists(/databases/$(database)/documents/spaces/$(spaceCode)/members/$(request.auth.uid)) ||
+        // 2. Space root document creator/owner UID check
+        (exists(/databases/$(database)/documents/spaces/$(spaceCode)) && 
+         get(/databases/$(database)/documents/spaces/$(spaceCode)).data.ownerUid == request.auth.uid) ||
+        // 3. Space root document creator/owner Email check
+        (exists(/databases/$(database)/documents/spaces/$(spaceCode)) && 
+         request.auth.token.email != null &&
+         get(/databases/$(database)/documents/spaces/$(spaceCode)).data.ownerEmail.lower() == request.auth.token.email.lower()) ||
+        // 4. Default public demo space
+        spaceCode == 'SKP-CHN-4829'
+      );
+    }
+
+    function isSpaceAdminOrOwner(spaceCode) {
+      return isAuthenticated() && (
+        // 1. Space root document owner check
+        (exists(/databases/$(database)/documents/spaces/$(spaceCode)) && (
+          get(/databases/$(database)/documents/spaces/$(spaceCode)).data.ownerUid == request.auth.uid ||
+          (request.auth.token.email != null && get(/databases/$(database)/documents/spaces/$(spaceCode)).data.ownerEmail.lower() == request.auth.token.email.lower())
+        )) ||
+        // 2. Member subcollection admin/owner role check
+        (exists(/databases/$(database)/documents/spaces/$(spaceCode)/members/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/spaces/$(spaceCode)/members/$(request.auth.uid)).data.role in ['owner', 'admin']) ||
+        // 3. Demo space
+        spaceCode == 'SKP-CHN-4829'
+      );
+    }
+
+    // =========================================================================
+    // Multi-Tenant Agency Spaces & Subcollections
+    // =========================================================================
     match /spaces/{spaceCode} {
-      allow read, write: if true;
+      // Authenticated users can read space metadata (needed to discover/join by space code)
+      allow read: if isAuthenticated();
 
-      // Isolated properties per space: /spaces/{spaceCode}/properties/{propId}
+      // Create a space: Creator must be owner or default demo space
+      allow create: if isAuthenticated() && (
+        request.resource.data.ownerUid == request.auth.uid ||
+        (request.auth.token.email != null && request.resource.data.ownerEmail.lower() == request.auth.token.email.lower()) ||
+        spaceCode == 'SKP-CHN-4829'
+      );
+
+      // Update space metadata: Space admins/owners, active members updating membership cache, or demo space
+      allow update: if isAuthenticated() && (
+        isSpaceMember(spaceCode) || 
+        isSpaceAdminOrOwner(spaceCode) ||
+        spaceCode == 'SKP-CHN-4829'
+      );
+
+      // Delete space: Space owner only
+      allow delete: if isAuthenticated() && isSpaceAdminOrOwner(spaceCode);
+
+      // -----------------------------------------------------------------------
+      // Member Subcollection: /spaces/{spaceCode}/members/{memberUid}
+      // Authoritative per-member records eliminating 1MB document limits & write contention
+      // -----------------------------------------------------------------------
+      match /members/{memberUid} {
+        allow read: if isAuthenticated() && (isSpaceMember(spaceCode) || request.auth.uid == memberUid);
+        allow create, update: if isAuthenticated() && (
+          request.auth.uid == memberUid ||
+          isSpaceAdminOrOwner(spaceCode)
+        );
+        allow delete: if isAuthenticated() && (
+          request.auth.uid == memberUid ||
+          isSpaceAdminOrOwner(spaceCode)
+        );
+      }
+
+      // -----------------------------------------------------------------------
+      // Tenant-Isolated Resources (Properties, Leads, Site Visits, Settings)
+      // -----------------------------------------------------------------------
       match /properties/{propId} {
-        allow read, write: if true;
+        allow read, write: if isSpaceMember(spaceCode);
       }
 
-      // Isolated CRM buyer/tenant leads per space: /spaces/{spaceCode}/leads/{leadId}
       match /leads/{leadId} {
-        allow read, write: if true;
+        allow read, write: if isSpaceMember(spaceCode);
       }
 
-      // Isolated site visits per space: /spaces/{spaceCode}/siteVisits/{visitId}
       match /siteVisits/{visitId} {
-        allow read, write: if true;
+        allow read, write: if isSpaceMember(spaceCode);
       }
 
-      // Space-specific custom settings & locations: /spaces/{spaceCode}/settings/{settingId}
       match /settings/{settingId} {
-        allow read, write: if true;
+        allow read: if isSpaceMember(spaceCode);
+        allow write: if isSpaceAdminOrOwner(spaceCode);
       }
     }
 
-    // Real-Time Cross-Device User Invites
+    // =========================================================================
+    // Invitations Architecture (Unique ID per invitation)
+    // =========================================================================
+    match /space_invites/{inviteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAuthenticated();
+    }
+
+    // Backward-compatible real-time user invites
     match /user_invites/{email} {
-      allow read, write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    // Properties: Legacy root collection
+    // User Spaces Navigation Index
+    match /user_spaces/{email} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // =========================================================================
+    // Legacy Root Collections (Protected: Authenticated-only access)
+    // =========================================================================
     match /properties/{propId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    // Leads / Buyers: Legacy root collection
     match /leads/{leadId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    // Site Visits: Legacy root collection
     match /siteVisits/{visitId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    // Agency Settings & Workspace Config
     match /settings/{settingId} {
-      allow read: if true;
-      allow write: if true;
+      allow read, write: if isAuthenticated();
     }
 
-    // Hindu Classifieds cache
+    // Mail Queue Collection (for Email Follow-up Service)
+    match /mail/{mailId} {
+      allow create, read: if isAuthenticated();
+    }
+
+    // Hindu Classifieds Newspaper Cache (Public read, authenticated write)
     match /hindu_classifieds/{adId} {
       allow read: if true;
-      allow write: if true;
-    }
-
-    // Catch-all
-    match /{document=**} {
-      allow read, write: if true;
+      allow write: if isAuthenticated();
     }
   }
 }

@@ -3,6 +3,7 @@ import { collection, doc, setDoc, deleteDoc, onSnapshot } from 'firebase/firesto
 import { FirebaseService } from './firebase.service';
 import { AuthService } from './auth.service';
 import { SpaceService } from './space.service';
+import { sanitizeForFirestore } from '../utils/firestore-sanitizer';
 import {
   PropertyListing,
   LeadCRM,
@@ -212,7 +213,7 @@ export class RealtyService {
   }
 
   private cleanForFirestore(obj: any): any {
-    return JSON.parse(JSON.stringify(obj, (_key, value) => (value === undefined ? null : value)));
+    return sanitizeForFirestore(obj);
   }
 
   private isLegacyMockId(id: string): boolean {

@@ -186,13 +186,13 @@ import { AuthService } from '../../services/auth.service';
             </div>
           </div>
 
-          <!-- PEOPLE WHO ACCESSED THIS SPACE (Active Members Directory) -->
+          <!-- PEOPLE WHO ACCESSED THIS SPACE (Active Members & Authorized Accounts) -->
           <div class="section-card">
             <div class="section-header">
-              <span class="section-title">Team Members ({{ spaceService.space().members.length }})</span>
-              <span class="badge-pill">Active Directory</span>
+              <span class="section-title">Team Members ({{ spaceService.space().members.length + spaceService.authorizedPendingEmails().length }})</span>
+              <span class="badge-pill">Directory</span>
             </div>
-            <p class="section-desc">Team members managing properties and client leads in this workspace:</p>
+            <p class="section-desc">Team members and authorized agents with access to this workspace:</p>
 
             <div class="members-directory-list">
               @for (member of spaceService.space().members; track member.id) {
@@ -231,7 +231,7 @@ import { AuthService } from '../../services/auth.service';
                           <option value="agent">Agent</option>
                           <option value="admin">Admin</option>
                         </select>
-                        <button class="btn btn-xs btn-outline-danger" (click)="spaceService.revokeMemberAccess(member.id)" title="Revoke member access">
+                        <button class="btn btn-xs btn-outline-danger" (click)="confirmRevokeMember(member.id, member.name, member.role)" title="Revoke member access">
                           Revoke
                         </button>
                       </div>
@@ -242,7 +242,42 @@ import { AuthService } from '../../services/auth.service';
                     }
                   </div>
                 </div>
-              } @empty {
+              }
+
+              <!-- Pre-Authorized Accounts Pending First Sign-in -->
+              @for (pendingEmail of spaceService.authorizedPendingEmails(); track pendingEmail) {
+                <div class="member-dir-item" style="border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.05);">
+                  <div class="member-left">
+                    <div class="avatar-sm-initial" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px dashed #f59e0b;">
+                      ✉
+                    </div>
+                    <div class="member-meta">
+                      <div class="member-name-row">
+                        <span class="member-name">{{ pendingEmail }}</span>
+                        <span class="badge-agent" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border-color: rgba(245, 158, 11, 0.4);">AUTHORIZED</span>
+                        <span class="joined-via-badge">Pending First Sign-in</span>
+                      </div>
+                      <span class="member-email">{{ pendingEmail }} • Owner Authorized</span>
+                    </div>
+                  </div>
+                  <div class="member-right">
+                    @if (spaceService.isOwner()) {
+                      <div class="member-actions">
+                        <button class="btn btn-xs btn-outline-subtle" (click)="copyInviteLink()" title="Copy join link">
+                          Copy Link
+                        </button>
+                        <button class="btn btn-xs btn-outline-danger" (click)="confirmRevokeEmail(pendingEmail)" title="Revoke Authorization">
+                          Revoke
+                        </button>
+                      </div>
+                    } @else {
+                      <span class="member-activity">Pending</span>
+                    }
+                  </div>
+                </div>
+              }
+
+              @if (spaceService.space().members.length === 0 && spaceService.authorizedPendingEmails().length === 0) {
                 <div class="empty-members-note">
                   No active team members have logged in yet.
                 </div>
@@ -1025,10 +1060,37 @@ export class SpaceSettingsModalComponent {
     }
   }
 
+  public confirmRevokeMember(memberId: string, memberName: string, memberRole: string): void {
+    if (memberRole === 'owner') {
+      const ownerCount = this.spaceService.space().members.filter(m => m.role === 'owner').length;
+      if (ownerCount <= 1) {
+        alert('Cannot revoke the last owner of the workspace.');
+        return;
+      }
+    }
+    const confirmed = confirm(`Are you sure you want to revoke access for ${memberName || 'this member'}? They will immediately lose access to this workspace's listings and CRM.`);
+    if (confirmed) {
+      const res = this.spaceService.revokeMemberAccess(memberId);
+      if (res && !res.success && res.message) {
+        alert(res.message);
+      }
+    }
+  }
+
+  public confirmRevokeEmail(email: string): void {
+    const confirmed = confirm(`Revoke pre-authorized workspace access for ${email}?`);
+    if (confirmed) {
+      this.spaceService.revokeEmailAccess(email);
+    }
+  }
+
   public onRoleChange(memberId: string, event: Event): void {
     const select = event.target as HTMLSelectElement;
     if (select && select.value) {
-      this.spaceService.updateMemberRole(memberId, select.value as 'admin' | 'agent');
+      const res = this.spaceService.updateMemberRole(memberId, select.value as 'admin' | 'agent');
+      if (res && !res.success && res.message) {
+        alert(res.message);
+      }
     }
   }
 

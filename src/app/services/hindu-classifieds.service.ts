@@ -3,6 +3,7 @@ import { collection, doc, setDoc, onSnapshot, deleteDoc } from 'firebase/firesto
 import { FirebaseService } from './firebase.service';
 import { RealtyService } from './realty.service';
 import { ClassifiedParserService } from './classified-parser.service';
+import { sanitizeForFirestore } from '../utils/firestore-sanitizer';
 import { 
   ChennaiLocality, 
   PropertyType, 
@@ -113,7 +114,7 @@ export class HinduClassifiedsService {
   }
 
   private cleanForFirestore(obj: any): any {
-    return JSON.parse(JSON.stringify(obj, (_key, value) => (value === undefined ? null : value)));
+    return sanitizeForFirestore(obj);
   }
 
   /**

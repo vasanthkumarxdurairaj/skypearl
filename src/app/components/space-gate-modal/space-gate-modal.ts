@@ -201,25 +201,26 @@ import { AuthService } from '../../services/auth.service';
                 </div>
               </div>
 
-              <!-- Pre-Authorized Team Invitation Spotlight (Zero Approval Needed) -->
+              <!-- Pre-Authorized Team Invitation Spotlight (Explicit Workspace Details & Verification) -->
               @if (spaceService.pendingInvitation(); as invite) {
                 <div class="team-invite-spotlight-box">
                   <div class="invite-spotlight-top">
                     <div class="invite-preauth-badge">
                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
-                      <span>PRE-AUTHORIZED BY OWNER</span>
+                      <span>PRE-AUTHORIZED INVITATION</span>
                     </div>
-                    <span class="instant-access-tag">Zero Approval Needed • Instant Access</span>
+                    <span class="instant-access-tag">Role: {{ (invite.role || 'Agent') | uppercase }}</span>
                   </div>
 
                   <div class="invite-spotlight-details">
-                    <span class="invite-sub-label">INVITATION TO JOIN</span>
+                    <span class="invite-sub-label">INVITATION TO JOIN WORKSPACE</span>
                     <h3 class="invite-agency-title">{{ invite.spaceName }}</h3>
                     <p class="invite-agency-desc">
-                      The space owner (<strong>{{ invite.ownerName || invite.ownerEmail }}</strong>) has added your Gmail address (<span class="gold-text">{{ user.email }}</span>) to this agency workspace. Click below to accept the invitation and enter immediately.
+                      Invited by <strong>{{ invite.ownerName || invite.ownerEmail }}</strong> for verified account <span class="gold-text">{{ user.email }}</span>.
+                      Accepting connects your profile to this agency space and unlocks shared Chennai properties and buyer leads.
                     </p>
                     <div class="invite-code-pill">
-                      <span class="code-label">Space Code:</span>
+                      <span class="code-label">Workspace Code:</span>
                       <strong class="code-value">{{ invite.spaceCode }}</strong>
                     </div>
                   </div>
@@ -228,7 +229,7 @@ import { AuthService } from '../../services/auth.service';
                     type="button" 
                     class="btn-accept-hero" 
                     (click)="spaceService.acceptSpaceInvitation()">
-                    <span>Accept Invitation & Enter Space</span>
+                    <span>Accept Invitation & Enter Workspace</span>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                       <line x1="5" y1="12" x2="19" y2="12"></line>
                       <polyline points="12 5 19 12 12 19"></polyline>

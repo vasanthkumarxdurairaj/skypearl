@@ -1,5 +1,6 @@
-import { Component, inject, output, signal, HostListener } from '@angular/core';
+import { Component, inject, output, signal, HostListener, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RealtyService } from '../../services/realty.service';
 import { SpaceService } from '../../services/space.service';
 import { AuthService } from '../../services/auth.service';
@@ -8,7 +9,7 @@ import { FirebaseService } from '../../services/firebase.service';
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   template: `
     <header class="navbar-container">
       <div class="nav-left">
@@ -29,37 +30,125 @@ import { FirebaseService } from '../../services/firebase.service';
           <span class="city-badge">{{ realtyService.localities().length }} Localities</span>
         </div>
 
-        <!-- Space & Team Access Pill Group (Supports Go & Back between Agency Space & Personal Mode) -->
-        @if (spaceService.activeSpaceMode() === 'agency') {
-          <div class="space-pill-group">
-            <button class="space-pill" (click)="goToSettings()" title="Active Space: {{ spaceService.space().name }} • Code: {{ spaceService.space().code }}">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-              </svg>
-              <span class="space-name">Space:</span>
-              <span class="space-badge mono">{{ spaceService.space().code }}</span>
-            </button>
-            <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Personal Workspace">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              <span class="btn-text-desktop">Personal</span>
-            </button>
-          </div>
-        } @else {
-          <div class="space-pill-group personal-active">
-            <div class="space-pill personal" title="You are currently in Personal Workspace mode">
-              <span class="personal-dot"></span>
-              <span class="space-name">Personal</span>
+        <!-- Workspace Switcher & Privacy Group (Dedicated Header Control) -->
+        <div class="workspace-switcher-wrap">
+          @if (spaceService.activeSpaceMode() === 'agency') {
+            <div class="space-pill-group">
+              <button 
+                type="button"
+                class="space-pill" 
+                [class.active-switcher]="showWorkspaceSwitcher()"
+                (click)="toggleWorkspaceSwitcher()" 
+                title="Active Workspace: {{ spaceService.space().name }} • Click to Switch Workspace">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                <span class="space-name">Space:</span>
+                <span class="space-badge mono">{{ spaceService.space().code }}</span>
+                <svg class="chevron-mini" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <button class="space-mode-btn" (click)="spaceService.switchToPersonalMode()" title="Switch to Private Personal Workspace">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                <span class="btn-text-desktop">Personal</span>
+              </button>
             </div>
-            <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Team Space">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
-              <span class="btn-text-desktop">Return to Team Space</span>
-              <span class="btn-text-mobile">Team</span>
-            </button>
-          </div>
-        }
+          } @else {
+            <div class="space-pill-group personal-active">
+              <button 
+                type="button"
+                class="space-pill personal" 
+                [class.active-switcher]="showWorkspaceSwitcher()"
+                (click)="toggleWorkspaceSwitcher()" 
+                title="Personal Workspace • Click to switch to Team Space">
+                <span class="personal-dot"></span>
+                <span class="space-name">Solo Personal</span>
+                <svg class="chevron-mini" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+              </button>
+
+              <button class="space-mode-btn return-btn" (click)="spaceService.returnToAgencySpace()" title="Return to Agency Team Space">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                <span class="btn-text-desktop">Return to Team Space</span>
+                <span class="btn-text-mobile">Team</span>
+              </button>
+            </div>
+          }
+
+          <!-- Dedicated Header Workspace Switcher Dropdown Menu -->
+          @if (showWorkspaceSwitcher()) {
+            <div class="workspace-dropdown glass-panel">
+              <div class="ws-dropdown-header">
+                <div class="ws-header-meta">
+                  <span class="ws-eyebrow">WORKSPACE SWITCHER</span>
+                  <div class="ws-privacy-pill" [class.personal]="spaceService.activeSpaceMode() === 'personal'">
+                    <span class="privacy-dot"></span>
+                    <span>{{ spaceService.activeSpaceMode() === 'agency' ? 'Shared Agency (Team Visible)' : 'Private Solo (Owner Only)' }}</span>
+                  </div>
+                </div>
+                <div class="ws-current-row">
+                  <span class="ws-current-name">{{ spaceService.space().name }}</span>
+                  <span class="ws-current-role-badge">{{ (spaceService.currentRole() || 'AGENT') | uppercase }}</span>
+                </div>
+              </div>
+
+              <!-- Available Workspaces List -->
+              <div class="ws-list-section">
+                <span class="ws-section-label">Accessible Workspaces</span>
+                <div class="ws-items-scroll">
+                  @for (sp of spaceService.availableSpaces(); track sp.code) {
+                    <div 
+                      class="ws-item" 
+                      [class.is-active]="sp.code.toUpperCase() === spaceService.space().code.toUpperCase() && spaceService.activeSpaceMode() === 'agency'"
+                      (click)="switchSpace(sp.code); showWorkspaceSwitcher.set(false)">
+                      <div class="ws-item-left">
+                        <div class="ws-item-icon">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        </div>
+                        <div class="ws-item-meta">
+                          <span class="ws-item-title">{{ sp.name }}</span>
+                          <span class="ws-item-code mono">{{ sp.code }}</span>
+                        </div>
+                      </div>
+                      <div class="ws-item-right">
+                        @if (sp.code.toUpperCase() === spaceService.space().code.toUpperCase() && spaceService.activeSpaceMode() === 'agency') {
+                          <span class="ws-active-tick">✓ Active</span>
+                        } @else {
+                          <span class="ws-role-tag">{{ sp.role | uppercase }}</span>
+                        }
+                      </div>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <!-- Switcher Quick Mode Toggle -->
+              <div class="ws-mode-actions">
+                @if (spaceService.activeSpaceMode() === 'agency') {
+                  <button type="button" class="btn-ws-mode-action" (click)="spaceService.switchToPersonalMode(); showWorkspaceSwitcher.set(false)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>Switch to Personal Mode (Private Listings)</span>
+                  </button>
+                } @else {
+                  <button type="button" class="btn-ws-mode-action" (click)="spaceService.returnToAgencySpace(); showWorkspaceSwitcher.set(false)">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg>
+                    <span>Return to Shared Team Space</span>
+                  </button>
+                }
+              </div>
+
+              <!-- Switcher Footer: Settings & Code Input -->
+              <div class="ws-dropdown-footer">
+                <button type="button" class="btn-open-settings" (click)="spaceService.showSpaceSettingsModal.set(true); showWorkspaceSwitcher.set(false)">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                  <span>Team Members & Workspace Settings</span>
+                </button>
+              </div>
+            </div>
+          }
+        </div>
       </div>
 
       <div class="nav-right">
@@ -196,15 +285,144 @@ import { FirebaseService } from '../../services/firebase.service';
                     </button>
                   </div>
                 </div>
+
+                <!-- WORKSPACE & SPACE SWITCHER (Inside Profile Section) -->
+                <div class="workspace-switcher-section">
+                  <div class="switcher-header">
+                    <div class="switcher-title-row">
+                      <span class="switcher-title">ACTIVE WORKSPACE</span>
+                      <span class="space-mode-pill" [class.personal]="spaceService.activeSpaceMode() === 'personal'">
+                        {{ spaceService.activeSpaceMode() === 'personal' ? 'SOLO PRIVATE' : 'AGENCY TEAM' }}
+                      </span>
+                    </div>
+
+                    <div class="current-space-box">
+                      <div class="space-icon">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                      </div>
+                      <div class="current-space-meta">
+                        <span class="space-name-text">{{ spaceService.activeSpaceMode() === 'personal' ? 'Personal Private Workspace' : spaceService.space().name }}</span>
+                        <div class="space-code-row">
+                          <span class="code-badge">{{ spaceService.space().code }}</span>
+                          <button type="button" class="btn-copy-code" (click)="copySpaceCode()" title="Copy Space Code">
+                            {{ spaceCodeCopied() ? '✓ Copied' : 'Copy' }}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Mode switch buttons -->
+                  <div class="mode-toggle-bar">
+                    <button 
+                      type="button" 
+                      class="mode-btn" 
+                      [class.active]="spaceService.activeSpaceMode() === 'agency'"
+                      (click)="spaceService.returnToAgencySpace()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                      <span>Common Space</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      class="mode-btn" 
+                      [class.active]="spaceService.activeSpaceMode() === 'personal'"
+                      (click)="spaceService.switchToPersonalMode()">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <span>Personal Mode</span>
+                    </button>
+                  </div>
+
+                  <!-- Available spaces list -->
+                  <div class="switch-spaces-list">
+                    <span class="switch-sub-title">SWITCH TO AVAILABLE SPACE</span>
+                    @for (s of spaceService.availableSpaces(); track s.code) {
+                      <button 
+                        type="button" 
+                        class="space-select-item" 
+                        [class.is-current]="spaceService.activeSpaceMode() === 'agency' && spaceService.space().code.toUpperCase() === s.code.toUpperCase()"
+                        (click)="switchSpace(s.code)">
+                        <div class="space-item-left">
+                          <span class="space-item-dot" [class.active]="spaceService.activeSpaceMode() === 'agency' && spaceService.space().code.toUpperCase() === s.code.toUpperCase()">●</span>
+                          <div class="space-item-text">
+                            <span class="space-item-name">{{ s.name }}</span>
+                            <span class="space-item-code">{{ s.code }} • {{ s.role | uppercase }}</span>
+                          </div>
+                        </div>
+                        @if (spaceService.activeSpaceMode() === 'agency' && spaceService.space().code.toUpperCase() === s.code.toUpperCase()) {
+                          <span class="active-badge">Active</span>
+                        } @else {
+                          <span class="switch-arrow">Switch →</span>
+                        }
+                      </button>
+                    }
+                  </div>
+
+                  <!-- Enter space code to switch directly -->
+                  <div class="switch-code-box">
+                    <input 
+                      type="text" 
+                      class="switch-code-input" 
+                      placeholder="Enter Space Code (e.g. SKP-CHN-4829)" 
+                      [(ngModel)]="targetSpaceCode" 
+                      (keyup.enter)="handleSwitchByCode()" />
+                    <button 
+                      type="button" 
+                      class="btn btn-xs btn-gold" 
+                      (click)="handleSwitchByCode()"
+                      [disabled]="!targetSpaceCode.trim()">
+                      Switch
+                    </button>
+                  </div>
+
+                  <!-- Create New Space Toggle -->
+                  @if (!showCreateSpaceInline()) {
+                    <div style="margin-top: 6px; text-align: right;">
+                      <button type="button" class="btn-helper-link" style="font-size: 0.65rem;" (click)="showCreateSpaceInline.set(true)">
+                        + Create New Agency Space
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="inline-create-space">
+                      <span class="switch-sub-title">CREATE NEW AGENCY SPACE</span>
+                      <div class="switch-code-box">
+                        <input 
+                          type="text" 
+                          class="switch-code-input" 
+                          placeholder="Space Name (e.g. OMR Branch)" 
+                          [(ngModel)]="newInlineSpaceName" 
+                          (keyup.enter)="createSpaceFromProfile()" />
+                        <button 
+                          type="button" 
+                          class="btn btn-xs btn-gold" 
+                          (click)="createSpaceFromProfile()"
+                          [disabled]="!newInlineSpaceName.trim()">
+                          Create
+                        </button>
+                        <button 
+                          type="button" 
+                          class="btn btn-xs btn-secondary" 
+                          (click)="showCreateSpaceInline.set(false)">
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
               }
 
-              <!-- Workspace Members Section -->
+              <!-- Workspace Members & Authorized Section -->
               <div class="accessed-header">
-                <span class="accessed-title">TEAM MEMBERS ({{ spaceService.space().members.length }})</span>
-                <span class="accessed-subtitle">Active agents and brokers in this workspace</span>
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                  <span class="accessed-title">TEAM & AUTHORIZED ({{ totalTeamCount() }})</span>
+                  @if (spaceService.isOwner()) {
+                    <button type="button" class="btn-helper-link" style="font-size: 0.62rem;" (click)="openSpaceSettings()">+ Add Member</button>
+                  }
+                </div>
+                <span class="accessed-subtitle">Collaborators with access to this workspace</span>
               </div>
 
               <div class="agent-list">
+                <!-- 1. Active registered members -->
                 @for (member of spaceService.space().members; track member.id) {
                   <div 
                     class="agent-item" 
@@ -229,7 +447,29 @@ import { FirebaseService } from '../../services/firebase.service';
                       <span class="active-dot" title="You (Active on this device)">●</span>
                     }
                   </div>
-                } @empty {
+                }
+
+                <!-- 2. Pre-Authorized Accounts Pending Sign-In -->
+                @for (pendingEmail of spaceService.authorizedPendingEmails(); track pendingEmail) {
+                  <div class="pending-auth-item">
+                    <div class="pending-auth-left">
+                      <div class="avatar-sm" style="background: rgba(245, 158, 11, 0.2); color: #f59e0b; border: 1px dashed #f59e0b;">
+                        ✉
+                      </div>
+                      <div class="pending-auth-meta">
+                        <span class="pending-auth-email">{{ pendingEmail }}</span>
+                        <span class="pending-status-pill">✓ AUTHORIZED • PENDING SIGN-IN</span>
+                      </div>
+                    </div>
+                    @if (spaceService.isOwner()) {
+                      <button type="button" class="btn btn-xs btn-outline-subtle" (click)="copyInviteLink()" title="Copy join link to share">
+                        Copy Link
+                      </button>
+                    }
+                  </div>
+                }
+
+                @if (spaceService.space().members.length === 0 && spaceService.authorizedPendingEmails().length === 0) {
                   <div class="empty-accessed-note">
                     <span>Only your current session has accessed this space so far. Share invite code to collaborate with your team.</span>
                   </div>
@@ -453,6 +693,250 @@ import { FirebaseService } from '../../services/firebase.service';
       box-shadow: 0 0 6px #3b82f6;
     }
 
+    .workspace-switcher-wrap {
+      position: relative;
+    }
+
+    .chevron-mini {
+      color: var(--text-muted);
+      margin-left: 2px;
+      transition: transform 0.2s ease;
+    }
+
+    .space-pill.active-switcher .chevron-mini {
+      transform: rotate(180deg);
+      color: var(--gold);
+    }
+
+    .workspace-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      width: 320px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-active);
+      border-radius: var(--radius-lg);
+      padding: 14px;
+      z-index: 1100;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+    .ws-dropdown-header {
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .ws-header-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .ws-eyebrow {
+      font-size: 0.65rem;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .ws-privacy-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: var(--radius-full);
+      background: rgba(34, 197, 94, 0.12);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .ws-privacy-pill.personal {
+      background: rgba(59, 130, 246, 0.12);
+      color: #3b82f6;
+      border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    .privacy-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+
+    .ws-current-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .ws-current-name {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--text-main);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ws-current-role-badge {
+      font-size: 0.62rem;
+      font-weight: 800;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(203, 168, 107, 0.2);
+      color: var(--gold);
+      border: 1px solid rgba(203, 168, 107, 0.4);
+    }
+
+    .ws-list-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .ws-section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .ws-items-scroll {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+
+    .ws-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 10px;
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .ws-item:hover {
+      background: var(--bg-hover);
+      border-color: var(--border-active);
+    }
+
+    .ws-item.is-active {
+      background: rgba(203, 168, 107, 0.12);
+      border-color: var(--gold);
+    }
+
+    .ws-item-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+
+    .ws-item-icon {
+      color: var(--gold);
+      flex-shrink: 0;
+    }
+
+    .ws-item-meta {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .ws-item-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .ws-item-code {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+    }
+
+    .ws-active-tick {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #22c55e;
+    }
+
+    .ws-role-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      color: var(--text-muted);
+    }
+
+    .ws-mode-actions {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 8px;
+    }
+
+    .btn-ws-mode-action {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-ws-mode-action:hover {
+      color: var(--text-main);
+      background: var(--bg-hover);
+      border-color: var(--border-active);
+    }
+
+    .ws-dropdown-footer {
+      border-top: 1px solid var(--border-subtle);
+      padding-top: 8px;
+    }
+
+    .btn-open-settings {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      background: linear-gradient(135deg, rgba(203, 168, 107, 0.15), rgba(203, 168, 107, 0.05));
+      border: 1px solid rgba(203, 168, 107, 0.35);
+      border-radius: var(--radius-md);
+      padding: 7px 10px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--gold);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-open-settings:hover {
+      background: rgba(203, 168, 107, 0.25);
+      border-color: var(--gold);
+    }
+
     .btn-google-nav {
       display: inline-flex;
       align-items: center;
@@ -588,8 +1072,10 @@ import { FirebaseService } from '../../services/firebase.service';
       position: absolute;
       top: calc(100% + 8px);
       right: 0;
-      width: 320px;
-      max-width: 90vw;
+      width: 350px;
+      max-width: 92vw;
+      max-height: 85vh;
+      overflow-y: auto;
       background: var(--bg-card);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
@@ -732,6 +1218,319 @@ import { FirebaseService } from '../../services/firebase.service';
     .btn-google-action:hover {
       background: #f9fafb;
       border-color: #9ca3af;
+    }
+
+    /* Space Switcher Section inside Profile Dropdown */
+    .workspace-switcher-section {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px;
+      margin-bottom: 12px;
+    }
+
+    .switcher-header {
+      margin-bottom: 8px;
+    }
+
+    .switcher-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .switcher-title {
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.6px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+
+    .space-mode-pill {
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: rgba(203, 168, 107, 0.15);
+      color: var(--gold-accent);
+      letter-spacing: 0.3px;
+    }
+
+    .space-mode-pill.personal {
+      background: rgba(100, 116, 139, 0.2);
+      color: #94a3b8;
+    }
+
+    .current-space-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: rgba(203, 168, 107, 0.08);
+      border: 1px solid rgba(203, 168, 107, 0.25);
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+
+    .space-icon {
+      color: var(--gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .current-space-meta {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .space-name-text {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .space-code-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 2px;
+    }
+
+    .code-badge {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.04em;
+    }
+
+    .btn-copy-code {
+      font-size: 0.62rem;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn-copy-code:hover {
+      background: rgba(203, 168, 107, 0.2);
+      color: var(--gold);
+      border-color: var(--gold);
+    }
+
+    .mode-toggle-bar {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+
+    .mode-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 5px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      color: var(--text-dim);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .mode-btn:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+    }
+
+    .mode-btn.active {
+      background: rgba(203, 168, 107, 0.15);
+      border-color: var(--gold);
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .switch-spaces-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-bottom: 8px;
+      max-height: 140px;
+      overflow-y: auto;
+    }
+
+    .switch-sub-title {
+      font-size: 0.62rem;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: 2px;
+      display: block;
+    }
+
+    .space-select-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: transparent;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+      transition: all 0.12s ease;
+    }
+
+    .space-select-item:hover {
+      background: rgba(203, 168, 107, 0.08);
+      border-color: rgba(203, 168, 107, 0.4);
+    }
+
+    .space-select-item.is-current {
+      background: rgba(203, 168, 107, 0.12);
+      border-color: var(--gold);
+    }
+
+    .space-item-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .space-item-dot {
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+
+    .space-item-dot.active {
+      color: #10b981;
+    }
+
+    .space-item-text {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .space-item-name {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .space-item-code {
+      font-family: var(--font-mono, monospace);
+      font-size: 0.62rem;
+      color: var(--text-dim);
+    }
+
+    .active-badge {
+      font-size: 0.6rem;
+      font-weight: 800;
+      padding: 1px 5px;
+      border-radius: 3px;
+      background: #10b981;
+      color: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .switch-arrow {
+      font-size: 0.65rem;
+      color: var(--gold);
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+
+    .switch-code-box {
+      display: flex;
+      gap: 5px;
+      margin-top: 6px;
+    }
+
+    .switch-code-input {
+      flex: 1;
+      font-family: var(--font-mono, monospace);
+      font-size: 0.72rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-subtle);
+      background: var(--bg-main, #0b0e14);
+      color: var(--text-main);
+    }
+
+    .switch-code-input:focus {
+      border-color: var(--gold);
+      outline: none;
+    }
+
+    .inline-create-space {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border-subtle);
+    }
+
+    .pending-auth-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: var(--radius-md);
+      background: rgba(245, 158, 11, 0.06);
+      border: 1px dashed rgba(245, 158, 11, 0.35);
+      margin-bottom: 4px;
+    }
+
+    .pending-auth-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+      flex: 1;
+    }
+
+    .pending-auth-meta {
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pending-auth-email {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pending-status-pill {
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: #f59e0b;
+      letter-spacing: 0.3px;
     }
 
     /* Accessed Members Section */
@@ -1054,6 +1853,15 @@ export class NavbarComponent {
   public openVisitModal = output<void>();
 
   public showAgentMenu = signal<boolean>(false);
+  public showWorkspaceSwitcher = signal<boolean>(false);
+  public targetSpaceCode = '';
+  public spaceCodeCopied = signal<boolean>(false);
+  public showCreateSpaceInline = signal<boolean>(false);
+  public newInlineSpaceName = '';
+
+  public totalTeamCount = computed<number>(() => {
+    return this.spaceService.space().members.length + this.spaceService.authorizedPendingEmails().length;
+  });
 
   public profilePhoto(): string | undefined {
     return this.authService.currentUser()?.photoURL || this.realtyService.activeAgent().photoURL;
@@ -1065,10 +1873,61 @@ export class NavbarComponent {
     if (!target.closest('.profile-circle-container')) {
       this.showAgentMenu.set(false);
     }
+    if (!target.closest('.workspace-switcher-wrap')) {
+      this.showWorkspaceSwitcher.set(false);
+    }
+  }
+
+  public toggleWorkspaceSwitcher(): void {
+    this.showWorkspaceSwitcher.update(v => !v);
   }
 
   public toggleAgentMenu(): void {
     this.showAgentMenu.update(v => !v);
+  }
+
+  public copySpaceCode(): void {
+    const code = this.spaceService.space().code || 'SKP-CHN-4829';
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(code).then(() => {
+        this.spaceCodeCopied.set(true);
+        setTimeout(() => this.spaceCodeCopied.set(false), 2000);
+        this.realtyService.notify('Space code copied: ' + code, 'success');
+      }).catch(() => {
+        this.realtyService.notify('Space code: ' + code, 'info');
+      });
+    } else {
+      this.realtyService.notify('Space code: ' + code, 'info');
+    }
+  }
+
+  public async switchSpace(code: string): Promise<void> {
+    const clean = (code || '').trim().toUpperCase();
+    if (!clean) return;
+    const ok = await this.spaceService.switchSpace(clean);
+    if (ok) {
+      this.realtyService.notify(`Switched to space ${clean}`, 'success');
+      this.showAgentMenu.set(false);
+    } else {
+      this.realtyService.notify(`Failed to switch to space ${clean}`, 'error');
+    }
+  }
+
+  public async handleSwitchByCode(): Promise<void> {
+    const clean = (this.targetSpaceCode || '').trim().toUpperCase();
+    if (!clean) return;
+    await this.switchSpace(clean);
+    this.targetSpaceCode = '';
+  }
+
+  public createSpaceFromProfile(): void {
+    const cleanName = (this.newInlineSpaceName || '').trim();
+    if (!cleanName) return;
+    const newSpace = this.spaceService.createNewSpace(cleanName);
+    this.realtyService.notify(`Created space "${newSpace.name}" (${newSpace.code})`, 'success');
+    this.newInlineSpaceName = '';
+    this.showCreateSpaceInline.set(false);
+    this.showAgentMenu.set(false);
   }
 
   public async signInWithGoogle(): Promise<void> {
