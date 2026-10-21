@@ -14,45 +14,48 @@
   </div>
 }
 
-<!-- Space Invitation Notification Bar (Visible whenever an account is invited to join an agency space) -->
-@if (spaceService.pendingInvitation(); as invite) {
-  @if (!spaceService.hasDismissedInvite()) {
-    <aside class="space-invite-notification-bar" role="alert">
-      <div class="invite-bar-content">
-        <div class="invite-left-info">
-          <span class="invite-bell-icon">🔔</span>
-          <div class="invite-text-col">
-            <span class="invite-tag">TEAM SPACE INVITATION</span>
-            <span class="invite-desc">
-              You've been invited to collaborate in <strong>{{ invite.spaceName }}</strong>
-              <span class="invite-code-chip">Code: {{ invite.spaceCode }}</span>
-              by <strong>{{ invite.ownerName || invite.ownerEmail }}</strong>
-            </span>
-          </div>
-        </div>
-        <div class="invite-action-buttons">
-          <button type="button" class="btn-accept-invite" (click)="spaceService.acceptSpaceInvitation()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>Accept & Enter Space</span>
-          </button>
-          <button type="button" class="btn-dismiss-invite" (click)="spaceService.dismissSpaceInvitation()" title="Dismiss for now">
-            ✕ Dismiss
-          </button>
-        </div>
-      </div>
-    </aside>
-  }
-}
-
 @if (spaceService.isUnlocked()) {
   <div class="app-layout">
-  <!-- Top Navbar -->
-  <app-navbar 
-    (openPropertyModal)="openAddProperty()"
-    (openLeadModal)="openAddLead()"
-    (openVisitModal)="showVisitModal.set(true)" />
+    <!-- Space Invitation Notification Bar (Visible whenever an account is invited to join an agency space) -->
+    @if (spaceService.pendingInvitation(); as invite) {
+      @if (!spaceService.hasDismissedInvite()) {
+        <aside class="space-invite-notification-bar" role="alert">
+          <div class="invite-bar-content">
+            <div class="invite-left-info">
+              <span class="invite-bell-icon">🔔</span>
+              <div class="invite-text-col">
+                <div class="invite-tag-row">
+                  <span class="invite-tag">TEAM WORKSPACE INVITATION</span>
+                  <span class="invite-preauth-mini">Pre-Authorized • No Approval Needed</span>
+                </div>
+                <span class="invite-desc">
+                  You've been invited to collaborate in <strong>{{ invite.spaceName }}</strong>
+                  <span class="invite-code-chip">Code: {{ invite.spaceCode }}</span>
+                  by <strong>{{ invite.ownerName || invite.ownerEmail }}</strong>
+                </span>
+              </div>
+            </div>
+            <div class="invite-action-buttons">
+              <button type="button" class="btn-accept-invite" (click)="spaceService.acceptSpaceInvitation()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Accept & Enter Space</span>
+              </button>
+              <button type="button" class="btn-dismiss-invite" (click)="spaceService.dismissSpaceInvitation()" title="Dismiss for now">
+                ✕ Dismiss
+              </button>
+            </div>
+          </div>
+        </aside>
+      }
+    }
+
+    <!-- Top Navbar -->
+    <app-navbar 
+      (openPropertyModal)="openAddProperty()"
+      (openLeadModal)="openAddLead()"
+      (openVisitModal)="showVisitModal.set(true)" />
 
   <div class="main-body">
     <!-- Sidebar Navigation -->

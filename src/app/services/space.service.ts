@@ -58,9 +58,16 @@ export class SpaceService {
   // Active Workspace Mode: Allows user to manage the space and "go and back" between Agency Space and Personal Workspace
   public readonly activeSpaceMode = signal<'agency' | 'personal'>('agency');
   public readonly hasDismissedInvite = signal<boolean>(false);
+  public readonly activeUserInvite = signal<{
+    spaceCode: string;
+    spaceName: string;
+    ownerName?: string;
+    ownerEmail?: string;
+  } | null>(null);
 
   private isSyncingFromRemote = false;
   private unsubSpace?: () => void;
+  private unsubUserInvite?: () => void;
 
   public readonly space = signal<AgencySpace>({
     id: 'space-chennai-hq',
@@ -119,7 +126,7 @@ export class SpaceService {
     return m ? m.role : null;
   });
 
-  // Space Invitation detection: Checks if the logged-in user has been invited by the Owner to this space
+  // Space Invitation detection: Checks if the logged-in user has been invited by the Owner to a space
   public readonly pendingInvitation = computed<{
     spaceName: string;
     spaceCode: string;
@@ -128,22 +135,32 @@ export class SpaceService {
   } | null>(() => {
     const user = this.authService.currentUser();
     if (!user || !user.email) return null;
-    const currentSpace = this.space();
     const userEmail = user.email.toLowerCase();
+    const currentSpace = this.space();
 
-    // Owner cannot invite themselves
+    // 1. Check real-time cross-device invite from user_invites collection
+    const directInvite = this.activeUserInvite();
+    if (directInvite && directInvite.spaceCode) {
+      const isAlreadyActiveInTarget = currentSpace.code.toUpperCase() === directInvite.spaceCode.toUpperCase() &&
+        currentSpace.members.some(m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active');
+      if (!isAlreadyActiveInTarget) {
+        return {
+          spaceName: directInvite.spaceName || 'Agency Space',
+          spaceCode: directInvite.spaceCode,
+          ownerName: directInvite.ownerName || directInvite.ownerEmail || 'Space Owner',
+          ownerEmail: directInvite.ownerEmail || ''
+        };
+      }
+    }
+
+    // 2. Check current active space allowedEmails
     if (this.isOwner()) return null;
-
-    // Check if user's email was added by the owner to allowedEmails
     const isAllowed = currentSpace.allowedEmails.some(e => e.toLowerCase() === userEmail);
     if (!isAllowed) return null;
 
-    // Check if user is already an active member
     const isActiveMember = currentSpace.members.some(
       m => (m.id === user.uid || (!!m.email && m.email.toLowerCase() === userEmail)) && m.status === 'active'
     );
-
-    // If invited and not yet an active member:
     if (!isActiveMember) {
       return {
         spaceName: currentSpace.name,
@@ -169,6 +186,7 @@ export class SpaceService {
     effect(() => {
       const user = this.authService.currentUser();
       untracked(() => {
+        this.setupUserInviteListener(user?.email || '');
         this.setupFirestoreSpaceSync();
         this.evaluateAccessForUser(user).catch(err => console.warn('evaluateAccess notice:', err));
       });
@@ -274,6 +292,41 @@ export class SpaceService {
       this.evaluateAccessForUser(this.authService.currentUser(), false).catch(() => {});
     } finally {
       this.isSyncingFromRemote = false;
+    }
+  }
+
+  public setupUserInviteListener(email: string): void {
+    if (this.unsubUserInvite) {
+      this.unsubUserInvite();
+      this.unsubUserInvite = undefined;
+    }
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail || !this.firebaseService.firestore || this.firebaseService.isDemoMode()) {
+      this.activeUserInvite.set(null);
+      return;
+    }
+    try {
+      const db = this.firebaseService.firestore;
+      this.unsubUserInvite = onSnapshot(doc(db, 'user_invites', cleanEmail), snap => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data && data['spaceCode']) {
+            this.activeUserInvite.set({
+              spaceCode: data['spaceCode'],
+              spaceName: data['spaceName'] || 'Agency Space',
+              ownerName: data['ownerName'],
+              ownerEmail: data['ownerEmail']
+            });
+            this.hasDismissedInvite.set(false);
+            return;
+          }
+        }
+        this.activeUserInvite.set(null);
+      }, err => {
+        console.warn('user_invites snapshot notice:', err);
+      });
+    } catch (e) {
+      console.warn('setupUserInviteListener error:', e);
     }
   }
 
@@ -491,10 +544,17 @@ export class SpaceService {
   }
 
   // Accept Space Invitation - Pre-Authorized by Owner (NO APPROVAL NEEDED)
-  public acceptSpaceInvitation(): void {
+  public async acceptSpaceInvitation(): Promise<void> {
     const user = this.authService.currentUser();
     if (!user) return;
     const userEmail = (user.email || '').toLowerCase();
+    const invite = this.pendingInvitation();
+
+    // If invitation is for another space, switch to that space first
+    if (invite && invite.spaceCode && invite.spaceCode.toUpperCase() !== this.space().code.toUpperCase()) {
+      await this.loadSpaceByCode(invite.spaceCode);
+    }
+
     const currentSpace = this.space();
 
     const newMember: SpaceMember = {
@@ -507,7 +567,7 @@ export class SpaceService {
       joinedAt: Date.now(),
       lastActiveAt: Date.now(),
       joinedVia: 'email_invite',
-      invitedBy: currentSpace.ownerName || currentSpace.ownerEmail
+      invitedBy: invite?.ownerName || invite?.ownerEmail || currentSpace.ownerName || currentSpace.ownerEmail
     };
 
     this.space.update(s => ({
@@ -530,6 +590,8 @@ export class SpaceService {
         deleteDoc(doc(this.firebaseService.firestore, 'user_invites', userEmail)).catch(() => {});
       } catch {}
     }
+
+    this.activeUserInvite.set(null);
 
     if (typeof localStorage !== 'undefined') {
       localStorage.setItem('skypearl_active_space_code', currentSpace.code);

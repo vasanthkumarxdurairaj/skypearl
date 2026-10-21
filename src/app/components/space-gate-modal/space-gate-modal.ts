@@ -121,30 +121,6 @@ import { AuthService } from '../../services/auth.service';
             </p>
           </div>
 
-          <!-- ACTIVE AGENCY SPACE BADGE -->
-          <div class="active-space-card">
-            <div class="space-card-top">
-              <div class="space-icon-badge">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-              </div>
-              <div class="space-card-details">
-                <span class="space-eyebrow">CONNECTED AGENCY SPACE</span>
-                <span class="space-name-text">{{ spaceService.space().name }}</span>
-              </div>
-            </div>
-
-            <div class="space-code-row">
-              <span class="code-label">SPACE CODE</span>
-              <span class="code-badge-pill mono">{{ spaceService.space().code }}</span>
-              <button type="button" class="btn-copy-code-action" (click)="copyActiveSpaceCode()" title="Copy workspace code">
-                {{ codeCopied() ? '✓ Copied' : 'Copy Code' }}
-              </button>
-            </div>
-          </div>
-
           <!-- ============================================== -->
           <!-- STATE 1: USER NOT SIGNED IN WITH GOOGLE       -->
           <!-- ============================================== -->
@@ -176,78 +152,6 @@ import { AuthService } from '../../services/auth.service';
                 title="Sign in using direct browser redirect if popup was blocked">
                 <span>Popup blocked? Use direct browser redirect →</span>
               </button>
-
-              <div class="auth-divider">
-                <span>OR CONFIGURE WORKSPACE</span>
-              </div>
-
-              <!-- Workspace Navigation Options -->
-              <div class="workspace-mode-switcher">
-                <div class="mode-pills-row">
-                  <button 
-                    type="button" 
-                    class="mode-pill-btn" 
-                    [class.active]="showCodeInput()"
-                    (click)="showCodeInput.set(true); showCreateSpace.set(false)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
-                    <span>Enter Space Code</span>
-                  </button>
-
-                  <button 
-                    type="button" 
-                    class="mode-pill-btn" 
-                    [class.active]="showCreateSpace()"
-                    (click)="showCreateSpace.set(true); showCodeInput.set(false)">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Create New Space</span>
-                  </button>
-                </div>
-
-                <!-- Form: Enter Space Code -->
-                @if (showCodeInput()) {
-                  <div class="sub-form-panel">
-                    <div class="sub-form-header">
-                      <span>Enter agency space code provided by your broker</span>
-                      <button type="button" class="btn-sub-close" (click)="showCodeInput.set(false)">✕</button>
-                    </div>
-                    <div class="sub-form-row">
-                      <input 
-                        type="text" 
-                        [(ngModel)]="spaceCodeInput" 
-                        placeholder="e.g. SKP-CHN-4829" 
-                        class="form-control mono flex-1" 
-                        (keyup.enter)="submitJoinCode()" />
-                      <button type="button" class="btn btn-gold btn-sm" (click)="submitJoinCode()" [disabled]="!spaceCodeInput.trim()">
-                        Connect
-                      </button>
-                    </div>
-                    @if (joinError()) {
-                      <p class="sub-form-error">{{ joinError() }}</p>
-                    }
-                  </div>
-                }
-
-                <!-- Form: Create New Space -->
-                @if (showCreateSpace()) {
-                  <div class="sub-form-panel">
-                    <div class="sub-form-header">
-                      <span>Name your real estate brokerage workspace</span>
-                      <button type="button" class="btn-sub-close" (click)="showCreateSpace.set(false)">✕</button>
-                    </div>
-                    <div class="sub-form-row">
-                      <input 
-                        type="text" 
-                        [(ngModel)]="newSpaceName" 
-                        placeholder="e.g. Anna Nagar Realty Group" 
-                        class="form-control flex-1" 
-                        (keyup.enter)="submitCreateSpace()" />
-                      <button type="button" class="btn btn-gold btn-sm" (click)="submitCreateSpace()" [disabled]="!newSpaceName.trim()">
-                        Create Space
-                      </button>
-                    </div>
-                  </div>
-                }
-              </div>
 
               <!-- Personal Workspace Alternative -->
               <div class="personal-workspace-footer">
@@ -321,6 +225,30 @@ import { AuthService } from '../../services/auth.service';
                   </button>
                 </div>
               } @else {
+                <!-- ACTIVE AGENCY SPACE BADGE (Visible only after sign in) -->
+                <div class="active-space-card">
+                  <div class="space-card-top">
+                    <div class="space-icon-badge">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                      </svg>
+                    </div>
+                    <div class="space-card-details">
+                      <span class="space-eyebrow">CONNECTED AGENCY SPACE</span>
+                      <span class="space-name-text">{{ spaceService.space().name }}</span>
+                    </div>
+                  </div>
+
+                  <div class="space-code-row">
+                    <span class="code-label">SPACE CODE</span>
+                    <span class="code-badge-pill mono">{{ spaceService.space().code }}</span>
+                    <button type="button" class="btn-copy-code-action" (click)="copyActiveSpaceCode()" title="Copy workspace code">
+                      {{ codeCopied() ? '✓ Copied' : 'Copy Code' }}
+                    </button>
+                  </div>
+                </div>
+
                 <!-- Grand 1-Click Launch Button -->
                 <button 
                   type="button" 
