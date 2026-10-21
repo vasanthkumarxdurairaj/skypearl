@@ -99,6 +99,17 @@ import { AuthService } from '../../services/auth.service';
         <!-- RIGHT INTERACTION COLUMN: SIGN IN & SPACE SELECTION -->
         <main class="portal-auth">
           
+          <!-- MOBILE-ONLY BRAND CREST HEADER -->
+          <div class="mobile-brand-header">
+            <div class="mobile-brand-crest">
+              <img src="logo.png" alt="SkyPearl Realty" class="mobile-crest-logo" />
+            </div>
+            <div class="mobile-brand-meta">
+              <span class="mobile-brand-name">SKYPEARL REALTY</span>
+              <span class="mobile-brand-subtitle">Chennai Property Intelligence</span>
+            </div>
+          </div>
+
           <!-- Auth Card Header -->
           <div class="auth-header">
             <div class="auth-eyebrow-row">
@@ -107,16 +118,16 @@ import { AuthService } from '../../services/auth.service';
             </div>
             <h2 class="auth-title">
               @if (authService.currentUser()) {
-                Welcome to Your Workspace
+                Welcome Back
               } @else {
-                Sign In to <span class="gold-text">SkyPearl Space</span>
+                Sign In to <span class="gold-text">SkyPearl</span>
               }
             </h2>
             <p class="auth-subtitle">
               @if (authService.currentUser()) {
-                You are authenticated with Google. Access your team's real estate deals.
+                Continue to your active brokerage workspace
               } @else {
-                One-click authentication to access your Chennai property portfolio & CRM.
+                Sign in with Google to access your Chennai property portfolio
               }
             </p>
           </div>
@@ -140,24 +151,25 @@ import { AuthService } from '../../services/auth.service';
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
                 </svg>
                 <span>
-                  {{ authService.authLoading() ? 'Connecting with Google...' : 'Continue with Google Account' }}
+                  {{ authService.authLoading() ? 'Connecting with Google...' : 'Continue with Google' }}
                 </span>
               </button>
 
-              <button 
-                type="button" 
-                class="btn-redirect-subtle" 
-                (click)="loginWithGoogleRedirect()" 
-                [disabled]="authService.authLoading()"
-                title="Sign in using direct browser redirect if popup was blocked">
-                <span>Popup blocked? Use direct browser redirect →</span>
-              </button>
-
-              <!-- Personal Workspace Alternative -->
-              <div class="personal-workspace-footer">
-                <button type="button" class="btn-personal-link" (click)="spaceService.switchToPersonalMode()">
-                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                  <span>Solo Agent? Continue in Personal Workspace Mode →</span>
+              <!-- Clean minimal secondary helpers -->
+              <div class="auth-helper-row">
+                <button 
+                  type="button" 
+                  class="btn-helper-link" 
+                  (click)="loginWithGoogleRedirect()" 
+                  [disabled]="authService.authLoading()">
+                  Direct sign-in
+                </button>
+                <span class="helper-divider">•</span>
+                <button 
+                  type="button" 
+                  class="btn-helper-link" 
+                  (click)="spaceService.switchToPersonalMode()">
+                  Solo agent mode
                 </button>
               </div>
             </div>
@@ -183,10 +195,9 @@ import { AuthService } from '../../services/auth.service';
                 <div class="agent-meta">
                   <div class="agent-name-row">
                     <strong class="agent-display-name">{{ user.displayName || 'Authorized Broker' }}</strong>
-                    <span class="agent-role-pill">AGENT ACCESS</span>
+                    <span class="agent-role-pill">AGENT</span>
                   </div>
                   <span class="agent-email-text">{{ user.email }}</span>
-                  <span class="agent-session-tag">Google Identity Verified</span>
                 </div>
               </div>
 
@@ -763,22 +774,47 @@ import { AuthService } from '../../services/auth.service';
       cursor: not-allowed;
     }
 
-    .btn-redirect-subtle {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 0.76rem;
-      margin-top: 10px;
-      cursor: pointer;
-      width: 100%;
-      text-align: center;
-      padding: 4px;
-      transition: color 0.15s ease;
+    /* Mobile-only brand header default (hidden on desktop) */
+    .mobile-brand-header {
+      display: none;
     }
 
-    .btn-redirect-subtle:hover {
+    /* Clean Minimal Secondary Action Helpers */
+    .auth-helper-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+    }
+
+    .btn-helper-link {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 6px 8px;
+      transition: color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .btn-helper-link:hover:not(:disabled) {
       color: var(--gold);
       text-decoration: underline;
+    }
+
+    .btn-helper-link:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .helper-divider {
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      user-select: none;
     }
 
     .auth-divider {
@@ -1207,28 +1243,105 @@ import { AuthService } from '../../services/auth.service';
       text-align: left;
     }
 
-    /* Responsive Breakdown */
+    /* Responsive Breakdown for Tablets & Mobile Screens */
     @media (max-width: 960px) {
+      .space-gate-backdrop {
+        padding: 16px;
+        align-items: center;
+        justify-content: center;
+      }
+
       .space-gate-portal {
         grid-template-columns: 1fr;
-        max-width: 520px;
+        max-width: 440px;
+        min-height: auto;
+        border-radius: 22px;
+        box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.75), 0 0 35px rgba(203, 168, 107, 0.12);
       }
+
+      /* Completely remove noisy marketing showcase & tech chips on mobile */
       .portal-showcase {
-        padding: 28px 24px;
-        border-right: none;
-        border-bottom: 1px solid var(--border-subtle);
+        display: none !important;
       }
-      .showcase-title {
-        font-size: 1.4rem;
-      }
-      .showcase-desc {
-        display: none;
-      }
-      .showcase-pillars {
-        display: none;
-      }
+
       .portal-auth {
         padding: 32px 24px;
+      }
+
+      /* Luxury Mobile Brand Crest Header */
+      .mobile-brand-header {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 22px;
+        padding-bottom: 18px;
+        border-bottom: 1px solid var(--border-subtle);
+      }
+
+      .mobile-brand-crest {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        background: radial-gradient(circle at 30% 30%, #2a2215, #11141c);
+        border: 1px solid rgba(203, 168, 107, 0.45);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+        flex-shrink: 0;
+      }
+
+      .mobile-crest-logo {
+        width: 30px;
+        height: 30px;
+        object-fit: contain;
+      }
+
+      .mobile-brand-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .mobile-brand-name {
+        font-size: 0.96rem;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        background: linear-gradient(135deg, #f5d77f, #cba86b, #b38b4d);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .mobile-brand-subtitle {
+        font-size: 0.68rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--text-dim);
+        text-transform: uppercase;
+      }
+
+      /* Remove unwanted technical text / eyebrow on mobile */
+      .auth-eyebrow-row {
+        display: none;
+      }
+
+      .auth-header {
+        margin-bottom: 20px;
+      }
+
+      .auth-title {
+        font-size: 1.45rem;
+        margin-bottom: 6px;
+      }
+
+      .auth-subtitle {
+        font-size: 0.84rem;
+        line-height: 1.45;
+      }
+
+      .btn-google-sso {
+        padding: 13px 18px;
+        font-size: 0.94rem;
       }
     }
 
@@ -1236,18 +1349,38 @@ import { AuthService } from '../../services/auth.service';
       .space-gate-backdrop {
         padding: 12px;
       }
+
+      .space-gate-portal {
+        max-width: 100%;
+        border-radius: 20px;
+      }
+
       .portal-auth {
         padding: 24px 18px;
       }
+
+      .mobile-brand-header {
+        margin-bottom: 16px;
+        padding-bottom: 14px;
+      }
+
       .auth-title {
         font-size: 1.35rem;
       }
+
       .btn-google-sso {
-        font-size: 0.88rem;
-        padding: 12px 16px;
+        padding: 12px 14px;
+        font-size: 0.9rem;
       }
+
+      .auth-helper-row {
+        flex-direction: row;
+        gap: 8px;
+      }
+
       .mode-pills-row {
         flex-direction: column;
+        gap: 8px;
       }
     }
   `]

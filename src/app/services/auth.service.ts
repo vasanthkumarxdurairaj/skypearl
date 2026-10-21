@@ -210,19 +210,27 @@ export class AuthService {
     const code = err?.code || '';
     switch (code) {
       case 'auth/popup-blocked':
-        return 'Browser blocked the Google sign-in window. Please allow popups or use Direct Redirect sign-in.';
+        return 'Browser blocked the popup window. Use Direct Redirect sign-in below.';
       case 'auth/popup-closed-by-user':
         return 'Google Sign-In was cancelled. Please try again.';
       case 'auth/cancelled-popup-request':
-        return 'A sign-in request was already in progress. Please try again.';
+        return 'Sign-in is already in progress. Please try again.';
       case 'auth/unauthorized-domain':
-        return 'This domain is not authorized for Google Sign-In. Please contact your workspace administrator.';
+        return 'Domain not authorized in Firebase. Add this domain in Firebase Console under Authentication > Settings > Authorized domains.';
       case 'auth/operation-not-allowed':
-        return 'Google Sign-In is currently unavailable. Please contact support.';
+        return 'Google Sign-In is disabled in Firebase Console.';
       case 'auth/network-request-failed':
-        return 'Network connection error while connecting to Google. Please check your internet connection.';
-      default:
-        return err?.message || 'Google Sign-In failed. Please try again.';
+        return 'Network error connecting to Google. Please check your internet connection.';
+      default: {
+        let msg = err?.message || 'Google Sign-In failed. Please try again.';
+        // Remove raw URLs to ensure clean presentation without broken links
+        msg = msg.replace(/https?:\/\/[^\s\])]+/gi, '').trim();
+        // Remove Firebase error prefixes like "Firebase: Error (auth/invalid-credential)."
+        msg = msg.replace(/^Firebase:\s*Error\s*\([^)]*\)\s*:?\s*/i, '').trim();
+        // Clean up leftover brackets
+        msg = msg.replace(/[\[\]()]+/g, ' ').replace(/\s+/g, ' ').trim();
+        return msg || 'Google Sign-In failed. Please try again.';
+      }
     }
   }
 
