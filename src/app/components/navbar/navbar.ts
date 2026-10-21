@@ -1691,6 +1691,8 @@ import { FirebaseService } from '../../services/firebase.service';
         height: 52px;
       }
 
+      .brand-text,
+      .brand-title,
       .brand-subtitle,
       .city-pill,
       .nav-divider-v,
@@ -1716,19 +1718,14 @@ import { FirebaseService } from '../../services/firebase.service';
       }
 
       .brand {
-        gap: 6px;
+        gap: 0;
         flex-shrink: 0;
       }
 
       .brand-gem {
-        width: 28px;
-        height: 28px;
-        border-radius: 7px;
-      }
-
-      .brand-title {
-        font-size: 0.86rem;
-        white-space: nowrap;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
       }
 
       /* Compact and perfectly proportioned space pills on mobile */
@@ -1819,15 +1816,15 @@ import { FirebaseService } from '../../services/firebase.service';
     }
 
     @media (max-width: 480px) {
+      .brand-text,
+      .brand-title,
+      .brand-subtitle,
       .nav-btn-secondary {
         display: none !important;
       }
       .brand-gem {
-        width: 28px;
-        height: 28px;
-      }
-      .brand-title {
-        font-size: 0.86rem;
+        width: 32px;
+        height: 32px;
       }
       .nav-right {
         gap: 3px;
