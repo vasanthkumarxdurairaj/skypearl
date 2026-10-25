@@ -9,8 +9,11 @@ import { SpaceGateModalComponent } from './components/space-gate-modal/space-gat
 import { SpaceSettingsModalComponent } from './components/space-settings-modal/space-settings-modal';
 import { FollowUpEmailModalComponent } from './components/followup-email-modal/followup-email-modal';
 import { SettingsComponent } from './components/settings/settings';
+import { HinduClassifiedsComponent } from './components/hindu-classifieds/hindu-classifieds';
+import { ClassifiedScannerModalComponent } from './components/classified-scanner-modal/classified-scanner-modal';
 import { RealtyService } from './services/realty.service';
 import { SpaceService } from './services/space.service';
+import { HinduClassifiedsService } from './services/hindu-classifieds.service';
 import { 
   PropertyListing, 
   LeadCRM, 
@@ -32,7 +35,9 @@ import {
     SpaceGateModalComponent,
     SpaceSettingsModalComponent,
     FollowUpEmailModalComponent,
-    SettingsComponent
+    SettingsComponent,
+    HinduClassifiedsComponent,
+    ClassifiedScannerModalComponent
   ],
   templateUrl: './app.html',
   styleUrl: './app.css'
@@ -40,6 +45,7 @@ import {
 export class App {
   public realtyService = inject(RealtyService);
   public spaceService = inject(SpaceService);
+  public hinduClassifiedsService = inject(HinduClassifiedsService);
   public Math = Math;
 
   // Modals & Drawers
@@ -75,6 +81,7 @@ export class App {
       this.showLeadModal() ||
       this.showVisitModal() ||
       this.showFollowUpEmailModal() ||
+      this.showClassifiedScannerModal() ||
       this.spaceService.showSpaceSettingsModal();
   });
 
@@ -215,7 +222,7 @@ export class App {
   });
 
   // Navigation View Selection
-  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'settings'): void {
+  public setView(view: 'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'classifieds' | 'settings'): void {
     this.realtyService.activeView.set(view);
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -223,6 +230,20 @@ export class App {
       if (contentEl) {
         contentEl.scrollTo({ top: 0, behavior: 'smooth' });
       }
+    }
+  }
+
+  // Camera & Classified Scanner Actions
+  public openClassifiedScanner(): void {
+    this.showClassifiedScannerModal.set(true);
+  }
+
+  public onViewClassifiedProperty(propId: string): void {
+    const prop = this.realtyService.properties().find(p => p.id === propId);
+    if (prop) {
+      this.openEditProperty(prop);
+    } else {
+      this.setView('properties');
     }
   }
 

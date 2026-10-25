@@ -55,7 +55,8 @@
     <app-navbar 
       (openPropertyModal)="openAddProperty()"
       (openLeadModal)="openAddLead()"
-      (openVisitModal)="showVisitModal.set(true)" />
+      (openVisitModal)="showVisitModal.set(true)"
+      (openScannerModal)="openClassifiedScanner()" />
 
   <div class="main-body">
     <!-- Sidebar Navigation -->
@@ -141,6 +142,22 @@
             <span class="tab-badge">{{ realtyService.siteVisits().length }}</span>
           </button>
 
+          <button 
+            class="nav-tab" 
+            [class.active]="realtyService.activeView() === 'classifieds'"
+            (click)="setView('classifieds')"
+            title="The Hindu Chennai Newspaper Classifieds & Property Radar"
+            aria-label="Newspaper Classifieds">
+            <svg class="tab-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+              <path d="M18 14h-8"/>
+              <path d="M15 18h-5"/>
+              <path d="M10 6h8v4h-8V6Z"/>
+            </svg>
+            <span class="tab-label">Newspaper Radar</span>
+            <span class="tab-badge radar-badge">{{ hinduClassifiedsService.totalCount() }}</span>
+          </button>
+
         </div>
       </div>
 
@@ -189,6 +206,13 @@
             </div>
 
             <div class="banner-actions">
+              <button class="btn btn-gold" (click)="openClassifiedScanner()" title="Scan Print Newspaper Ad via Camera OCR">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                  <circle cx="12" cy="13" r="4"></circle>
+                </svg>
+                <span>Scan Newspaper Ad (Camera)</span>
+              </button>
 
               <button class="btn btn-primary" (click)="openAddProperty()">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -205,7 +229,7 @@
             </div>
           </div>
 
-          <!-- 4-Metric Ribbon -->
+          <!-- 5-Metric Ribbon -->
           <div class="metrics-grid">
             <div class="metric-card glass-panel" (click)="setView('properties')">
               <div class="metric-label">Active Seller Inventory</div>
@@ -223,6 +247,12 @@
               <div class="metric-label">Client Property Matches</div>
               <div class="metric-value">{{ realtyService.highMatchesCount() }}</div>
               <div class="metric-hint">High match criteria (≥ 60%)</div>
+            </div>
+
+            <div class="metric-card glass-panel" (click)="setView('classifieds')">
+              <div class="metric-label">The Hindu Radar</div>
+              <div class="metric-value text-gold">{{ hinduClassifiedsService.totalCount() }}</div>
+              <div class="metric-hint">{{ hinduClassifiedsService.sellerCount() }} Sellers • {{ hinduClassifiedsService.buyerCount() }} Buyers</div>
             </div>
 
             <div class="metric-card glass-panel">
@@ -331,6 +361,13 @@
             <p class="view-desc">Verified apartments, independent houses, villas and plots with complete UDS, water, and legal attributes</p>
           </div>
           <div class="header-action-group">
+            <button class="btn btn-gold" (click)="openClassifiedScanner()" title="Scan newspaper classified ad via Camera OCR">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              <span>Scan Newspaper Ad (Camera)</span>
+            </button>
 
             <button class="btn btn-primary" (click)="openAddProperty()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -1057,6 +1094,15 @@
         <app-settings />
       }
 
+      <!-- ============================================== -->
+      <!-- VIEW 7: CHENNAI NEWSPAPER CLASSIFIEDS RADAR    -->
+      <!-- ============================================== -->
+      @if (realtyService.activeView() === 'classifieds') {
+        <app-hindu-classifieds 
+          (openScannerModal)="openClassifiedScanner()"
+          (viewProperty)="onViewClassifiedProperty($event)" />
+      }
+
     </main>
 
     <!-- SMART PROPERTY-BUYER MATCHING DRAWER -->
@@ -1219,6 +1265,26 @@
       <button 
         type="button"
         class="mob-tab" 
+        [class.active]="realtyService.activeView() === 'classifieds'"
+        (click)="setView('classifieds')"
+        aria-label="Newspaper Radar">
+        <div class="mob-tab-icon-wrap">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+            <path d="M18 14h-8"/>
+            <path d="M15 18h-5"/>
+            <path d="M10 6h8v4h-8V6Z"/>
+          </svg>
+          @if (hinduClassifiedsService.totalCount() > 0) {
+            <span class="mob-tab-badge radar">{{ hinduClassifiedsService.totalCount() }}</span>
+          }
+        </div>
+        <span class="mob-tab-label">Radar</span>
+      </button>
+
+      <button 
+        type="button"
+        class="mob-tab" 
         [class.active]="realtyService.activeView() === 'settings'"
         (click)="setView('settings')"
         aria-label="Agency Settings">
@@ -1256,6 +1322,11 @@
   <app-visit-modal (close)="showVisitModal.set(false)" />
 }
 
+<!-- Newspaper Classifieds Camera Scanner & Property Analyser Modal -->
+@if (showClassifiedScannerModal()) {
+  <app-classified-scanner-modal (close)="showClassifiedScannerModal.set(false)" />
+}
+
 <!-- Space Access Gate Modal (Passcode, Invite Code & Google Login) -->
 @if (!spaceService.isUnlocked() || spaceService.showAccessModal()) {
   <app-space-gate-modal />
@@ -1265,8 +1336,6 @@
 @if (spaceService.showSpaceSettingsModal()) {
   <app-space-settings-modal />
 }
-
-
 
 <!-- Follow-Up Email Composer Modal -->
 @if (showFollowUpEmailModal() && activeEmailLead(); as emailLead) {

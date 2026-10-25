@@ -1348,9 +1348,15 @@ export class ClassifiedScannerModalComponent implements OnInit, OnDestroy {
 
     try {
       this.stopCamera();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: this.facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } }
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: this.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        });
+      } catch {
+        // Fallback for laptops / desktop webcams without rear camera support
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
       this.stream = stream;
 
       // Check flashlight / torch capability
@@ -1360,14 +1366,18 @@ export class ClassifiedScannerModalComponent implements OnInit, OnDestroy {
         this.isTorchSupported.set(true);
       }
 
-      setTimeout(() => {
+      const attachVideo = () => {
         if (this.videoElement?.nativeElement) {
           this.videoElement.nativeElement.srcObject = stream;
+          this.videoElement.nativeElement.play().catch(() => {});
+        } else {
+          setTimeout(attachVideo, 60);
         }
-      }, 100);
-    } catch (err) {
+      };
+      attachVideo();
+    } catch (err: any) {
       console.warn('Camera error:', err);
-      this.cameraError.set('Unable to access device camera. Please check camera permissions or upload an image file.');
+      this.cameraError.set(err?.message || 'Unable to access device camera. Please check camera permissions or upload an image file.');
     }
   }
 

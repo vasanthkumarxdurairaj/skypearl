@@ -154,6 +154,14 @@ import { FirebaseService } from '../../services/firebase.service';
       <div class="nav-right">
 
         <!-- Quick Action Buttons -->
+        <button class="btn btn-gold btn-sm nav-btn-scanner" (click)="openScannerModal.emit()" title="Scan Newspaper Classified Ad via Camera OCR">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+            <circle cx="12" cy="13" r="4"></circle>
+          </svg>
+          <span class="btn-text-desktop">Scan Ad (Camera)</span>
+        </button>
+
         <button class="btn btn-secondary btn-sm nav-btn-secondary" (click)="openVisitModal.emit()" title="Schedule Site Visit">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
@@ -1848,6 +1856,7 @@ export class NavbarComponent {
   public openPropertyModal = output<void>();
   public openLeadModal = output<void>();
   public openVisitModal = output<void>();
+  public openScannerModal = output<void>();
 
   public showAgentMenu = signal<boolean>(false);
   public showWorkspaceSwitcher = signal<boolean>(false);

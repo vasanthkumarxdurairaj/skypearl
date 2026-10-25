@@ -65,7 +65,7 @@ export class RealtyService {
   private unsubLocations?: () => void;
 
   // Active view section in CRM
-  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'settings'>('dashboard');
+  public readonly activeView = signal<'dashboard' | 'properties' | 'leads' | 'connections' | 'visits' | 'classifieds' | 'settings'>('dashboard');
 
   // Theme Management (White/Light Theme & Dark Theme)
   public readonly currentTheme = signal<'light' | 'dark'>('light');
